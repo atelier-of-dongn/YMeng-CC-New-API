@@ -346,7 +346,7 @@ export function Wallet(props: WalletProps) {
         open={transferDialogOpen}
         onOpenChange={setTransferDialogOpen}
         onConfirm={handleTransfer}
-        availableQuota={user?.aff_quota ?? 0}
+        availableQuota={user?.invite_quota ?? user?.aff_quota ?? 0}
         transferring={transferring}
       />
 

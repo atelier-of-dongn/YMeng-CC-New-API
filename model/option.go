@@ -139,6 +139,9 @@ func InitOptionMap() {
 	common.OptionMap["ModelRequestRateLimitDurationMinutes"] = strconv.Itoa(setting.ModelRequestRateLimitDurationMinutes)
 	common.OptionMap["ModelRequestRateLimitSuccessCount"] = strconv.Itoa(setting.ModelRequestRateLimitSuccessCount)
 	common.OptionMap["ModelRequestRateLimitGroup"] = setting.ModelRequestRateLimitGroup2JSONString()
+	ipAccessPolicy := setting.GetIpAccessPolicy()
+	common.OptionMap["IpAccessPolicyEnabled"] = strconv.FormatBool(ipAccessPolicy.Enabled)
+	common.OptionMap["IpAccessPolicyAllowedGroups"] = setting.IpAccessPolicyAllowedGroupsJSON()
 	common.OptionMap["ModelRatio"] = ratio_setting.ModelRatio2JSONString()
 	common.OptionMap["ModelPrice"] = ratio_setting.ModelPrice2JSONString()
 	common.OptionMap["CacheRatio"] = ratio_setting.CacheRatio2JSONString()
@@ -261,6 +264,9 @@ func updateOptionMap(key string, value string) (err error) {
 	// 检查是否是模型配置 - 使用更规范的方式处理
 	if handleConfigUpdate(key, value) {
 		return nil // 已由配置系统处理
+	}
+	if handled, updateErr := setting.UpdateIpAccessPolicyOption(key, value); handled {
+		return updateErr
 	}
 
 	// 处理传统配置项...

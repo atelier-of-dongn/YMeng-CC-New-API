@@ -25,6 +25,9 @@ import {
 } from './section-registry.tsx'
 
 const defaultSecuritySettings: SecuritySettings = {
+  IpAccessPolicyEnabled: false,
+  IpAccessPolicyAllowedGroups: '[]',
+  GroupRatio: '{}',
   ModelRequestRateLimitEnabled: false,
   ModelRequestRateLimitCount: 0,
   ModelRequestRateLimitSuccessCount: 1000,

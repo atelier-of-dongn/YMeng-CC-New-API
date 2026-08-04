@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { IpAccessPolicySection } from '../request-limits/ip-access-policy-section'
 import { RateLimitSection } from '../request-limits/rate-limit-section'
 import { SensitiveWordsSection } from '../request-limits/sensitive-words-section'
 import { SSRFSection } from '../request-limits/ssrf-section'
@@ -24,6 +25,19 @@ import type { SecuritySettings } from '../types'
 import { createSectionRegistry } from '../utils/section-registry'
 
 const SECURITY_SECTIONS = [
+  {
+    id: 'ip-access',
+    titleKey: 'Mainland IP Web Visibility',
+    build: (settings: SecuritySettings) => (
+      <IpAccessPolicySection
+        defaultValues={{
+          IpAccessPolicyEnabled: settings.IpAccessPolicyEnabled,
+          IpAccessPolicyAllowedGroups: settings.IpAccessPolicyAllowedGroups,
+          GroupRatio: settings.GroupRatio,
+        }}
+      />
+    ),
+  },
   {
     id: 'rate-limit',
     titleKey: 'Rate Limiting',

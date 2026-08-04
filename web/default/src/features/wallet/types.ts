@@ -234,8 +234,10 @@ export interface UserWalletData {
   used_quota: number
   /** Total request count */
   request_count: number
-  /** Affiliate quota (pending rewards) */
+  /** Affiliate quota available for transfer (compat alias of invite_quota) */
   aff_quota: number
+  /** Affiliate commission balance available for transfer */
+  invite_quota?: number
   /** Total affiliate quota earned (historical) */
   aff_history_quota: number
   /** Number of successful affiliate invites */

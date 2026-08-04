@@ -26,6 +26,8 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/models", middleware.UserAuth(), controller.DashboardListModels)
 		apiRouter.GET("/status/test", middleware.AdminAuth(), controller.TestStatus)
 		apiRouter.GET("/notice", controller.GetNotice)
+		// 大陆访客的模型可见性提示，未登录也可读取
+		apiRouter.GET("/ip-access-policy/notice", controller.GetIpAccessPolicyNotice)
 		apiRouter.GET("/user-agreement", controller.GetUserAgreement)
 		apiRouter.GET("/privacy-policy", controller.GetPrivacyPolicy)
 		apiRouter.GET("/about", controller.GetAbout)
@@ -106,6 +108,9 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/waffo-pancake/amount", controller.RequestWaffoPancakeAmount)
 				selfRoute.POST("/waffo-pancake/pay", middleware.CriticalRateLimit(), controller.RequestWaffoPancakePay)
 				selfRoute.POST("/aff_transfer", controller.TransferAffQuota)
+				selfRoute.GET("/affiliate/summary", controller.GetAffiliateSummary)
+				selfRoute.GET("/affiliate/commissions", controller.GetAffiliateCommissions)
+				selfRoute.GET("/affiliate/invitees", controller.GetAffiliateInvitees)
 				selfRoute.PUT("/setting", controller.UpdateUserSetting)
 
 				// 2FA routes
@@ -145,6 +150,15 @@ func SetApiRouter(router *gin.Engine) {
 				adminRoute.GET("/2fa/stats", controller.Admin2FAStats)
 				adminRoute.DELETE("/:id/2fa", controller.AdminDisable2FA)
 			}
+		}
+
+		// 推广佣金管理端：配置与按邀请人聚合的佣金视图
+		affiliateAdminRoute := apiRouter.Group("/affiliate/admin")
+		affiliateAdminRoute.Use(middleware.RootAuth())
+		{
+			affiliateAdminRoute.GET("/settings", controller.GetAffiliateAdminSettings)
+			affiliateAdminRoute.PUT("/settings", controller.UpdateAffiliateAdminSettings)
+			affiliateAdminRoute.GET("/user-commissions", controller.GetAffiliateAdminUserCommissions)
 		}
 
 		// Subscription billing (plans, purchase, admin management)

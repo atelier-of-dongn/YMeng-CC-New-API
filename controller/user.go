@@ -15,7 +15,6 @@ import (
 	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/service/authz"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
@@ -495,9 +494,11 @@ func GetSelf(c *gin.Context) {
 		"quota":             user.Quota,
 		"used_quota":        user.UsedQuota,
 		"request_count":     user.RequestCount,
-		"aff_code":          user.AffCode,
-		"aff_count":         user.AffCount,
-		"aff_quota":         user.AffQuota,
+		"aff_code": user.AffCode,
+		"aff_count": user.AffCount,
+		// 推广可用余额记录在 invite_quota 上，aff_quota 保留为兼容别名。
+		"aff_quota":         user.InviteQuota,
+		"invite_quota":      user.InviteQuota,
 		"aff_history_quota": user.AffHistoryQuota,
 		"inviter_id":        user.InviterId,
 		"linux_do_id":       user.LinuxDOId,
@@ -615,7 +616,7 @@ func GetUserModels(c *gin.Context) {
 		common.ApiError(c, err)
 		return
 	}
-	groups := service.GetUserUsableGroups(user.Group)
+	groups := visibleUserGroups(c, user.Group)
 	group := c.Query("group")
 	if group != "" {
 		if _, ok := groups[group]; !ok {

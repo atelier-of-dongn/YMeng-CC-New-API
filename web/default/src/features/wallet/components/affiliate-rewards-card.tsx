@@ -16,14 +16,18 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Share2 } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
+import { ArrowRight, Share2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { CopyButton } from '@/components/copy-button'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { getAffiliateSummary } from '@/features/affiliate/api'
 import { formatQuota } from '@/lib/format'
 
 import type { UserWalletData } from '../types'
@@ -44,6 +48,14 @@ export function AffiliateRewardsCard({
   loading,
 }: AffiliateRewardsCardProps) {
   const { t } = useTranslation()
+
+  // 邀请数与累计佣金以推广总览为准：users.aff_count 历史数据为 0，
+  // 只有新邀请才自增，直接展示会让老用户看到 0。
+  const { data: summary } = useQuery({
+    queryKey: ['affiliate', 'summary'],
+    queryFn: getAffiliateSummary,
+  })
+
   if (loading) {
     return (
       <Card data-card-hover='false' className='bg-muted/20 py-0'>
@@ -59,7 +71,12 @@ export function AffiliateRewardsCard({
     )
   }
 
-  const hasRewards = (user?.aff_quota ?? 0) > 0
+  // 推广可用余额存放在 invite_quota，aff_quota 是后端保留的兼容别名。
+  const availableQuota =
+    summary?.available_quota ?? user?.invite_quota ?? user?.aff_quota ?? 0
+  const totalEarned = summary?.total_quota ?? user?.aff_history_quota ?? 0
+  const inviteeCount = summary?.invitee_count ?? user?.aff_count ?? 0
+  const hasRewards = availableQuota > 0
 
   return (
     <Card data-card-hover='false' className='bg-muted/20 py-0'>
@@ -69,12 +86,21 @@ export function AffiliateRewardsCard({
             <Share2 className='text-muted-foreground size-4' />
           </div>
           <div className='min-w-0'>
-            <h3 className='truncate text-sm font-semibold'>
-              {t('Referral Program')}
-            </h3>
+            <div className='flex items-center gap-2'>
+              <h3 className='truncate text-sm font-semibold'>
+                {t('Referral Program')}
+              </h3>
+              {summary ? (
+                <Badge variant='secondary' className='text-[11px]'>
+                  {t('Commission rate: {{rate}}%', {
+                    rate: summary.rate_percent,
+                  })}
+                </Badge>
+              ) : null}
+            </div>
             <p className='text-muted-foreground line-clamp-1 text-xs'>
               {t(
-                'Earn rewards when users join through your referral link. Transfer accumulated rewards to your balance anytime.'
+                'Earn commission when your invited users spend wallet balance. Transfer accumulated commission to your balance anytime.'
               )}
             </p>
           </div>
@@ -82,9 +108,9 @@ export function AffiliateRewardsCard({
 
         <div className='grid grid-cols-3 gap-1.5 text-center'>
           {[
-            [t('Pending'), formatQuota(user?.aff_quota ?? 0)],
-            [t('Total Earned'), formatQuota(user?.aff_history_quota ?? 0)],
-            [t('Invites'), String(user?.aff_count ?? 0)],
+            [t('Available'), formatQuota(availableQuota)],
+            [t('Total Earned'), formatQuota(totalEarned)],
+            [t('Invites'), String(inviteeCount)],
           ].map(([label, value]) => (
             <div key={label}>
               <div className='text-muted-foreground truncate text-xs font-medium tracking-wider uppercase'>
@@ -122,13 +148,32 @@ export function AffiliateRewardsCard({
             </Button>
           )}
         </div>
-        {!complianceConfirmed ? (
-          <p className='text-muted-foreground text-xs lg:col-span-3'>
-            {t(
-              'Referral reward transfer is disabled until the administrator confirms compliance terms.'
-            )}
-          </p>
-        ) : null}
+
+        <div className='flex flex-wrap items-center gap-x-3 gap-y-1 lg:col-span-3'>
+          <Button
+            variant='link'
+            size='sm'
+            className='h-auto p-0 text-xs'
+            render={<Link to='/affiliate' />}
+          >
+            {t('View commission details')}
+            <ArrowRight className='size-3' />
+          </Button>
+          {summary && !summary.enabled ? (
+            <p className='text-muted-foreground text-xs'>
+              {t(
+                'The affiliate program is currently disabled. Existing balances are kept, but no new commission is settled.'
+              )}
+            </p>
+          ) : null}
+          {!complianceConfirmed ? (
+            <p className='text-muted-foreground text-xs'>
+              {t(
+                'Referral reward transfer is disabled until the administrator confirms compliance terms.'
+              )}
+            </p>
+          ) : null}
+        </div>
       </CardContent>
     </Card>
   )

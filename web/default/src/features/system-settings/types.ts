@@ -328,6 +328,8 @@ export type BillingSettings = {
   'checkin_setting.enabled': boolean
   'checkin_setting.min_quota': number
   'checkin_setting.max_quota': number
+  'affiliate_setting.enabled': boolean
+  'affiliate_setting.commission_rate_percent': number
 }
 
 export type OperationsSettings = {
@@ -363,6 +365,9 @@ export type OperationsSettings = {
 }
 
 export type SecuritySettings = {
+  IpAccessPolicyEnabled: boolean
+  IpAccessPolicyAllowedGroups: string
+  GroupRatio: string
   ModelRequestRateLimitEnabled: boolean
   ModelRequestRateLimitCount: number
   ModelRequestRateLimitSuccessCount: number
