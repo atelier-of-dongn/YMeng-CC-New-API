@@ -37,6 +37,7 @@ export default function SettingsCreditLimit(props) {
     QuotaForInviter: '',
     QuotaForInvitee: '',
     'quota_setting.enable_free_model_pre_consume': true,
+    'quota_setting.skip_billing_on_zero_completion_tokens': false,
   });
   const refForm = useRef();
   const [inputsRow, setInputsRow] = useState(inputs);
@@ -196,6 +197,24 @@ export default function SettingsCreditLimit(props) {
                     setInputs({
                       ...inputs,
                       'quota_setting.enable_free_model_pre_consume': value,
+                    })
+                  }
+                />
+              </Col>
+            </Row>
+            <Row>
+              <Col>
+                <Form.Switch
+                  label={t('输出 Token 为 0 时不计费')}
+                  field={'quota_setting.skip_billing_on_zero_completion_tokens'}
+                  extraText={t(
+                    '开启后，对话类请求（如 Chat、Claude Messages、Gemini、Responses 等）在输出 Token 为 0 时不计费；Embedding、Rerank、图片生成等本身无输出 Token 的请求不受影响',
+                  )}
+                  onChange={(value) =>
+                    setInputs({
+                      ...inputs,
+                      'quota_setting.skip_billing_on_zero_completion_tokens':
+                        value,
                     })
                   }
                 />

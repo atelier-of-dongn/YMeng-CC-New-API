@@ -3,6 +3,8 @@
     "360": "360",
     "1000": "1000",
     "10000": "10000",
+    "Skip Billing on Zero Output Tokens": "Skip Billing on Zero Output Tokens",
+    "When enabled, chat/completion requests that return zero output tokens are not billed.": "When enabled, chat/completion requests that return zero output tokens are not billed.",
     "_copy": "_copy",
     "，": ", ",
     ", and": ", and",

@@ -3,6 +3,8 @@
     "360": "360",
     "1000": "1000",
     "10000": "10000",
+    "Skip Billing on Zero Output Tokens": "出力トークンが0の場合は課金しない",
+    "When enabled, chat/completion requests that return zero output tokens are not billed.": "有効にすると、出力トークンが0件のチャット・補完リクエストは課金されません。",
     "_copy": "_copy",
     "，": "、",
     ", and": "、および",

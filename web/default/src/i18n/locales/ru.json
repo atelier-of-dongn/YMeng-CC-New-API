@@ -3,6 +3,8 @@
     "360": "360",
     "1000": "1000",
     "10000": "10000",
+    "Skip Billing on Zero Output Tokens": "Не взимать плату при нулевых выходных токенах",
+    "When enabled, chat/completion requests that return zero output tokens are not billed.": "Если включено, запросы чата/завершения с нулевым числом выходных токенов не тарифицируются.",
     "_copy": "_копировать",
     "，": ", ",
     ", and": ", и",

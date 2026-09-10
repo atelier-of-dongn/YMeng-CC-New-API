@@ -11,6 +11,7 @@ import (
 	"github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/pkg/billingexpr"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/QuantumNous/new-api/types"
 
 	"github.com/gin-gonic/gin"
@@ -148,6 +149,101 @@ func TestCalculateTextQuotaSummaryUsesAnthropicUsageSemanticFromUpstreamUsage(t 
 	require.True(t, summary.IsClaudeUsageSemantic)
 	require.Equal(t, "anthropic", summary.UsageSemantic)
 	require.Equal(t, 1488, summary.Quota)
+}
+
+func TestCalculateTextQuotaSummarySkipBillingOnZeroCompletionTokens(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	w := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(w)
+
+	priceData := types.PriceData{
+		ModelRatio:      1,
+		CompletionRatio: 2,
+		GroupRatioInfo:  types.GroupRatioInfo{GroupRatio: 1},
+	}
+	usage := &dto.Usage{
+		PromptTokens:     100,
+		CompletionTokens: 0,
+	}
+
+	setSkipBillingOnZeroCompletionTokens := func(t *testing.T, enabled bool) {
+		t.Helper()
+		original := operation_setting.GetQuotaSetting().SkipBillingOnZeroCompletionTokens
+		operation_setting.GetQuotaSetting().SkipBillingOnZeroCompletionTokens = enabled
+		t.Cleanup(func() {
+			operation_setting.GetQuotaSetting().SkipBillingOnZeroCompletionTokens = original
+		})
+	}
+
+	t.Run("disabled by default keeps billing prompt tokens", func(t *testing.T) {
+		setSkipBillingOnZeroCompletionTokens(t, false)
+		relayInfo := &relaycommon.RelayInfo{
+			RelayFormat: types.RelayFormatOpenAI,
+			PriceData:   priceData,
+			StartTime:   time.Now(),
+		}
+		summary := calculateTextQuotaSummary(ctx, relayInfo, usage)
+		require.Equal(t, 100, summary.Quota)
+	})
+
+	t.Run("enabled zeroes quota for conversational format with zero completion tokens", func(t *testing.T) {
+		setSkipBillingOnZeroCompletionTokens(t, true)
+		relayInfo := &relaycommon.RelayInfo{
+			RelayFormat: types.RelayFormatOpenAI,
+			PriceData:   priceData,
+			StartTime:   time.Now(),
+		}
+		summary := calculateTextQuotaSummary(ctx, relayInfo, usage)
+		require.Equal(t, 0, summary.Quota)
+	})
+
+	t.Run("enabled leaves embedding format billing prompt tokens", func(t *testing.T) {
+		setSkipBillingOnZeroCompletionTokens(t, true)
+		relayInfo := &relaycommon.RelayInfo{
+			RelayFormat: types.RelayFormatEmbedding,
+			PriceData:   priceData,
+			StartTime:   time.Now(),
+		}
+		summary := calculateTextQuotaSummary(ctx, relayInfo, usage)
+		require.Equal(t, 100, summary.Quota)
+	})
+
+	t.Run("enabled leaves rerank format billing prompt tokens", func(t *testing.T) {
+		setSkipBillingOnZeroCompletionTokens(t, true)
+		relayInfo := &relaycommon.RelayInfo{
+			RelayFormat: types.RelayFormatRerank,
+			PriceData:   priceData,
+			StartTime:   time.Now(),
+		}
+		summary := calculateTextQuotaSummary(ctx, relayInfo, usage)
+		require.Equal(t, 100, summary.Quota)
+	})
+
+	t.Run("enabled leaves image format billing prompt tokens", func(t *testing.T) {
+		setSkipBillingOnZeroCompletionTokens(t, true)
+		relayInfo := &relaycommon.RelayInfo{
+			RelayFormat: types.RelayFormatOpenAIImage,
+			PriceData:   priceData,
+			StartTime:   time.Now(),
+		}
+		summary := calculateTextQuotaSummary(ctx, relayInfo, usage)
+		require.Equal(t, 100, summary.Quota)
+	})
+
+	t.Run("enabled does not affect requests with nonzero completion tokens", func(t *testing.T) {
+		setSkipBillingOnZeroCompletionTokens(t, true)
+		relayInfo := &relaycommon.RelayInfo{
+			RelayFormat: types.RelayFormatOpenAI,
+			PriceData:   priceData,
+			StartTime:   time.Now(),
+		}
+		nonZeroUsage := &dto.Usage{
+			PromptTokens:     100,
+			CompletionTokens: 10,
+		}
+		summary := calculateTextQuotaSummary(ctx, relayInfo, nonZeroUsage)
+		require.Equal(t, 120, summary.Quota)
+	})
 }
 
 func TestCacheWriteTokensTotal(t *testing.T) {

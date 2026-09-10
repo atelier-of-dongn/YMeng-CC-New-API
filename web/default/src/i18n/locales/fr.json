@@ -3,6 +3,8 @@
     "360": "360",
     "1000": "1000",
     "10000": "10000",
+    "Skip Billing on Zero Output Tokens": "Ignorer la facturation si tokens de sortie = 0",
+    "When enabled, chat/completion requests that return zero output tokens are not billed.": "Si activé, les requêtes de chat/complétion qui renvoient zéro token de sortie ne sont pas facturées.",
     "_copy": "_copie",
     "，": ", ",
     ", and": ", et",

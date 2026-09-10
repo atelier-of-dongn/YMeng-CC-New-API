@@ -3,6 +3,8 @@
     "360": "360",
     "1000": "1000",
     "10000": "10000",
+    "Skip Billing on Zero Output Tokens": "输出 Token 为 0 时不计费",
+    "When enabled, chat/completion requests that return zero output tokens are not billed.": "开启后，对话类请求（如 Chat、Claude Messages、Gemini、Responses 等）在输出 Token 为 0 时不计费。",
     "_copy": "_复制",
     "，": "，",
     ", and": "，和",
