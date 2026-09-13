@@ -85,6 +85,20 @@ export function listArtifacts(task) {
   return task.status === "SUCCESS" ? [{ key: "video", type: "video" }] : [];
 }
 
+function artifactVideoURL(ctx) {
+  const data = ctx && ctx.data ? ctx.data : {};
+  if (Array.isArray(data.result_urls) && data.result_urls.length) return String(data.result_urls[0] || "").trim();
+  if (data.video && data.video.url) return String(data.video.url || "").trim();
+  return "";
+}
+
+export function buildContentRequest(ctx) {
+  if (ctx.artifactKey !== "video") throw new Error("artifact_not_found");
+  const url = artifactVideoURL(ctx);
+  if (!url) throw new Error("artifact_not_found");
+  return { url: url, method: ctx.clientRequest.method, credentialless: true };
+}
+
 export function renderTask(ctx, task) {
   return task.data || {};
 }
