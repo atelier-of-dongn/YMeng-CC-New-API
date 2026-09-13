@@ -18,7 +18,7 @@ func TestShouldRetryHonorsPinRetryMode(t *testing.T) {
 	openaiErr := types.NewOpenAIError(errors.New("upstream"), types.ErrorCodeBadResponseStatusCode, http.StatusInternalServerError)
 
 	c := newPinRetryContext()
-	assert.True(t, shouldRetry(c, openaiErr, 1))
+	assert.True(t, shouldRetry(c, openaiErr))
 
 	origin := newPinRetryContext()
 	service.GetChannelConstraints(origin).AddPin(dto.ChannelPin{
@@ -27,7 +27,7 @@ func TestShouldRetryHonorsPinRetryMode(t *testing.T) {
 		Rank:      dto.PinRankOriginTask,
 		RetryMode: dto.PinRetrySameChannel,
 	})
-	assert.True(t, shouldRetry(origin, openaiErr, 1), "origin pin retries on the same channel")
+	assert.True(t, shouldRetry(origin, openaiErr), "origin pin retries on the same channel")
 
 	token := newPinRetryContext()
 	service.GetChannelConstraints(token).AddPin(dto.ChannelPin{
@@ -36,7 +36,7 @@ func TestShouldRetryHonorsPinRetryMode(t *testing.T) {
 		Rank:      dto.PinRankToken,
 		RetryMode: dto.PinRetrySingleAttempt,
 	})
-	assert.False(t, shouldRetry(token, openaiErr, 1), "token pin suppresses retry")
+	assert.False(t, shouldRetry(token, openaiErr), "token pin suppresses retry")
 }
 
 func TestShouldRetryTaskRelayHonorsPinRetryMode(t *testing.T) {

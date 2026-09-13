@@ -245,7 +245,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 
 		processChannelError(c, *types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey, common.GetContextKeyString(c, constant.ContextKeyChannelKey), channel.GetAutoBan()), newAPIError, relayInfo)
 
-		if !shouldRetry(c, newAPIError) || !retryParam.AdvanceAfterFailure() {
+		if !shouldRetry(c, newAPIError, common.RetryTimes-retryParam.GetRetry()) || !retryParam.AdvanceAfterFailure() {
 			break
 		}
 	}
@@ -367,7 +367,7 @@ func getChannel(c *gin.Context, info *relaycommon.RelayInfo, retryParam *service
 	return channel, nil
 }
 
-func shouldRetry(c *gin.Context, openaiErr *types.NewAPIError) bool {
+func shouldRetry(c *gin.Context, openaiErr *types.NewAPIError, retryTimes int) bool {
 	if openaiErr == nil {
 		return false
 	}

@@ -408,7 +408,7 @@ func tasksToDto(tasks []*model.Task, fillUser bool, viewerRole int) []*dto.TaskD
 			}
 		}
 	}
-	result := make([]*taskLogDto, len(tasks))
+	result := make([]*dto.TaskDto, len(tasks))
 	for i, task := range tasks {
 		if fillUser {
 			if user, ok := userIDMap[task.UserId]; ok {

@@ -866,9 +866,6 @@ function PriceSection(props: {
             {formatFixedPrice(
               props.model,
               baseGroupKey,
-              props.showRechargePrice,
-              props.priceRate,
-              props.usdExchangeRate,
               baseGroupRatioMap
             )}
           </span>
@@ -1004,6 +1001,8 @@ type GroupPricingSectionProps = {
   usableGroup: Record<string, { desc: string; ratio: number }>
   autoGroups: string[]
   tokenUnit: TokenUnit
+  priceRate?: number
+  usdExchangeRate?: number
   showRechargePrice?: boolean
 }
 
@@ -1448,6 +1447,8 @@ const TAB_META: Record<
 }
 
 export interface ModelDetailsContentProps {
+  priceRate?: number
+  usdExchangeRate?: number
   model: PricingModel
   groupRatio: Record<string, number>
   usableGroup: Record<string, { desc: string; ratio: number }>
@@ -1502,10 +1503,10 @@ export function ModelDetailsContent(props: ModelDetailsContentProps) {
             {showBasePrices && (
               <PriceSection
                 model={props.model}
-                priceRate={props.priceRate}
-                usdExchangeRate={props.usdExchangeRate}
+                priceRate={1}
+                usdExchangeRate={1}
                 tokenUnit={props.tokenUnit}
-                showRechargePrice={showRechargePrice}
+                showRechargePrice={false}
               />
             )}
             {isDynamic && !simpleTaskPricing && (
@@ -1513,9 +1514,9 @@ export function ModelDetailsContent(props: ModelDetailsContentProps) {
                 billingExpr={props.model.billing_expr}
                 usageSchema={props.model.billing_usage_schema}
                 taskPriceOptions={{
-                  showRechargePrice,
-                  priceRate: props.priceRate,
-                  usdExchangeRate: props.usdExchangeRate,
+                  showRechargePrice: false,
+                  priceRate: 1,
+                  usdExchangeRate: 1,
                 }}
               />
             )}

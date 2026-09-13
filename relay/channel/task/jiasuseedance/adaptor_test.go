@@ -110,7 +110,7 @@ func TestValidateRequestAcceptsObjectImages(t *testing.T) {
 
 	taskErr := adaptor.ValidateRequestAndSetAction(c, info)
 	require.Nil(t, taskErr)
-	require.Equal(t, constant.TaskActionGenerate, info.Action)
+	require.Equal(t, constant.TaskActionTextToVideo, info.Action)
 
 	req, err := relaycommon.GetTaskRequest(c)
 	require.NoError(t, err)
@@ -122,11 +122,11 @@ func TestValidateRequestAcceptsObjectImages(t *testing.T) {
 func TestParseTaskResultMapsPublicStatusesAndResultURLs(t *testing.T) {
 	adaptor := &TaskAdaptor{}
 
-	queued, err := adaptor.ParseTaskResult([]byte(`{"id":"task_1","status":"queued","progress":0}`))
+	queued, err := adaptor.ParseTaskResult(nil, nil, []byte(`{"id":"task_1","status":"queued","progress":0}`))
 	require.NoError(t, err)
 	require.Equal(t, model.TaskStatusQueued, queued.Status)
 
-	done, err := adaptor.ParseTaskResult([]byte(`{
+	done, err := adaptor.ParseTaskResult(nil, nil, []byte(`{
 		"id":"task_1",
 		"status":"completed",
 		"progress":100,
@@ -137,12 +137,12 @@ func TestParseTaskResultMapsPublicStatusesAndResultURLs(t *testing.T) {
 	require.Equal(t, "https://m.jiasuapi.com/media/xxxx.mp4", done.Url)
 	require.Equal(t, "100%", done.Progress)
 
-	failed, err := adaptor.ParseTaskResult([]byte(`{"id":"task_1","status":"failed","error":{"message":"upstream failed","code":"generation_failed"}}`))
+	failed, err := adaptor.ParseTaskResult(nil, nil, []byte(`{"id":"task_1","status":"failed","error":{"message":"upstream failed","code":"generation_failed"}}`))
 	require.NoError(t, err)
 	require.Equal(t, model.TaskStatusFailure, failed.Status)
 	require.Equal(t, "upstream failed", failed.Reason)
 
-	unknown, err := adaptor.ParseTaskResult([]byte(`{"id":"task_1","status":"unknown","progress":0}`))
+	unknown, err := adaptor.ParseTaskResult(nil, nil, []byte(`{"id":"task_1","status":"unknown","progress":0}`))
 	require.NoError(t, err)
 	require.Equal(t, model.TaskStatusUnknown, unknown.Status)
 }
@@ -194,7 +194,7 @@ func TestBuildRequestURLAndFetchTask(t *testing.T) {
 	}))
 	defer server.Close()
 
-	resp, err := adaptor.FetchTask(server.URL, "sk-test", map[string]any{"task_id": "task_upstream"}, "")
+	resp, err := adaptor.FetchTask(server.URL, "sk-test", &model.Task{PrivateData: model.TaskPrivateData{UpstreamTaskID: "task_upstream"}}, "")
 	require.NoError(t, err)
 	require.NotNil(t, resp)
 	require.Equal(t, http.StatusOK, resp.StatusCode)

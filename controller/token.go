@@ -13,7 +13,6 @@ import (
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
-	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/gin-gonic/gin"
 	"github.com/shopspring/decimal"
@@ -86,6 +85,60 @@ func getTokenRequestUserGroup(c *gin.Context) (string, error) {
 		return userGroup, nil
 	}
 	return model.GetUserGroup(c.GetInt("id"), false)
+}
+
+func getTokenOwnerGroup(c *gin.Context, userId int) (string, error) {
+	if userId == 0 {
+		return getTokenRequestUserGroup(c)
+	}
+	return model.GetUserGroup(userId, false)
+}
+
+func validateTokenGroups(userGroup string, groups []string) error {
+	if len(groups) < 2 {
+		return fmt.Errorf("分组序列至少需要 2 个分组")
+	}
+	seen := make(map[string]struct{}, len(groups))
+	for _, group := range groups {
+		group = strings.TrimSpace(group)
+		if group == "" {
+			return fmt.Errorf("分组不能为空")
+		}
+		if group == "auto" {
+			return fmt.Errorf("分组序列不能包含 auto")
+		}
+		if _, exists := seen[group]; exists {
+			return fmt.Errorf("分组重复")
+		}
+		seen[group] = struct{}{}
+		if !service.IsUserSelectableGroup(userGroup, group) {
+			return fmt.Errorf("无权访问分组 %s", group)
+		}
+	}
+	return nil
+}
+
+func normalizeTokenRouting(userGroup string, token *model.Token) error {
+	if token == nil {
+		return nil
+	}
+	if token.Group == "auto" {
+		return fmt.Errorf("auto")
+	}
+	groups := token.GetGroups()
+	if len(groups) == 0 {
+		token.GroupSequence = ""
+		token.CrossGroupRetry = false
+		return nil
+	}
+	if err := validateTokenGroups(userGroup, groups); err != nil {
+		return err
+	}
+	if err := token.SetGroups(groups); err != nil {
+		return err
+	}
+	token.CrossGroupRetry = true
+	return nil
 }
 
 func setTokenAutoGroups(c *gin.Context, token *model.Token, groups []string) bool {

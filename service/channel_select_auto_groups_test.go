@@ -119,7 +119,7 @@ func TestCacheGetRandomSatisfiedChannelUsesTokenAutoGroupsWhenGlobalAutoIsEmpty(
 	assert.Equal(t, "vip", common.GetContextKeyString(ctx, constant.ContextKeyAutoGroup))
 	assert.Empty(t, setting.GetAutoGroups(), "the selection must not depend on the global Auto list")
 
-	param.IncreaseRetry()
+	require.True(t, param.AdvanceAfterFailure())
 	second, selectedGroup, err := CacheGetRandomSatisfiedChannel(param)
 	require.NoError(t, err)
 	require.NotNil(t, second)

@@ -113,6 +113,20 @@ export interface ToolSurchargeItem {
   price: number
 }
 
+export type RequestParameterValue =
+  | null
+  | boolean
+  | number
+  | string
+  | RequestParameterValue[]
+  | { [key: string]: RequestParameterValue }
+
+export interface LogRequestParameters {
+  parameters: RequestParameterValue
+  truncated?: boolean
+  omitted?: boolean
+}
+
 export interface LogOtherData {
   request_parameters?: LogRequestParameters
   admin_info?: {

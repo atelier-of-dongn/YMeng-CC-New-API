@@ -2,7 +2,6 @@ package jiasuseedance
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -12,11 +11,12 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
-	"github.com/QuantumNous/new-api/dto"
+	taskdto "github.com/QuantumNous/new-api/dto"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/relay/channel"
 	taskcommon "github.com/QuantumNous/new-api/relay/channel/task/taskcommon"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	"github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/service"
 
 	"github.com/gin-gonic/gin"
@@ -71,7 +71,7 @@ func (a *TaskAdaptor) Init(info *relaycommon.RelayInfo) {
 	a.apiKey = info.ApiKey
 }
 
-func (a *TaskAdaptor) ValidateRequestAndSetAction(c *gin.Context, info *relaycommon.RelayInfo) *dto.TaskError {
+func (a *TaskAdaptor) ValidateRequestAndSetAction(c *gin.Context, info *relaycommon.RelayInfo) *taskdto.TaskError {
 	storage, err := common.GetBodyStorage(c)
 	if err != nil {
 		return service.TaskErrorWrapperLocal(err, "invalid_request", http.StatusBadRequest)
@@ -124,8 +124,16 @@ func (a *TaskAdaptor) ValidateRequestAndSetAction(c *gin.Context, info *relaycom
 		Duration: duration,
 		Metadata: body,
 	})
-	info.Action = constant.TaskActionGenerate
+	info.Action = constant.TaskActionTextToVideo
 	return nil
+}
+
+func (a *TaskAdaptor) AdjustBillingOnSubmit(_ *relaycommon.RelayInfo, _ []byte) map[string]float64 {
+	return nil
+}
+
+func (a *TaskAdaptor) AdjustBillingOnComplete(_ *model.Task, _ *relaycommon.TaskInfo) int {
+	return 0
 }
 
 func (a *TaskAdaptor) EstimateBilling(c *gin.Context, _ *relaycommon.RelayInfo) map[string]float64 {
@@ -171,18 +179,16 @@ func (a *TaskAdaptor) DoRequest(c *gin.Context, info *relaycommon.RelayInfo, req
 	return channel.DoTaskApiRequest(a, c, info, requestBody)
 }
 
-func (a *TaskAdaptor) DoResponse(c *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (taskID string, taskData []byte, taskErr *dto.TaskError) {
+func (a *TaskAdaptor) ParseResponse(_ *gin.Context, resp *http.Response, info *relaycommon.RelayInfo) (*channel.TaskSubmitResponse, *taskdto.TaskError) {
 	responseBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		taskErr = service.TaskErrorWrapper(err, "read_response_body_failed", http.StatusInternalServerError)
-		return
+		return nil, service.TaskErrorWrapper(err, "read_response_body_failed", http.StatusInternalServerError)
 	}
 	_ = resp.Body.Close()
 
 	var dResp responseTask
 	if err := common.Unmarshal(responseBody, &dResp); err != nil {
-		taskErr = service.TaskErrorWrapper(errors.Wrapf(err, "body: %s", responseBody), "unmarshal_response_body_failed", http.StatusInternalServerError)
-		return
+		return nil, service.TaskErrorWrapper(errors.Wrapf(err, "body: %s", responseBody), "unmarshal_response_body_failed", http.StatusInternalServerError)
 	}
 
 	upstreamID := dResp.ID
@@ -190,8 +196,7 @@ func (a *TaskAdaptor) DoResponse(c *gin.Context, resp *http.Response, info *rela
 		upstreamID = dResp.TaskID
 	}
 	if upstreamID == "" {
-		taskErr = service.TaskErrorWrapper(fmt.Errorf("task_id is empty"), "invalid_response", http.StatusInternalServerError)
-		return
+		return nil, service.TaskErrorWrapper(fmt.Errorf("task_id is empty"), "invalid_response", http.StatusInternalServerError)
 	}
 
 	ov := dto.NewOpenAIVideo()
@@ -205,13 +210,19 @@ func (a *TaskAdaptor) DoResponse(c *gin.Context, resp *http.Response, info *rela
 		ov.Status = dResp.Status
 	}
 	ov.Progress = dResp.Progress
-	c.JSON(http.StatusOK, ov)
-	return upstreamID, responseBody, nil
+	return &channel.TaskSubmitResponse{
+		UpstreamTaskID: upstreamID,
+		TaskData:       responseBody,
+		ClientResponse: ov,
+	}, nil
 }
 
-func (a *TaskAdaptor) FetchTask(baseUrl, key string, body map[string]any, proxy string) (*http.Response, error) {
-	taskID, ok := body["task_id"].(string)
-	if !ok {
+func (a *TaskAdaptor) FetchTask(baseUrl, key string, task *model.Task, proxy string) (*http.Response, error) {
+	if task == nil {
+		return nil, fmt.Errorf("invalid task")
+	}
+	taskID := task.GetUpstreamTaskID()
+	if taskID == "" {
 		return nil, fmt.Errorf("invalid task_id")
 	}
 
@@ -238,7 +249,7 @@ func (a *TaskAdaptor) GetChannelName() string {
 	return ChannelName
 }
 
-func (a *TaskAdaptor) ParseTaskResult(respBody []byte) (*relaycommon.TaskInfo, error) {
+func (a *TaskAdaptor) ParseTaskResult(_ *model.Task, _ *http.Response, respBody []byte) (*relaycommon.TaskInfo, error) {
 	resTask := responseTask{}
 	if err := common.Unmarshal(respBody, &resTask); err != nil {
 		return nil, errors.Wrap(err, "unmarshal task result failed")
@@ -432,9 +443,6 @@ func intFromAny(v any) int {
 		return int(n)
 	case float64:
 		return int(n)
-	case json.Number:
-		i, _ := n.Int64()
-		return int(i)
 	case string:
 		i, _ := strconv.Atoi(n)
 		return i

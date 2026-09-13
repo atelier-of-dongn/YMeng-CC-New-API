@@ -30,6 +30,7 @@ import {
   PlugZap,
   Radio,
   ReceiptText,
+  Share2,
   ServerCog,
   Settings,
   ShieldCheck,

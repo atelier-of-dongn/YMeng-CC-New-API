@@ -11,6 +11,7 @@ build
 *.db-shm
 *.db-wal
 logs
+/invoices/
 web/dist
 web/node_modules
 .env

@@ -41,6 +41,7 @@ const apiKey: ApiKey = {
   created_time: 1,
   accessed_time: 1,
   group: 'premium',
+  auto_groups: null,
   groups: ['premium', 'standard'],
   cross_group_retry: true,
   model_limits_enabled: false,

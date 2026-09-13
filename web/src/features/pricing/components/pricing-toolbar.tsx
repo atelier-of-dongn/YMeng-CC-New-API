@@ -50,6 +50,8 @@ import type { PricingModel, PricingVendor, TokenUnit } from '../types'
 import { PricingSidebar } from './pricing-sidebar'
 
 export interface PricingToolbarProps {
+  showRechargePrice?: boolean
+  onRechargePriceChange?: (value: boolean) => void
   filteredCount: number
   totalCount?: number
   sortBy: string
@@ -118,11 +120,11 @@ export function PricingToolbar(props: PricingToolbarProps) {
         </div>
 
         <div className='flex min-w-0 flex-wrap items-center gap-2'>
-          <ToggleGroup
+          {props.onRechargePriceChange && <ToggleGroup
             value={[props.showRechargePrice ? 'recharge' : 'standard']}
             onValueChange={(values) => {
               if (values.length > 0) {
-                props.onRechargePriceChange(values[0] === 'recharge')
+                props.onRechargePriceChange?.(values[0] === 'recharge')
               }
             }}
             variant='outline'
@@ -131,7 +133,7 @@ export function PricingToolbar(props: PricingToolbarProps) {
           >
             <ToggleGroupItem value='standard'>{t('Standard')}</ToggleGroupItem>
             <ToggleGroupItem value='recharge'>{t('Recharge')}</ToggleGroupItem>
-          </ToggleGroup>
+          </ToggleGroup>}
           <ToggleGroup
             value={[props.tokenUnit]}
             onValueChange={(values) => {

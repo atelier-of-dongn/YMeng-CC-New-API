@@ -129,7 +129,7 @@ var ChannelBaseURLs = []string{
 	"",                                          //59
 	"",                                          //60
 	"",                                          //61
-	"https://ai.jiasuapi.com",                    //62
+	"https://ai.jiasuapi.com",                   //62
 }
 
 func GetChannelBaseURL(channelType int) string {

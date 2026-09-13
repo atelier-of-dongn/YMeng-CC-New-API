@@ -56,13 +56,15 @@ type ApiKeyGroupComboboxBaseProps = {
   disabled?: boolean
 }
 
-export function ApiKeyGroupCombobox({
-  options,
-  value,
-  onValueChange,
-  placeholder,
-  disabled,
-}: ApiKeyGroupComboboxProps) {
+type ApiKeyGroupComboboxProps = ApiKeyGroupComboboxBaseProps & (
+  | { multiple?: false; value?: string; onValueChange: (value: string) => void }
+  | { multiple: true; values: string[]; onValuesChange: (values: string[]) => void }
+)
+
+export function ApiKeyGroupCombobox(props: ApiKeyGroupComboboxProps) {
+  const options = props.options
+  const value = props.multiple ? props.values[0] : props.value
+  const disabled = props.disabled
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')

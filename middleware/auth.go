@@ -529,7 +529,14 @@ func SetupContextForToken(c *gin.Context, token *model.Token, parts ...string) e
 		c.Set("token_model_limit_enabled", false)
 	}
 	common.SetContextKey(c, constant.ContextKeyTokenGroup, token.Group)
-	common.SetContextKey(c, constant.ContextKeyTokenCrossGroupRetry, token.CrossGroupRetry)
+	groups := token.GetGroups()
+	crossGroupRetry := token.CrossGroupRetry
+	if len(groups) > 1 {
+		crossGroupRetry = true
+	} else if len(groups) <= 1 {
+		crossGroupRetry = false
+	}
+	common.SetContextKey(c, constant.ContextKeyTokenCrossGroupRetry, crossGroupRetry)
 	if token.AutoGroups != "" {
 		autoGroups, err := token.GetAutoGroups()
 		if err != nil {

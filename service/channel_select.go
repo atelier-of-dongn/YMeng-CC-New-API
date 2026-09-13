@@ -57,6 +57,10 @@ func (p *RetryParam) SetRetry(retry int) {
 	p.Retry = &retry
 }
 
+func (p *RetryParam) IncreaseRetry() {
+	p.SetRetry(p.GetRetry() + 1)
+}
+
 func (p *RetryParam) routeGroups() ([]string, error) {
 	userGroup := common.GetContextKeyString(p.Ctx, constant.ContextKeyUserGroup)
 	tokenGroups := common.GetContextKeyStringSlice(p.Ctx, constant.ContextKeyTokenGroups)

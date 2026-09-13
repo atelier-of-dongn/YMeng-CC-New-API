@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
+import { ChevronDown } from 'lucide-react'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -205,33 +206,6 @@ export function PublicHeader(props: PublicHeaderProps) {
     []
   )
 
-  const headerLogoContent = loading ? (
-    <Skeleton className='size-full rounded-lg' />
-  ) : (
-    customLogo || (
-      <HeaderLogo
-        src={systemLogo}
-        loading={loading}
-        logoLoaded={logoLoaded}
-        className='size-full rounded-lg object-contain'
-      />
-    )
-  )
-
-  let desktopAuthControl = (
-    <Button
-      size='sm'
-      className='h-8 rounded-lg px-3.5 text-xs font-medium'
-      render={<Link to='/sign-in' />}
-    >
-      {t('Sign in')}
-    </Button>
-  )
-  if (isAuthenticated) desktopAuthControl = <ProfileDropdown />
-  if (loading) {
-    desktopAuthControl = <Skeleton className='h-8 w-20 rounded-lg' />
-  }
-
   return (
     <>
       <header className='pointer-events-none fixed inset-x-0 top-0 z-50'>
@@ -274,7 +248,7 @@ export function PublicHeader(props: PublicHeaderProps) {
 
             {/* Desktop nav */}
             <div className='hidden min-w-0 items-center gap-0.5 lg:flex'>
-              {links.map((link) => {
+              {desktopLinks.visible.map((link) => {
                 const isActive = pathname === link.href
                 if (link.external) {
                   return (

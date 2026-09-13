@@ -20,7 +20,8 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronDown, KeyRound, Settings2, WalletCards } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { useForm, type SubmitErrorHandler } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
+import { useStatus } from '@/hooks/use-status'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -368,6 +369,7 @@ export function ApiKeysMutateDrawer({
   const quotaPlaceholder = tokensOnly
     ? t('Enter quota in tokens')
     : t('Enter quota in {{currency}}', { currency: currencyLabel })
+  const routingMode = form.watch('routing_mode') ?? 'single'
   const autoGroupsMode = form.watch('auto_groups_mode')
   const unlimitedQuota = form.watch('unlimited_quota')
   const routingDescription =
@@ -432,11 +434,29 @@ export function ApiKeysMutateDrawer({
                 name='routing_mode'
                 render={({ field }) => (
                   <FormItem>
+                    <FormLabel>{t('Routing mode')}</FormLabel>
+                    <Select value={field.value ?? 'single'} onValueChange={field.onChange}>
+                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent><SelectGroup>
+                        <SelectItem value='single'>{t('Single group')}</SelectItem>
+                        <SelectItem value='multi'>{t('Multiple groups')}</SelectItem>
+                      </SelectGroup></SelectContent>
+                    </Select>
+                    <FormDescription>{routingDescription}</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {routingMode === 'single' && <FormField
+                control={form.control}
+                name='group'
+                render={({ field }) => (
+                  <FormItem>
                     <FormLabel>{t('Group')}</FormLabel>
                     <FormControl>
                       <ApiKeyGroupCombobox
                         options={groups}
-                        value={field.value}
+                        value={field.value ?? ''}
                         onValueChange={(group) => {
                           field.onChange(group)
                           if (group === 'auto') {
@@ -455,9 +475,9 @@ export function ApiKeysMutateDrawer({
                     <FormMessage />
                   </FormItem>
                 )}
-              />
+              />}
 
-              {routingMode === 'single' && (
+              {routingMode === 'single' && selectedGroup === 'auto' && (
                 <FormField
                   control={form.control}
                   name='auto_groups'
@@ -471,7 +491,7 @@ export function ApiKeysMutateDrawer({
                       </FormDescription>
                       <FormControl>
                         <AutoGroupOrderEditor
-                          value={field.value}
+                          value={field.value ?? ''}
                           mode={autoGroupsMode}
                           options={groups}
                           globalOptions={globalAutoGroupOptions}
@@ -506,12 +526,7 @@ export function ApiKeysMutateDrawer({
                     <FormItem>
                       <FormLabel>{t('Group')}</FormLabel>
                       <FormControl>
-                        <ApiKeyGroupCombobox
-                          options={groups}
-                          value={field.value}
-                          onValueChange={field.onChange}
-                          placeholder={t('Select a group')}
-                        />
+                        <Switch checked={!!field.value} onCheckedChange={field.onChange} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -528,8 +543,8 @@ export function ApiKeysMutateDrawer({
                       <FormLabel>{t('Group call order')}</FormLabel>
                       <FormControl>
                         <ApiKeyGroupSequence
-                          options={groups}
-                          value={field.value}
+                          options={groups.filter((group) => group.value !== 'auto')}
+                          value={field.value ?? []}
                           onValueChange={field.onChange}
                         />
                       </FormControl>
