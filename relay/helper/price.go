@@ -74,6 +74,10 @@ func HandleGroupRatio(ctx *gin.Context, relayInfo *relaycommon.RelayInfo) hostty
 	return groupRatioInfo
 }
 
+func preConsumeGroupRatio(info *relaycommon.RelayInfo, actual float64) float64 {
+	return max(info.PreConsumeGroupRatio, actual)
+}
+
 func ModelPriceHelper(c *gin.Context, info *relaycommon.RelayInfo, promptTokens int, meta *types.TokenCountMeta) (hosttypes.PriceData, error) {
 	if info != nil {
 		if matched := resolveBillingModelName(info.GetOriginModelName()); matched != "" && matched != info.OriginModelName {
@@ -259,7 +263,6 @@ func ModelPriceHelperPerCall(c *gin.Context, info *relaycommon.RelayInfo) (hostt
 	}
 
 	var quota int
-	var quotaToPreConsume int
 	freeModel := false
 
 	if usePrice {
@@ -270,7 +273,7 @@ func ModelPriceHelperPerCall(c *gin.Context, info *relaycommon.RelayInfo) (hostt
 		}
 		if !operation_setting.GetQuotaSetting().EnableFreeModelPreConsume {
 			if reserveGroupRatio == 0 || modelPrice == 0 {
-				quotaToPreConsume = 0
+				quota = 0
 				freeModel = true
 			}
 		}
@@ -284,7 +287,7 @@ func ModelPriceHelperPerCall(c *gin.Context, info *relaycommon.RelayInfo) (hostt
 		modelPrice = -1
 		if !operation_setting.GetQuotaSetting().EnableFreeModelPreConsume {
 			if reserveGroupRatio == 0 || modelRatio == 0 {
-				quotaToPreConsume = 0
+				quota = 0
 				freeModel = true
 			}
 		}
@@ -419,7 +422,7 @@ func modelPriceHelperTiered(c *gin.Context, info *relaycommon.RelayInfo, billing
 		EstimatedPromptTokens:     promptTokens,
 		EstimatedCompletionTokens: estimatedCompletionTokens,
 		EstimatedQuotaBeforeGroup: quotaBeforeGroup,
-		EstimatedQuotaAfterGroup:  actualEstimatedQuota,
+		EstimatedQuotaAfterGroup:  preConsumedQuota,
 		EstimatedTier:             trace.MatchedTier,
 		EstimatedBillingUnit:      trace.BillingUnit,
 		EstimatedFixedPrice:       trace.FixedPrice,

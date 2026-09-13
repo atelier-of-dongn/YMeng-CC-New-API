@@ -146,7 +146,7 @@ func Distribute() func(c *gin.Context) {
 							}
 						} else if model.IsChannelEnabledForGroupModel(usingGroup, modelRequest.Model, preferred.Id) {
 							channel = preferred
-							selectGroup = routeGroups[0]
+							selectGroup = usingGroup
 							affinityUsable = true
 							common.SetContextKey(c, constant.ContextKeyTokenGroupIndex, 0)
 							common.SetContextKey(c, constant.ContextKeySelectedGroup, selectGroup)

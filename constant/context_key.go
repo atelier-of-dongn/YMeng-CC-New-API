@@ -3,6 +3,7 @@ package constant
 type ContextKey string
 
 const (
+	ContextKeyTokenGroups     ContextKey = "token_groups"
 	ContextKeyTokenCountMeta  ContextKey = "token_count_meta"
 	ContextKeyPromptTokens    ContextKey = "prompt_tokens"
 	ContextKeyEstimatedTokens ContextKey = "estimated_tokens"
