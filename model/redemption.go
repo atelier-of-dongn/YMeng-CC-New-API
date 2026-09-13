@@ -166,7 +166,7 @@ func Redeem(key string, userId int) (quota int, err error) {
 		result := tx.Model(&Redemption{}).
 			Where("id = ? AND status = ?", redemption.Id, common.RedemptionCodeStatusEnabled).
 			Updates(map[string]any{
-				"redeemed_time": common.GetTimestamp(),
+				"redeemed_time": redeemedAt,
 				"status":        common.RedemptionCodeStatusUsed,
 				"used_user_id":  userId,
 			})
@@ -176,7 +176,22 @@ func Redeem(key string, userId int) (quota int, err error) {
 		if result.RowsAffected == 0 {
 			return errors.New("该兑换码已被使用")
 		}
-		return creditTopUpQuota(tx, userId, redemption.Quota, nil)
+		if err := creditTopUpQuota(tx, userId, redemption.Quota, nil); err != nil {
+			return err
+		}
+		invoiceAmount, err := InvoiceAmountFromQuota(redemption.Quota)
+		if err != nil {
+			common.SysError(fmt.Sprintf("failed to create redemption invoice snapshot: redemption_id=%d: %v", redemption.Id, err))
+			return nil
+		}
+		return tx.Create(&TopUp{
+			UserId: userId, Amount: int64(redemption.Quota),
+			TradeNo:       fmt.Sprintf("redemption:%d", redemption.Id),
+			PaymentMethod: PaymentProviderRedemption, PaymentProvider: PaymentProviderRedemption,
+			CreateTime: redemption.CreatedTime, CompleteTime: redeemedAt,
+			Status: common.TopUpStatusSuccess, CreditedQuota: int64(redemption.Quota),
+			InvoiceAmount: invoiceAmount,
+		}).Error
 	})
 	if err != nil {
 		common.SysError("redemption failed: " + err.Error())
