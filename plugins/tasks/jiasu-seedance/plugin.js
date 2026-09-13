@@ -6,6 +6,7 @@ export const meta = {
   version: "1.0.0",
   author: { name: "QuantumNous" },
   baseUrl: "https://ai.jiasuapi.com",
+  channelTypes: [59],
   models: ["seedance-2.5-101010"],
   fetchMode: "per_task",
   usageSchema: {

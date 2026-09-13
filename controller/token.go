@@ -88,7 +88,7 @@ func getTokenRequestUserGroup(c *gin.Context) (string, error) {
 }
 
 func getTokenOwnerGroup(c *gin.Context, userId int) (string, error) {
-	if userId == 0 {
+	if userId == c.GetInt("id") {
 		return getTokenRequestUserGroup(c)
 	}
 	return model.GetUserGroup(userId, false)
@@ -119,25 +119,24 @@ func validateTokenGroups(userGroup string, groups []string) error {
 }
 
 func normalizeTokenRouting(userGroup string, token *model.Token) error {
-	if token == nil {
+	if len(token.Groups) > 0 {
+		if err := validateTokenGroups(userGroup, token.Groups); err != nil {
+			return err
+		}
+		if err := token.SetGroups(token.Groups); err != nil {
+			return err
+		}
+		token.CrossGroupRetry = true
 		return nil
 	}
 	if token.Group == "auto" {
-		return fmt.Errorf("auto")
+		return fmt.Errorf("auto 分组已不再支持，请选择具体分组或配置多分组")
 	}
-	groups := token.GetGroups()
-	if len(groups) == 0 {
-		token.GroupSequence = ""
-		token.CrossGroupRetry = false
-		return nil
+	if strings.TrimSpace(token.Group) == "" || !service.IsUserSelectableGroup(userGroup, token.Group) {
+		return fmt.Errorf("请选择一个有权访问的有效分组")
 	}
-	if err := validateTokenGroups(userGroup, groups); err != nil {
-		return err
-	}
-	if err := token.SetGroups(groups); err != nil {
-		return err
-	}
-	token.CrossGroupRetry = true
+	token.GroupSequence = ""
+	token.CrossGroupRetry = false
 	return nil
 }
 
@@ -489,7 +488,11 @@ func UpdateToken(c *gin.Context) {
 			common.ApiError(c, groupErr)
 			return
 		}
-		if token.Groups == nil && len(cleanToken.GetGroups()) >= 2 {
+		if token.Group == "auto" {
+			token.Group = cleanToken.Group
+			token.GroupSequence = cleanToken.GroupSequence
+			token.CrossGroupRetry = cleanToken.CrossGroupRetry
+		} else if token.Groups == nil && len(cleanToken.GetGroups()) >= 2 {
 			token.Group = cleanToken.Group
 			token.GroupSequence = cleanToken.GroupSequence
 			token.CrossGroupRetry = true
