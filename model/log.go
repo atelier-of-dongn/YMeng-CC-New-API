@@ -278,17 +278,15 @@ func RecordTopupLog(userId int, content string, callerIp string, paymentMethod s
 // attachRequestOrigin 把请求来源信息写入日志的 Other：请求端点与访问地区。
 // request_path 已由上游账单信息生成器写入时不覆盖；地区取 CDN 透传的国家码，
 // 无法识别时不写该字段。
-func attachRequestOrigin(c *gin.Context, other map[string]interface{}) {
+func attachRequestOrigin(c *gin.Context, other *LogOther) {
 	if c == nil || other == nil {
 		return
 	}
-	if _, exists := other["request_path"]; !exists && c.Request != nil && c.Request.URL != nil {
-		if path := c.Request.URL.Path; path != "" {
-			other["request_path"] = path
-		}
+	if path := c.Request.URL.Path; path != "" {
+		other.SetPublic("request_path", path)
 	}
 	if country := common.GetClientCountry(c); country != "" {
-		other["region"] = country
+		other.SetPublic("region", country)
 	}
 }
 
@@ -298,16 +296,8 @@ func RecordErrorLog(c *gin.Context, userId int, channelId int, modelName string,
 	username := c.GetString("username")
 	requestId := c.GetString(common.RequestIdKey)
 	upstreamRequestId := c.GetString(common.UpstreamRequestIdKey)
-	otherStr := other.JSONString()
-	// 判断是否需要记录 IP
-	needRecordIp := false
-	if settingMap, err := GetUserSetting(userId, false); err == nil {
-		if settingMap.RecordIpLog {
-			needRecordIp = true
-		}
-	}
 	attachRequestOrigin(c, other)
-	otherStr := common.MapToJsonStr(other)
+	otherStr := other.JSONString()
 	log := &Log{
 		UserId:            userId,
 		Username:          username,
@@ -359,16 +349,8 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 	requestId := c.GetString(common.RequestIdKey)
 	upstreamRequestId := c.GetString(common.UpstreamRequestIdKey)
 	createdAt := common.GetTimestamp()
-	otherStr := params.Other.JSONString()
-	// 判断是否需要记录 IP
-	needRecordIp := false
-	if settingMap, err := GetUserSetting(userId, false); err == nil {
-		if settingMap.RecordIpLog {
-			needRecordIp = true
-		}
-	}
 	attachRequestOrigin(c, params.Other)
-	otherStr := common.MapToJsonStr(params.Other)
+	otherStr := params.Other.JSONString()
 	log := &Log{
 		UserId:            userId,
 		Username:          username,
