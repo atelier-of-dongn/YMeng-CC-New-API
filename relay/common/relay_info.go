@@ -162,6 +162,9 @@ type RelayInfo struct {
 	UpstreamRequestBodySize int64
 
 	PriceData types.PriceData
+	// PreConsumeGroupRatio is the highest ratio among the request's ordered
+	// candidate groups. Settlement still uses the group that actually succeeds.
+	PreConsumeGroupRatio float64
 
 	// QuotaClamp is set (non-nil) when a quota conversion saturated at the
 	// int32 bound (or NaN fallback) while computing this request's charge.

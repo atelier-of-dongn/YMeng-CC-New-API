@@ -3,8 +3,11 @@ package service
 import (
 	"strings"
 
+	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
+	"github.com/gin-gonic/gin"
 )
 
 func GetUserUsableGroups(userGroup string) map[string]string {
@@ -51,6 +54,49 @@ func GetUserAutoGroup(userGroup string) []string {
 		}
 	}
 	return autoGroups
+}
+
+func FilterUserUsableGroups(userGroup string, requestedGroups []string) []string {
+	usableGroups := GetUserUsableGroups(userGroup)
+	groups := make([]string, 0, len(requestedGroups))
+	for _, group := range requestedGroups {
+		if group == "" || group == "auto" {
+			continue
+		}
+		if _, ok := usableGroups[group]; !ok || !ratio_setting.ContainsGroupRatio(group) {
+			continue
+		}
+		groups = append(groups, group)
+	}
+	return groups
+}
+
+func GetTokenRouteGroups(userGroup, tokenGroup string, tokenGroups []string) []string {
+	if len(tokenGroups) > 0 {
+		return FilterUserUsableGroups(userGroup, tokenGroups)
+	}
+	if tokenGroup == "auto" {
+		return GetUserAutoGroup(userGroup)
+	}
+	if tokenGroup != "" {
+		return []string{tokenGroup}
+	}
+	return []string{userGroup}
+}
+
+func GetMaxTokenGroupRatio(c *gin.Context) float64 {
+	userGroup := common.GetContextKeyString(c, constant.ContextKeyUserGroup)
+	tokenGroup := common.GetContextKeyString(c, constant.ContextKeyTokenGroup)
+	tokenGroups := common.GetContextKeyStringSlice(c, constant.ContextKeyTokenGroups)
+	groups := GetTokenRouteGroups(userGroup, tokenGroup, tokenGroups)
+	maxRatio := 0.0
+	for _, group := range groups {
+		ratio := GetUserGroupRatio(userGroup, group)
+		if ratio > maxRatio {
+			maxRatio = ratio
+		}
+	}
+	return maxRatio
 }
 
 // GetUserGroupRatio 获取用户使用某个分组的倍率

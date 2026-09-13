@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
+import { ChevronDown } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -26,10 +27,17 @@ import { NotificationPopover } from '@/components/notification-popover'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useNotifications } from '@/hooks/use-notifications'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
+import { splitHeaderNavLinks } from '@/lib/nav-modules'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -97,6 +105,7 @@ export function PublicHeader(props: PublicHeaderProps) {
   const isAuthenticated = !!user
   const displaySiteName = customSiteName || systemName
   const links = dynamicLinks.length > 0 ? dynamicLinks : navLinks
+  const desktopLinks = splitHeaderNavLinks(links)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20)
@@ -160,7 +169,7 @@ export function PublicHeader(props: PublicHeaderProps) {
         }
         setAuthPromptSecondsLeft(AUTH_PROMPT_SECONDS)
         setAuthPromptTarget({
-          title: t(link.title),
+          title: link.title,
           href: link.href,
         })
         return
@@ -170,8 +179,35 @@ export function PublicHeader(props: PublicHeaderProps) {
         setMobileOpen(false)
       }
     },
-    [t]
+    []
   )
+
+  const headerLogoContent = loading ? (
+    <Skeleton className='size-full rounded-lg' />
+  ) : (
+    customLogo || (
+      <HeaderLogo
+        src={systemLogo}
+        loading={loading}
+        logoLoaded={logoLoaded}
+        className='size-full rounded-lg object-contain'
+      />
+    )
+  )
+
+  let desktopAuthControl = (
+    <Button
+      size='sm'
+      className='h-8 rounded-lg px-3.5 text-xs font-medium'
+      render={<Link to='/sign-in' />}
+    >
+      {t('Sign in')}
+    </Button>
+  )
+  if (isAuthenticated) desktopAuthControl = <ProfileDropdown />
+  if (loading) {
+    desktopAuthControl = <Skeleton className='h-8 w-20 rounded-lg' />
+  }
 
   return (
     <>
@@ -196,18 +232,7 @@ export function PublicHeader(props: PublicHeaderProps) {
               className='group flex shrink-0 items-center gap-2.5'
             >
               <div className='flex size-7 shrink-0 items-center justify-center transition-all duration-300 group-hover:scale-105'>
-                {loading ? (
-                  <Skeleton className='size-full rounded-lg' />
-                ) : customLogo ? (
-                  customLogo
-                ) : (
-                  <HeaderLogo
-                    src={systemLogo}
-                    loading={loading}
-                    logoLoaded={logoLoaded}
-                    className='size-full rounded-lg object-contain'
-                  />
-                )}
+                {headerLogoContent}
               </div>
               <span className='text-sm font-semibold tracking-tight'>
                 {loading ? <Skeleton className='h-4 w-16' /> : displaySiteName}
@@ -216,12 +241,12 @@ export function PublicHeader(props: PublicHeaderProps) {
 
             {/* Desktop nav */}
             <div className='hidden items-center gap-0.5 sm:flex'>
-              {links.map((link, i) => {
+              {desktopLinks.visible.map((link) => {
                 const isActive = pathname === link.href
                 if (link.external) {
                   return (
                     <a
-                      key={i}
+                      key={`${link.title}-${link.href}`}
                       href={link.href}
                       target='_blank'
                       rel='noopener noreferrer'
@@ -233,13 +258,13 @@ export function PublicHeader(props: PublicHeaderProps) {
                         link.disabled && 'pointer-events-none opacity-50'
                       )}
                     >
-                      {t(link.title)}
+                      {link.title}
                     </a>
                   )
                 }
                 return (
                   <Link
-                    key={i}
+                    key={`${link.title}-${link.href}`}
                     to={link.href}
                     disabled={link.disabled}
                     onClick={(event) => handleNavLinkClick(event, link)}
@@ -251,10 +276,50 @@ export function PublicHeader(props: PublicHeaderProps) {
                       link.disabled && 'pointer-events-none opacity-50'
                     )}
                   >
-                    {t(link.title)}
+                    {link.title}
                   </Link>
                 )
               })}
+
+              {desktopLinks.overflow.length > 0 ? (
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger className='text-muted-foreground hover:text-foreground flex items-center gap-1 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors duration-200'>
+                    {t('More')}
+                    <ChevronDown className='size-3.5' aria-hidden='true' />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align='end'>
+                    {desktopLinks.overflow.map((link) => (
+                      <DropdownMenuItem
+                        key={`${link.title}-${link.href}`}
+                        disabled={link.disabled}
+                        render={
+                          link.external ? (
+                            <a
+                              href={link.href}
+                              target='_blank'
+                              rel='noopener noreferrer'
+                              onClick={(event) =>
+                                handleNavLinkClick(event, link)
+                              }
+                            >
+                              {link.title}
+                            </a>
+                          ) : (
+                            <Link
+                              to={link.href}
+                              onClick={(event) =>
+                                handleNavLinkClick(event, link)
+                              }
+                            >
+                              {link.title}
+                            </Link>
+                          )
+                        }
+                      />
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
 
               {(showLanguageSwitcher ||
                 showThemeSwitch ||
@@ -280,19 +345,7 @@ export function PublicHeader(props: PublicHeaderProps) {
               {showAuthButtons && (
                 <>
                   <div className='bg-border/40 mx-1 h-4 w-px' />
-                  {loading ? (
-                    <Skeleton className='h-8 w-20 rounded-lg' />
-                  ) : isAuthenticated ? (
-                    <ProfileDropdown />
-                  ) : (
-                    <Button
-                      size='sm'
-                      className='h-8 rounded-lg px-3.5 text-xs font-medium'
-                      render={<Link to='/sign-in' />}
-                    >
-                      {t('Sign in')}
-                    </Button>
-                  )}
+                  {desktopAuthControl}
                 </>
               )}
             </div>
@@ -364,7 +417,7 @@ export function PublicHeader(props: PublicHeaderProps) {
               if (link.external) {
                 return (
                   <a
-                    key={i}
+                    key={`${link.title}-${link.href}`}
                     href={link.href}
                     target='_blank'
                     rel='noopener noreferrer'
@@ -374,20 +427,20 @@ export function PublicHeader(props: PublicHeaderProps) {
                     className={linkClassName}
                     style={transitionStyle}
                   >
-                    {t(link.title)}
+                    {link.title}
                   </a>
                 )
               }
               return (
                 <Link
-                  key={i}
+                  key={`${link.title}-${link.href}`}
                   to={link.href}
                   disabled={link.disabled}
                   onClick={(event) => handleNavLinkClick(event, link, true)}
                   className={linkClassName}
                   style={transitionStyle}
                 >
-                  {t(link.title)}
+                  {link.title}
                 </Link>
               )
             })}

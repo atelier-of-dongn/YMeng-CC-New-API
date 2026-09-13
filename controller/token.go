@@ -7,9 +7,12 @@ import (
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/i18n"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
+	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/gin-gonic/gin"
 )
@@ -20,7 +23,79 @@ func buildMaskedTokenResponse(token *model.Token) *model.Token {
 	}
 	maskedToken := *token
 	maskedToken.Key = token.GetMaskedKey()
+	maskedToken.Groups = token.GetGroups()
+	if maskedToken.Groups == nil {
+		maskedToken.Groups = make([]string, 0)
+	}
+	maskedToken.CrossGroupRetry = len(maskedToken.Groups) >= 2
 	return &maskedToken
+}
+
+func validateTokenSingleGroup(userGroup, group string) error {
+	if strings.TrimSpace(group) == "" {
+		return fmt.Errorf("请选择一个有效分组")
+	}
+	if group == "auto" {
+		return fmt.Errorf("auto 分组已不再支持，请选择具体分组或配置多分组")
+	}
+	if _, ok := service.GetUserUsableGroups(userGroup)[group]; !ok || !ratio_setting.ContainsGroupRatio(group) {
+		return fmt.Errorf("无权访问 %s 分组", group)
+	}
+	return nil
+}
+
+func validateTokenGroups(userGroup string, groups []string) error {
+	if len(groups) < 2 {
+		return fmt.Errorf("多分组模式至少需要选择两个分组")
+	}
+	usableGroups := service.GetUserUsableGroups(userGroup)
+	seen := make(map[string]struct{}, len(groups))
+	for _, group := range groups {
+		if strings.TrimSpace(group) == "" {
+			return fmt.Errorf("自定义分组顺序中不能包含空分组")
+		}
+		if group == "auto" {
+			return fmt.Errorf("auto 分组不能与自定义分组顺序混用")
+		}
+		if _, exists := seen[group]; exists {
+			return fmt.Errorf("分组 %s 重复", group)
+		}
+		if _, ok := usableGroups[group]; !ok || !ratio_setting.ContainsGroupRatio(group) {
+			return fmt.Errorf("无权访问 %s 分组", group)
+		}
+		seen[group] = struct{}{}
+	}
+	return nil
+}
+
+func normalizeTokenRouting(userGroup string, token *model.Token) error {
+	if len(token.Groups) >= 1 {
+		if err := validateTokenGroups(userGroup, token.Groups); err != nil {
+			return err
+		}
+		if err := token.SetGroups(token.Groups); err != nil {
+			return err
+		}
+		token.CrossGroupRetry = true
+		return nil
+	}
+	if err := validateTokenSingleGroup(userGroup, token.Group); err != nil {
+		return err
+	}
+	if token.Groups != nil {
+		if err := token.SetGroups([]string{}); err != nil {
+			return err
+		}
+	}
+	token.CrossGroupRetry = false
+	return nil
+}
+
+func getTokenOwnerGroup(c *gin.Context, userId int) (string, error) {
+	if userGroup := common.GetContextKeyString(c, constant.ContextKeyUserGroup); userGroup != "" {
+		return userGroup, nil
+	}
+	return model.GetUserGroup(userId, false)
 }
 
 func buildMaskedTokenResponses(tokens []*model.Token) []*model.Token {
@@ -175,6 +250,15 @@ func AddToken(c *gin.Context) {
 		common.ApiErrorI18n(c, i18n.MsgTokenNameTooLong)
 		return
 	}
+	userGroup, groupErr := getTokenOwnerGroup(c, c.GetInt("id"))
+	if groupErr != nil {
+		common.ApiError(c, groupErr)
+		return
+	}
+	if groupErr = normalizeTokenRouting(userGroup, &token); groupErr != nil {
+		common.ApiError(c, groupErr)
+		return
+	}
 	// 非无限额度时，检查额度值是否超出有效范围
 	if !token.UnlimitedQuota {
 		if token.RemainQuota < 0 {
@@ -220,6 +304,7 @@ func AddToken(c *gin.Context) {
 		ModelLimits:        token.ModelLimits,
 		AllowIps:           token.AllowIps,
 		Group:              token.Group,
+		GroupSequence:      token.GroupSequence,
 		CrossGroupRetry:    token.CrossGroupRetry,
 	}
 	err = cleanToken.Insert()
@@ -289,6 +374,19 @@ func UpdateToken(c *gin.Context) {
 	if statusOnly != "" {
 		cleanToken.Status = token.Status
 	} else {
+		userGroup, groupErr := getTokenOwnerGroup(c, userId)
+		if groupErr != nil {
+			common.ApiError(c, groupErr)
+			return
+		}
+		if token.Groups == nil && len(cleanToken.GetGroups()) >= 2 {
+			token.Group = cleanToken.Group
+			token.GroupSequence = cleanToken.GroupSequence
+			token.CrossGroupRetry = true
+		} else if groupErr = normalizeTokenRouting(userGroup, &token); groupErr != nil {
+			common.ApiError(c, groupErr)
+			return
+		}
 		// If you add more fields, please also update token.Update()
 		cleanToken.Name = token.Name
 		cleanToken.ExpiredTime = token.ExpiredTime
@@ -298,6 +396,7 @@ func UpdateToken(c *gin.Context) {
 		cleanToken.ModelLimits = token.ModelLimits
 		cleanToken.AllowIps = token.AllowIps
 		cleanToken.Group = token.Group
+		cleanToken.GroupSequence = token.GroupSequence
 		cleanToken.CrossGroupRetry = token.CrossGroupRetry
 	}
 	err = cleanToken.Update()

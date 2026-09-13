@@ -672,6 +672,13 @@ const EditChannelModal = (props) => {
             base_url: 'https://ark.cn-beijing.volces.com',
           }));
           break;
+        case 59:
+          localModels = ['seedance-2.5-101010'];
+          setInputs((prevInputs) => ({
+            ...prevInputs,
+            base_url: 'https://ai.jiasuapi.com',
+          }));
+          break;
         default:
           localModels = getChannelModels(value);
           break;

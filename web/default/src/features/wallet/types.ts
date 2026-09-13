@@ -100,6 +100,14 @@ export interface PaymentMethod {
   min_topup?: number
   /** Optional react-icons component name or safe icon URL */
   icon?: string
+  /** Whether to show the compatibility notice in the confirmation dialog */
+  show_topup_notice?: boolean
+  /** Whether to show the external top-up link in the confirmation dialog */
+  show_topup_link?: boolean
+  /** Optional custom notice shown in the confirmation dialog */
+  topup_notice_text?: string
+  /** Optional HTTPS image URL used for the external top-up link */
+  topup_link_image?: string
 }
 
 /**

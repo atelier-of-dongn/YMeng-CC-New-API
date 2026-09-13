@@ -144,6 +144,18 @@ export const CHANNEL_TYPE_CONFIGS: Record<number, ChannelTypeConfig> = {
       models: 'Models exposed by this channel',
     },
   },
+  59: {
+    id: 59,
+    name: CHANNEL_TYPES[59],
+    icon: 'doubao',
+    defaultBaseUrl: 'https://ai.jiasuapi.com',
+    supportedModels: ['seedance-2.5-101010'],
+    hints: {
+      baseUrl: 'Default: https://ai.jiasuapi.com',
+      key: 'Format: sk-...',
+      models: 'seedance-2.5-101010',
+    },
+  },
 }
 
 /**

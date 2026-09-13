@@ -16,10 +16,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { CheckCircle2, Lock } from 'lucide-react'
+import { CheckCircle2, Info, Lock } from 'lucide-react'
 import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Dialog } from '@/components/dialog'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -27,6 +29,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
+import { useSystemConfig } from '@/hooks/use-system-config'
+import { cn } from '@/lib/utils'
 
 import type { RegionModelEntry } from './api'
 import { useRegionNotice } from './use-region-notice'
@@ -37,28 +41,27 @@ type ModelListProps = {
   emptyText: string
 }
 
-function ModelList({ models, variant, emptyText }: ModelListProps) {
-  if (models.length === 0) {
+function ModelList(props: ModelListProps) {
+  if (props.models.length === 0) {
     return (
       <p className='text-muted-foreground py-6 text-center text-sm'>
-        {emptyText}
+        {props.emptyText}
       </p>
     )
   }
 
   return (
-    <ul className='space-y-1.5'>
-      {models.map((item) => (
+    <ul className='flex flex-col gap-1.5'>
+      {props.models.map((item) => (
         <li
           key={item.model_name}
           className='flex flex-col gap-1 rounded-md border px-2.5 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3 sm:px-3'
         >
           <span
-            className={
-              variant === 'available'
-                ? 'font-mono text-xs break-all sm:text-sm'
-                : 'text-muted-foreground font-mono text-xs break-all sm:text-sm'
-            }
+            className={cn(
+              'font-mono text-sm break-all',
+              props.variant === 'restricted' && 'text-muted-foreground'
+            )}
           >
             {item.model_name}
           </span>
@@ -66,8 +69,8 @@ function ModelList({ models, variant, emptyText }: ModelListProps) {
             {item.groups.map((group) => (
               <Badge
                 key={group}
-                variant={variant === 'available' ? 'secondary' : 'outline'}
-                className='text-[11px]'
+                variant='outline'
+                className='border-border/60 bg-muted/30 text-muted-foreground'
               >
                 {group}
               </Badge>
@@ -82,8 +85,11 @@ function ModelList({ models, variant, emptyText }: ModelListProps) {
 /**
  * 大陆访客的模型可见性提示弹窗。
  * 同时列出当前可用模型与仅海外可访问的模型，说明差异原因。
+ * 该弹窗面向大陆网络访客，文案强制使用简体中文展示，不随界面语言切换。
  */
 export function RegionNoticeDialog() {
+  const { t } = useTranslation()
+  const { systemName, logo } = useSystemConfig()
   const { notice, open, close } = useRegionNotice()
   const [keyword, setKeyword] = useState('')
   const [dontRemindToday, setDontRemindToday] = useState(false)
@@ -99,6 +105,9 @@ export function RegionNoticeDialog() {
     }
   }, [notice, keyword])
 
+  const zh = (key: string, options?: Record<string, unknown>) =>
+    t(key, { ...options, lng: 'zhCN' })
+
   if (!notice) return null
 
   return (
@@ -108,14 +117,35 @@ export function RegionNoticeDialog() {
         // 点遮罩或按 Esc 关闭时，同样尊重勾选状态。
         if (!next) close(dontRemindToday)
       }}
-      title='当前地区的模型可用范围'
-      description='检测到你正在中国大陆网络环境访问。下面列出你现在可直接使用的模型，以及仅面向海外网络开放的模型。'
-      contentClassName='max-sm:w-[calc(100vw-1.5rem)] sm:max-w-3xl'
-      titleClassName='text-base sm:text-lg'
-      descriptionClassName='text-xs sm:text-sm'
-      footer={
-        <div className='flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
+      title={
+        <div className='flex flex-col gap-2 sm:gap-2.5'>
           <div className='flex items-center gap-2'>
+            <div className='flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-md'>
+              <img
+                src={logo}
+                alt=''
+                className='size-full rounded-md object-cover'
+              />
+            </div>
+            <span className='text-foreground truncate text-sm font-semibold'>
+              {systemName}
+            </span>
+          </div>
+          <span className='text-base font-semibold tracking-tight'>
+            {zh('Model availability in your region')}
+          </span>
+        </div>
+      }
+      description={zh(
+        'We detected you are accessing from a mainland China network. Below are the models you can use now and the ones available only to overseas networks.'
+      )}
+      titleClassName='contents'
+      descriptionClassName='max-sm:text-xs max-sm:leading-relaxed'
+      contentClassName='max-h-[calc(100dvh-1rem)] max-sm:w-[calc(100vw-1rem)] max-sm:gap-3 max-sm:rounded-lg max-sm:p-3 sm:max-w-3xl'
+      footerClassName='max-sm:-mx-3 max-sm:-mb-3 max-sm:p-3'
+      footer={
+        <div className='grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 sm:flex sm:justify-between'>
+          <div className='flex min-w-0 items-center gap-2'>
             <Checkbox
               id='region-notice-snooze'
               checked={dontRemindToday}
@@ -125,44 +155,53 @@ export function RegionNoticeDialog() {
             />
             <Label
               htmlFor='region-notice-snooze'
-              className='text-muted-foreground text-sm font-normal'
+              className='text-muted-foreground min-w-0 text-sm leading-tight font-normal'
             >
-              本日不再提醒
+              {zh('Do not remind today')}
             </Label>
           </div>
           <Button
             onClick={() => close(dontRemindToday)}
-            className='w-full sm:w-auto'
+            className='shrink-0 px-4 sm:w-auto'
           >
-            我已了解
+            {zh('I understand')}
           </Button>
         </div>
       }
     >
-      <div className='space-y-4'>
+      <div className='flex flex-col gap-3 sm:gap-4'>
+        <Alert className='border-info/25 bg-info/10 text-info'>
+          <Info aria-hidden='true' />
+          <AlertDescription className='text-info text-xs leading-relaxed sm:text-sm'>
+            {zh(
+              'This API service is strictly limited to personal learning and technical research use. Please do not use it for any commercial or illegal purpose.'
+            )}
+          </AlertDescription>
+        </Alert>
+
         {/* 窄屏也保持三列并排，避免纵向堆叠挤压下方模型列表 */}
-        <div className='grid grid-cols-3 gap-2 sm:gap-3'>
-          <div className='rounded-lg border p-2 sm:p-3'>
-            <p className='text-muted-foreground text-[11px] sm:text-xs'>
-              当前可用
+        <div className='grid grid-cols-3 gap-1.5 sm:gap-3'>
+          <div className='border-success/25 bg-success/10 min-w-0 rounded-lg border p-2 sm:p-3'>
+            <p className='text-success text-xs leading-tight font-medium'>
+              {zh('Available now')}
             </p>
-            <p className='text-lg font-semibold tabular-nums sm:text-2xl'>
+            <p className='text-success mt-1 text-xl leading-none font-semibold tabular-nums'>
               {notice.available_model_count}
             </p>
           </div>
-          <div className='rounded-lg border p-2 sm:p-3'>
-            <p className='text-muted-foreground text-[11px] sm:text-xs'>
-              仅海外可用
+          <div className='border-warning/30 bg-warning/10 min-w-0 rounded-lg border p-2 sm:p-3'>
+            <p className='text-warning text-xs leading-tight font-medium'>
+              {zh('Overseas only')}
             </p>
-            <p className='text-lg font-semibold tabular-nums sm:text-2xl'>
+            <p className='text-warning mt-1 text-xl leading-none font-semibold tabular-nums'>
               {notice.overseas_model_count}
             </p>
           </div>
-          <div className='rounded-lg border p-2 sm:p-3'>
-            <p className='text-muted-foreground text-[11px] sm:text-xs'>
-              模型总数
+          <div className='border-border/60 bg-muted/30 min-w-0 rounded-lg border p-2 sm:p-3'>
+            <p className='text-muted-foreground text-xs leading-tight font-medium'>
+              {zh('Total models')}
             </p>
-            <p className='text-lg font-semibold tabular-nums sm:text-2xl'>
+            <p className='mt-1 text-xl leading-none font-semibold tabular-nums'>
               {notice.total_model_count}
             </p>
           </div>
@@ -171,42 +210,51 @@ export function RegionNoticeDialog() {
         <Input
           value={keyword}
           onChange={(event) => setKeyword(event.target.value)}
-          placeholder='搜索模型名称'
+          placeholder={zh('Search model names')}
         />
 
-        {/* 小屏按视口比例取高，避免固定高度把弹窗顶出屏幕 */}
-        <ScrollArea className='h-[45vh] pr-2 sm:h-[320px] sm:pr-3'>
-          <div className='space-y-4'>
-            <section className='space-y-2'>
+        {/* 移动端复用弹窗主体滚动，桌面端保留模型列表的独立滚动区域。 */}
+        <ScrollArea className='h-auto pr-0 sm:h-[320px] sm:pr-3 max-sm:[&_[data-slot=scroll-area-scrollbar]]:hidden'>
+          <div className='flex flex-col gap-4'>
+            <section className='flex flex-col gap-2'>
               <div className='flex items-center gap-2'>
-                <CheckCircle2 className='size-4 text-emerald-600' />
+                <CheckCircle2
+                  className='text-success size-4'
+                  aria-hidden='true'
+                />
                 <h4 className='text-sm font-medium'>
-                  你现在可以使用（{filtered.available.length}）
+                  {zh('Available to you now ({{count}})', {
+                    count: filtered.available.length,
+                  })}
                 </h4>
               </div>
               <ModelList
                 models={filtered.available}
                 variant='available'
-                emptyText='没有匹配的可用模型'
+                emptyText={zh('No matching available models')}
               />
             </section>
 
             <Separator />
 
-            <section className='space-y-2'>
+            <section className='flex flex-col gap-2'>
               <div className='flex items-center gap-2'>
-                <Lock className='text-muted-foreground size-4' />
+                <Lock className='text-warning size-4' aria-hidden='true' />
                 <h4 className='text-sm font-medium'>
-                  仅海外网络可访问（{filtered.overseas.length}）
+                  {zh('Overseas networks only ({{count}})', {
+                    count: filtered.overseas.length,
+                  })}
                 </h4>
               </div>
               <p className='text-muted-foreground text-xs'>
-                以下模型属于未对大陆网络开放的分组，需要海外网络环境才能在网页中使用。
+                {zh(
+                  'The following models belong to groups that are not opened to mainland China networks. An overseas network environment is required to use them in the web interface.'
+                )}
               </p>
               <ModelList
                 models={filtered.overseas}
                 variant='restricted'
-                emptyText='没有匹配的受限模型'
+                emptyText={zh('No matching restricted models')}
               />
             </section>
           </div>

@@ -1,6 +1,7 @@
 package model
 
 import (
+	"strconv"
 	"sync"
 	"testing"
 
@@ -108,6 +109,7 @@ func setupRedeemFixture(t *testing.T, quota int) (userId int, key string) {
 		require.NoError(t, DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Unscoped().Delete(&Redemption{}).Error)
 		DB.Exec("DELETE FROM users")
 		DB.Exec("DELETE FROM logs")
+		DB.Exec("DELETE FROM top_ups")
 	})
 
 	user := &User{Username: "redeem-user", Password: "password", Status: common.UserStatusEnabled, Quota: 0}
@@ -141,11 +143,95 @@ func TestRedeemCreditsQuotaExactlyOnce(t *testing.T) {
 	assert.Equal(t, common.RedemptionCodeStatusUsed, redemption.Status)
 	assert.Equal(t, userId, redemption.UsedUserId)
 
+	var topUp TopUp
+	require.NoError(t, DB.Where("trade_no = ?", "redemption:"+strconv.Itoa(redemption.Id)).First(&topUp).Error)
+	assert.Equal(t, PaymentProviderRedemption, topUp.PaymentProvider)
+	assert.Equal(t, common.TopUpStatusSuccess, topUp.Status)
+	assert.Equal(t, int64(500), topUp.CreditedQuota)
+	wantInvoiceAmount, invoiceErr := InvoiceAmountFromQuota(500)
+	require.NoError(t, invoiceErr)
+	assert.Equal(t, wantInvoiceAmount, topUp.InvoiceAmount)
+
 	// Redeeming the same code again must fail and must not credit quota.
 	_, err = Redeem(key, userId)
 	require.Error(t, err)
 	require.NoError(t, DB.First(&user, "id = ?", userId).Error)
 	assert.Equal(t, 500, user.Quota)
+}
+
+func TestBackfillRedemptionInvoiceTopUpsIncludesDeletedHistoryAndIsIdempotent(t *testing.T) {
+	truncateTables(t)
+	require.NoError(t, DB.AutoMigrate(&Redemption{}))
+	require.NoError(t, DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Unscoped().Delete(&Redemption{}).Error)
+	t.Cleanup(func() {
+		require.NoError(t, DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Unscoped().Delete(&Redemption{}).Error)
+	})
+	originalQuotaPerUnit := common.QuotaPerUnit
+	common.QuotaPerUnit = 100
+	t.Cleanup(func() { common.QuotaPerUnit = originalQuotaPerUnit })
+
+	user := &User{Username: "redeem-history", Status: common.UserStatusEnabled}
+	require.NoError(t, DB.Create(user).Error)
+	redemption := &Redemption{
+		UserId:       user.Id,
+		UsedUserId:   user.Id,
+		Name:         "historical-code",
+		Key:          "20000000000000000000000000000001",
+		Status:       common.RedemptionCodeStatusUsed,
+		Quota:        60_000,
+		CreatedTime:  100,
+		RedeemedTime: 200,
+	}
+	require.NoError(t, DB.Create(redemption).Error)
+	require.NoError(t, DB.Delete(redemption).Error)
+
+	require.NoError(t, BackfillRedemptionInvoiceTopUps())
+	require.NoError(t, BackfillRedemptionInvoiceTopUps())
+
+	var topUps []TopUp
+	require.NoError(t, DB.Where("trade_no = ?", "redemption:"+strconv.Itoa(redemption.Id)).Find(&topUps).Error)
+	require.Len(t, topUps, 1)
+	assert.Equal(t, user.Id, topUps[0].UserId)
+	assert.Equal(t, int64(60_000), topUps[0].CreditedQuota)
+	assert.Equal(t, int64(600*InvoiceAmountScale), topUps[0].InvoiceAmount)
+	assert.Equal(t, int64(200), topUps[0].CompleteTime)
+	billingRows, billingTotal, err := GetAllTopUps(&common.PageInfo{Page: 1, PageSize: 10})
+	require.NoError(t, err)
+	assert.Zero(t, billingTotal)
+	assert.Empty(t, billingRows)
+
+	eligibility, err := GetInvoiceEligibility(user.Id)
+	require.NoError(t, err)
+	require.Len(t, eligibility.Orders, 1)
+	assert.Equal(t, topUps[0].Id, eligibility.Orders[0].Id)
+
+	application, err := CreateInvoiceApplication(user.Id, "Example Company", "91350000TEST", []int{topUps[0].Id})
+	require.NoError(t, err)
+	assert.Equal(t, int64(600*InvoiceAmountScale), application.NetAmount)
+}
+
+func TestRedeemStillCreditsQuotaWhenInvoiceConversionIsTemporarilyUnavailable(t *testing.T) {
+	userId, key := setupRedeemFixture(t, 500)
+	originalQuotaPerUnit := common.QuotaPerUnit
+	common.QuotaPerUnit = 0
+	t.Cleanup(func() { common.QuotaPerUnit = originalQuotaPerUnit })
+
+	quota, err := Redeem(key, userId)
+	require.NoError(t, err)
+	assert.Equal(t, 500, quota)
+
+	var user User
+	require.NoError(t, DB.First(&user, "id = ?", userId).Error)
+	assert.Equal(t, 500, user.Quota)
+
+	var count int64
+	require.NoError(t, DB.Model(&TopUp{}).Where("payment_provider = ?", PaymentProviderRedemption).Count(&count).Error)
+	assert.Zero(t, count)
+
+	common.QuotaPerUnit = 100
+	require.NoError(t, BackfillRedemptionInvoiceTopUps())
+	require.NoError(t, DB.Model(&TopUp{}).Where("payment_provider = ?", PaymentProviderRedemption).Count(&count).Error)
+	assert.Equal(t, int64(1), count)
 }
 
 // Exactly one of several concurrent redeems of the same code may win, and

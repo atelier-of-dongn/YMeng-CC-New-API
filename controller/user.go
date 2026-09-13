@@ -479,23 +479,23 @@ func GetSelf(c *gin.Context) {
 
 	// 构建响应数据，包含用户信息和权限
 	responseData := map[string]interface{}{
-		"id":                user.Id,
-		"username":          user.Username,
-		"display_name":      user.DisplayName,
-		"role":              user.Role,
-		"status":            user.Status,
-		"email":             user.Email,
-		"github_id":         user.GitHubId,
-		"discord_id":        user.DiscordId,
-		"oidc_id":           user.OidcId,
-		"wechat_id":         user.WeChatId,
-		"telegram_id":       user.TelegramId,
-		"group":             user.Group,
-		"quota":             user.Quota,
-		"used_quota":        user.UsedQuota,
-		"request_count":     user.RequestCount,
-		"aff_code": user.AffCode,
-		"aff_count": user.AffCount,
+		"id":            user.Id,
+		"username":      user.Username,
+		"display_name":  user.DisplayName,
+		"role":          user.Role,
+		"status":        user.Status,
+		"email":         user.Email,
+		"github_id":     user.GitHubId,
+		"discord_id":    user.DiscordId,
+		"oidc_id":       user.OidcId,
+		"wechat_id":     user.WeChatId,
+		"telegram_id":   user.TelegramId,
+		"group":         user.Group,
+		"quota":         user.Quota,
+		"used_quota":    user.UsedQuota,
+		"request_count": user.RequestCount,
+		"aff_code":      user.AffCode,
+		"aff_count":     user.AffCount,
 		// 推广可用余额记录在 invite_quota 上，aff_quota 保留为兼容别名。
 		"aff_quota":         user.InviteQuota,
 		"invite_quota":      user.InviteQuota,
@@ -1122,7 +1122,7 @@ func ManageUser(c *gin.Context) {
 				common.ApiErrorI18n(c, i18n.MsgUserQuotaChangeZero)
 				return
 			}
-			if err := model.DecreaseUserQuota(user.Id, req.Value, true); err != nil {
+			if err := model.ApplyAdminQuotaDeduction(user.Id, c.GetInt("id"), req.Value, "subtract"); err != nil {
 				common.ApiError(c, err)
 				return
 			}
@@ -1131,9 +1131,12 @@ func ManageUser(c *gin.Context) {
 			})
 		case "override":
 			oldQuota := user.Quota
-			if err := model.DB.Model(&model.User{}).Where("id = ?", user.Id).Update("quota", req.Value).Error; err != nil {
+			if err := model.ApplyAdminQuotaOverride(user.Id, c.GetInt("id"), oldQuota, req.Value); err != nil {
 				common.ApiError(c, err)
 				return
+			}
+			if err := model.InvalidateUserCache(user.Id); err != nil {
+				common.SysLog(fmt.Sprintf("failed to invalidate user cache for user %d: %s", user.Id, err.Error()))
 			}
 			recordManageAuditFor(c, user.Id, "user.quota_override", map[string]interface{}{
 				"from": logger.LogQuota(oldQuota),

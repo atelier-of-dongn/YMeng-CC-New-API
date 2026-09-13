@@ -300,6 +300,10 @@ func migrateDB() error {
 		&CasbinRule{},
 		&AuthzRole{},
 		&AffiliateCommission{},
+		&InvoiceProfile{},
+		&InvoiceApplication{},
+		&InvoiceApplicationItem{},
+		&InvoiceRefundAdjustment{},
 	)
 	if err != nil {
 		return err
@@ -313,7 +317,13 @@ func migrateDB() error {
 			return err
 		}
 	}
-	return nil
+	if err := migrateInvoiceApplicationItemIndexes(); err != nil {
+		return err
+	}
+	if err := BackfillTopUpInvoiceSnapshots(); err != nil {
+		return err
+	}
+	return BackfillRedemptionInvoiceTopUps()
 }
 
 func migrateDBFast() error {
@@ -352,6 +362,10 @@ func migrateDBFast() error {
 		{&SystemInstance{}, "SystemInstance"},
 		{&SystemTask{}, "SystemTask"},
 		{&SystemTaskLock{}, "SystemTaskLock"},
+		{&InvoiceProfile{}, "InvoiceProfile"},
+		{&InvoiceApplication{}, "InvoiceApplication"},
+		{&InvoiceApplicationItem{}, "InvoiceApplicationItem"},
+		{&InvoiceRefundAdjustment{}, "InvoiceRefundAdjustment"},
 	}
 	// 动态计算migration数量，确保errChan缓冲区足够大
 	errChan := make(chan error, len(migrations))
@@ -385,8 +399,14 @@ func migrateDBFast() error {
 			return err
 		}
 	}
+	if err := migrateInvoiceApplicationItemIndexes(); err != nil {
+		return err
+	}
 	common.SysLog("database migrated")
-	return nil
+	if err := BackfillTopUpInvoiceSnapshots(); err != nil {
+		return err
+	}
+	return BackfillRedemptionInvoiceTopUps()
 }
 
 func migrateLOGDB() error {

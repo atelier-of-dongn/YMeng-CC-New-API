@@ -161,6 +161,24 @@ func SetApiRouter(router *gin.Engine) {
 			affiliateAdminRoute.GET("/user-commissions", controller.GetAffiliateAdminUserCommissions)
 		}
 
+		invoiceRoute := apiRouter.Group("/invoice")
+		invoiceRoute.Use(middleware.UserAuth())
+		{
+			invoiceRoute.GET("/eligibility", controller.GetInvoiceEligibility)
+			invoiceRoute.GET("/self", controller.GetUserInvoiceApplications)
+			invoiceRoute.POST("/", middleware.CriticalRateLimit(), controller.CreateInvoiceApplication)
+			invoiceRoute.GET("/self/:id/file", controller.DownloadInvoicePDF)
+		}
+
+		invoiceAdminRoute := apiRouter.Group("/invoice/admin")
+		invoiceAdminRoute.Use(middleware.AdminAuth())
+		{
+			invoiceAdminRoute.GET("/", controller.GetAllInvoiceApplications)
+			invoiceAdminRoute.PATCH("/:id/processing", controller.MarkInvoiceProcessing)
+			invoiceAdminRoute.PATCH("/:id/reject", controller.RejectInvoiceApplication)
+			invoiceAdminRoute.POST("/:id/file", controller.UploadInvoicePDF)
+		}
+
 		// Subscription billing (plans, purchase, admin management)
 		subscriptionRoute := apiRouter.Group("/subscription")
 		subscriptionRoute.Use(middleware.UserAuth())

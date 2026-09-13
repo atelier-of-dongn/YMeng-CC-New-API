@@ -44,13 +44,27 @@ export type ApiKeyGroupOption = {
   ratio?: number | string
 }
 
-type ApiKeyGroupComboboxProps = {
+type ApiKeyGroupComboboxBaseProps = {
   options: ApiKeyGroupOption[]
-  value?: string
-  onValueChange: (value: string) => void
   placeholder?: string
   disabled?: boolean
 }
+
+type ApiKeyGroupComboboxSingleProps = ApiKeyGroupComboboxBaseProps & {
+  multiple?: false
+  value?: string
+  onValueChange: (value: string) => void
+}
+
+type ApiKeyGroupComboboxMultipleProps = ApiKeyGroupComboboxBaseProps & {
+  multiple: true
+  values: string[]
+  onValuesChange: (values: string[]) => void
+}
+
+type ApiKeyGroupComboboxProps =
+  | ApiKeyGroupComboboxSingleProps
+  | ApiKeyGroupComboboxMultipleProps
 
 function formatGroupRatio(
   ratio: ApiKeyGroupOption['ratio'],
@@ -96,23 +110,27 @@ function GroupRatioBadge({ ratio }: { ratio: ApiKeyGroupOption['ratio'] }) {
   )
 }
 
-export function ApiKeyGroupCombobox({
-  options,
-  value,
-  onValueChange,
-  placeholder,
-  disabled,
-}: ApiKeyGroupComboboxProps) {
+export function ApiKeyGroupCombobox(props: ApiKeyGroupComboboxProps) {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
-  const selectedOption = options.find((option) => option.value === value)
+  const selectedValues = props.multiple ? props.values : undefined
+  const selectedOption = props.multiple
+    ? undefined
+    : props.options.find((option) => option.value === props.value)
+
+  const selectedOrderByGroup = useMemo(() => {
+    if (!selectedValues) return new Map<string, number>()
+    return new Map(
+      selectedValues.map((group, index) => [group, index + 1] as const)
+    )
+  }, [selectedValues])
 
   const filteredOptions = useMemo(() => {
     const search = searchValue.trim().toLowerCase()
-    if (!search) return options
+    if (!search) return props.options
 
-    return options.filter((option) => {
+    return props.options.filter((option) => {
       const ratioText = String(option.ratio ?? '').toLowerCase()
       return (
         option.value.toLowerCase().includes(search) ||
@@ -121,16 +139,34 @@ export function ApiKeyGroupCombobox({
         ratioText.includes(search)
       )
     })
-  }, [options, searchValue])
+  }, [props.options, searchValue])
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen)
+    if (!nextOpen) setSearchValue('')
+  }
 
   const handleSelect = (selectedValue: string) => {
-    onValueChange(selectedValue)
+    if (props.multiple) {
+      const selectedIndex = props.values.indexOf(selectedValue)
+      if (selectedIndex === -1) {
+        props.onValuesChange([...props.values, selectedValue])
+        return
+      }
+
+      props.onValuesChange(
+        props.values.filter((_, index) => index !== selectedIndex)
+      )
+      return
+    }
+
+    props.onValueChange(selectedValue)
     setOpen(false)
     setSearchValue('')
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={
           <Button
@@ -138,7 +174,7 @@ export function ApiKeyGroupCombobox({
             variant='outline'
             role='combobox'
             aria-expanded={open}
-            disabled={disabled}
+            disabled={props.disabled}
             className='border-input bg-muted/40 hover:bg-muted/55 hover:text-foreground active:bg-background data-popup-open:border-ring data-popup-open:bg-background data-popup-open:ring-ring/20 h-auto min-h-14 w-full justify-between gap-2 rounded-lg px-3 py-2 text-start shadow-none transition-[background-color,border-color,box-shadow] duration-150 data-popup-open:ring-[3px] sm:min-h-20 sm:gap-3 sm:px-4 sm:py-3'
           />
         }
@@ -146,7 +182,9 @@ export function ApiKeyGroupCombobox({
         <span className='flex min-w-0 flex-1 items-center justify-between gap-2 sm:gap-3'>
           <span className='min-w-0'>
             <span className='block truncate font-medium'>
-              {selectedOption?.label || placeholder || t('Select a group')}
+              {selectedOption?.label ||
+                props.placeholder ||
+                t('Select a group')}
             </span>
             {selectedOption?.desc && (
               <span className='text-muted-foreground block truncate text-xs sm:text-xs'>
@@ -172,35 +210,66 @@ export function ApiKeyGroupCombobox({
             value={searchValue}
             onValueChange={setSearchValue}
           />
-          <CommandList className='max-h-[360px]'>
+          <CommandList
+            className='max-h-[360px]'
+            aria-multiselectable={props.multiple || undefined}
+          >
             <CommandEmpty>{t('No group found.')}</CommandEmpty>
             <CommandGroup>
-              {filteredOptions.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.value}
-                  onSelect={() => handleSelect(option.value)}
-                  className='data-[selected=true]:bg-muted items-start gap-3 rounded-lg px-3 py-3 transition-colors'
-                >
-                  <Check
-                    className={cn(
-                      'mt-0.5 h-4 w-4',
-                      value === option.value ? 'opacity-100' : 'opacity-0'
-                    )}
-                  />
-                  <span className='min-w-0 flex-1'>
-                    <span className='block truncate font-medium'>
-                      {option.label}
-                    </span>
-                    {option.desc && (
-                      <span className='text-muted-foreground block truncate text-xs'>
-                        {option.desc}
+              {filteredOptions.map((option) => {
+                const selectedPosition = props.multiple
+                  ? selectedOrderByGroup.get(option.value)
+                  : undefined
+                const isSelected = props.multiple
+                  ? selectedPosition !== undefined
+                  : props.value === option.value
+
+                return (
+                  <CommandItem
+                    key={option.value}
+                    value={option.value}
+                    onSelect={() => handleSelect(option.value)}
+                    className='data-[selected=true]:bg-muted items-start gap-3 rounded-lg px-3 py-3 transition-colors'
+                  >
+                    <Check
+                      className={cn(
+                        'mt-0.5 size-4',
+                        isSelected ? 'opacity-100' : 'opacity-0'
+                      )}
+                    />
+                    <span className='min-w-0 flex-1'>
+                      <span className='block truncate font-medium'>
+                        {option.label}
                       </span>
+                      {option.desc && (
+                        <span className='text-muted-foreground block truncate text-xs'>
+                          {option.desc}
+                        </span>
+                      )}
+                      {props.multiple && (
+                        <span className='sr-only'>
+                          {selectedPosition === undefined
+                            ? t('Select to add to the call order.')
+                            : t(
+                                'Selected as call order {{position}}. Select again to remove.',
+                                { position: selectedPosition }
+                              )}
+                        </span>
+                      )}
+                    </span>
+                    {selectedPosition !== undefined && (
+                      <Badge
+                        variant='secondary'
+                        className='shrink-0 tabular-nums'
+                        aria-hidden='true'
+                      >
+                        {selectedPosition}
+                      </Badge>
                     )}
-                  </span>
-                  <GroupRatioBadge ratio={option.ratio} />
-                </CommandItem>
-              ))}
+                    <GroupRatioBadge ratio={option.ratio} />
+                  </CommandItem>
+                )
+              })}
             </CommandGroup>
           </CommandList>
         </Command>

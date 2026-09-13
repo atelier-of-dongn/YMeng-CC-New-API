@@ -151,6 +151,7 @@ import {
   channelFormSchema,
   channelsQueryKeys,
   getAdvancedCustomStats,
+  getChannelTypeConfig,
   transformChannelToFormDefaults,
   type ChannelFormValues,
   deduplicateKeys,
@@ -1249,6 +1250,22 @@ export function ChannelMutateDrawer({
       const currentBaseUrlValue = form.getValues('base_url')
       if (!currentBaseUrlValue || currentBaseUrlValue === '') {
         form.setValue('base_url', 'https://ark.cn-beijing.volces.com')
+      }
+    }
+
+    // Type 59 (JiaSu Seedance) - set default base_url and model
+    if (currentType === 59) {
+      const currentBaseUrlValue = form.getValues('base_url')
+      if (!currentBaseUrlValue || currentBaseUrlValue === '') {
+        form.setValue('base_url', 'https://ai.jiasuapi.com')
+      }
+      const supportedModels = getChannelTypeConfig(59).supportedModels
+      const currentModelsValue = form.getValues('models')
+      if (
+        supportedModels?.length &&
+        (!currentModelsValue || currentModelsValue === '')
+      ) {
+        form.setValue('models', formatModelsArray(supportedModels))
       }
     }
 

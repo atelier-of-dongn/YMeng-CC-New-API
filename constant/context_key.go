@@ -15,6 +15,7 @@ const (
 	ContextKeyTokenKey               ContextKey = "token_key"
 	ContextKeyTokenId                ContextKey = "token_id"
 	ContextKeyTokenGroup             ContextKey = "token_group"
+	ContextKeyTokenGroups            ContextKey = "token_groups"
 	ContextKeyTokenSpecificChannelId ContextKey = "specific_channel_id"
 	ContextKeyTokenModelLimitEnabled ContextKey = "token_model_limit_enabled"
 	ContextKeyTokenModelLimit        ContextKey = "token_model_limit"
@@ -41,6 +42,8 @@ const (
 	ContextKeyAutoGroup           ContextKey = "auto_group"
 	ContextKeyAutoGroupIndex      ContextKey = "auto_group_index"
 	ContextKeyAutoGroupRetryIndex ContextKey = "auto_group_retry_index"
+	ContextKeySelectedGroup       ContextKey = "selected_group"
+	ContextKeyTokenGroupIndex     ContextKey = "token_group_index"
 
 	/* user related keys */
 	ContextKeyUserId      ContextKey = "id"

@@ -68,6 +68,7 @@ export const STATIC_I18N_KEYS = [
   'Image',
   'Embeddings',
   'Video',
+  'JiaSu Seedance',
   'Sort',
   'All',
   'All Vendors',

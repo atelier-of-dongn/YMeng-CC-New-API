@@ -419,7 +419,25 @@ func TokenAuth() func(c *gin.Context) {
 
 		userGroup := userCache.Group
 		tokenGroup := token.Group
-		if tokenGroup != "" {
+		tokenGroups := token.GetGroups()
+		if len(tokenGroups) == 0 && tokenGroup == "auto" {
+			abortWithOpenAiMessage(c, http.StatusForbidden, "该密钥仍在使用已停用的 Auto 分组，请先修改为具体单分组或多分组")
+			return
+		}
+		if len(tokenGroups) > 0 {
+			usableTokenGroups := service.FilterUserUsableGroups(userGroup, tokenGroups)
+			if len(usableTokenGroups) == 0 {
+				abortWithOpenAiMessage(c, http.StatusForbidden, "令牌绑定的分组均已不可用")
+				return
+			}
+			if len(usableTokenGroups) != len(tokenGroups) {
+				logger.LogWarn(c, "token group sequence contains unavailable groups; unavailable entries were skipped")
+			}
+			tokenGroups = usableTokenGroups
+			tokenGroup = tokenGroups[0]
+			userGroup = tokenGroup
+			common.SetContextKey(c, constant.ContextKeyTokenGroups, tokenGroups)
+		} else if tokenGroup != "" {
 			// check common.UserUsableGroups[userGroup]
 			if _, ok := service.GetUserUsableGroups(userGroup)[tokenGroup]; !ok {
 				abortWithOpenAiMessage(c, http.StatusForbidden, fmt.Sprintf("无权访问 %s 分组", tokenGroup))
@@ -463,7 +481,13 @@ func SetupContextForToken(c *gin.Context, token *model.Token, parts ...string) e
 		c.Set("token_model_limit_enabled", false)
 	}
 	common.SetContextKey(c, constant.ContextKeyTokenGroup, token.Group)
-	common.SetContextKey(c, constant.ContextKeyTokenCrossGroupRetry, token.CrossGroupRetry)
+	if groups := token.GetGroups(); len(groups) > 0 {
+		if contextGroups := common.GetContextKeyStringSlice(c, constant.ContextKeyTokenGroups); len(contextGroups) > 0 {
+			groups = contextGroups
+		}
+		common.SetContextKey(c, constant.ContextKeyTokenGroups, groups)
+	}
+	common.SetContextKey(c, constant.ContextKeyTokenCrossGroupRetry, len(token.GetGroups()) >= 2)
 	if len(parts) > 1 {
 		if model.IsAdmin(token.UserId) {
 			c.Set("specific_channel_id", parts[1])

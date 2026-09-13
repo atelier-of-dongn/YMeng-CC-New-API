@@ -3,18 +3,16 @@ package controller
 import (
 	"net/http"
 	"sort"
-	"strings"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/gin-gonic/gin"
 )
 
-const clientCountryHeader = "X-Client-Country"
-
 func visibleAutoGroups(c *gin.Context, userGroup string) []string {
-	country := c.GetHeader(clientCountryHeader)
+	country := common.GetClientCountry(c)
 	groups := service.GetUserAutoGroup(userGroup)
 	visible := make([]string, 0, len(groups))
 	for _, group := range groups {
@@ -27,7 +25,7 @@ func visibleAutoGroups(c *gin.Context, userGroup string) []string {
 
 func visibleUserGroups(c *gin.Context, userGroup string) map[string]string {
 	groups := service.GetUserUsableGroups(userGroup)
-	country := c.GetHeader(clientCountryHeader)
+	country := common.GetClientCountry(c)
 	visible := setting.FilterIpAccessVisibleGroups(country, groups)
 
 	autoDescription, hasAuto := groups["auto"]
@@ -42,20 +40,6 @@ func visibleUserGroups(c *gin.Context, userGroup string) map[string]string {
 	}
 	visible["auto"] = autoDescription
 	return visible
-}
-
-// normalizeCountryCode 只保留两位字母国家码，避免把任意请求头内容回显给前端。
-func normalizeCountryCode(country string) string {
-	country = strings.ToUpper(strings.TrimSpace(country))
-	if len(country) != 2 {
-		return ""
-	}
-	for i := 0; i < len(country); i++ {
-		if country[i] < 'A' || country[i] > 'Z' {
-			return ""
-		}
-	}
-	return country
 }
 
 // ipAccessPolicyModel 弹窗中展示的单个模型条目。
@@ -91,7 +75,7 @@ func GetIpAccessPolicyNotice(c *gin.Context) {
 		}
 	}
 
-	country := c.GetHeader(clientCountryHeader)
+	country := common.GetClientCountry(c)
 	restricted := setting.IsIpAccessPolicyRestricted(country)
 
 	pricing := model.GetPricing()
@@ -132,7 +116,7 @@ func GetIpAccessPolicyNotice(c *gin.Context) {
 		"data": gin.H{
 			// restricted 为 true 时前端才需要提示；false 表示本次访问看到的是全量模型。
 			"restricted":             restricted,
-			"country":                normalizeCountryCode(country),
+			"country":                country,
 			"allowed_groups":         allowedGroupNames,
 			"restricted_groups":      restrictedGroupNames,
 			"available_models":       visibleModels,

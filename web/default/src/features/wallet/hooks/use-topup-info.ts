@@ -21,6 +21,9 @@ import { useState, useEffect, useCallback } from 'react'
 import { getTopupInfo } from '../api'
 import {
   generatePresetAmounts,
+  parsePaymentMethodText,
+  parsePaymentMethodDisplayFlag,
+  parseTopupLinkImage,
   mergePresetAmounts,
   getMinTopupAmount,
 } from '../lib'
@@ -72,6 +75,12 @@ function parsePaymentMethods(
         type,
         color: typeof item.color === 'string' ? item.color : undefined,
         icon: typeof item.icon === 'string' ? item.icon : undefined,
+        show_topup_notice: parsePaymentMethodDisplayFlag(
+          item.show_topup_notice
+        ),
+        show_topup_link: parsePaymentMethodDisplayFlag(item.show_topup_link),
+        topup_notice_text: parsePaymentMethodText(item.topup_notice_text),
+        topup_link_image: parseTopupLinkImage(item.topup_link_image),
         min_topup:
           type === 'stripe' && normalizedMinTopup <= 0
             ? stripeMinTopup

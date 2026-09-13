@@ -27,7 +27,9 @@ type Token struct {
 	AllowIps           *string        `json:"allow_ips" gorm:"default:''"`
 	UsedQuota          int            `json:"used_quota" gorm:"default:0"` // used quota
 	Group              string         `json:"group" gorm:"default:''"`
-	CrossGroupRetry    bool           `json:"cross_group_retry"` // 跨分组重试，仅auto分组有效
+	GroupSequence      string         `json:"-" gorm:"type:text"`
+	Groups             []string       `json:"groups" gorm:"-"`
+	CrossGroupRetry    bool           `json:"cross_group_retry"` // 多分组模式强制开启跨分组重试
 	DeletedAt          gorm.DeletedAt `gorm:"index"`
 }
 
@@ -76,6 +78,42 @@ func (token *Token) GetIpLimits() []string {
 		}
 	}
 	return ipLimits
+}
+
+func (token *Token) GetGroups() []string {
+	if token == nil {
+		return nil
+	}
+	if token.Groups != nil {
+		return append([]string(nil), token.Groups...)
+	}
+	if strings.TrimSpace(token.GroupSequence) == "" {
+		return nil
+	}
+	var groups []string
+	if err := common.UnmarshalJsonStr(token.GroupSequence, &groups); err != nil {
+		common.SysError("failed to decode token group sequence: " + err.Error())
+		return nil
+	}
+	return groups
+}
+
+func (token *Token) SetGroups(groups []string) error {
+	if groups == nil {
+		return nil
+	}
+	token.Groups = append([]string(nil), groups...)
+	if len(groups) == 0 {
+		token.GroupSequence = ""
+		return nil
+	}
+	data, err := common.Marshal(groups)
+	if err != nil {
+		return err
+	}
+	token.GroupSequence = string(data)
+	token.Group = groups[0]
+	return nil
 }
 
 func GetAllUserTokens(userId int, startIdx int, num int) ([]*Token, error) {
@@ -302,7 +340,7 @@ func (token *Token) Update() (err error) {
 		}
 	}()
 	err = DB.Model(token).Select("name", "status", "expired_time", "remain_quota", "unlimited_quota",
-		"model_limits_enabled", "model_limits", "allow_ips", "group", "cross_group_retry").Updates(token).Error
+		"model_limits_enabled", "model_limits", "allow_ips", "group", "group_sequence", "cross_group_retry").Updates(token).Error
 	return err
 }
 

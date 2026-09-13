@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>New API · AI 模型接口 · 视频</title>
+  <style>
+    :root{font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;color:#172033;background:#f7f8fb;line-height:1.65}*{box-sizing:border-box}body{margin:0}.top{height:64px;background:#fff;border-bottom:1px solid #e8ebf1;display:flex;align-items:center;padding:0 32px;font-weight:700}.brand{font-size:18px}.layout{display:flex;max-width:1280px;margin:auto;min-height:calc(100vh - 64px)}aside{width:245px;padding:28px 20px;border-right:1px solid #e8ebf1;background:#fff}aside h3{font-size:13px;color:#8992a5;margin:0 0 12px;text-transform:uppercase;letter-spacing:.08em}aside a{display:block;padding:9px 12px;color:#4e5a70;text-decoration:none;border-radius:7px;margin:3px 0}aside a.active{color:#2859d7;background:#eef3ff;font-weight:600}main{flex:1;padding:46px 64px 80px;max-width:970px}h1{font-size:32px;margin:0 0 10px;letter-spacing:-.02em}h2{font-size:24px;margin:52px 0 8px;padding-top:18px;border-top:1px solid #e8ebf1}h3{font-size:18px;margin-top:30px}.lead{color:#687389;margin:0 0 28px}.endpoint{display:inline-flex;align-items:center;gap:10px;margin:14px 0 20px;padding:7px 12px;border:1px solid #dfe4ed;border-radius:6px;background:#fff;font:600 14px ui-monospace,SFMono-Regular,Menlo,monospace}.method{color:#168451}.note{padding:14px 16px;background:#fff8e8;border-left:3px solid #edb83f;color:#684f17;border-radius:4px;margin:18px 0}.card{background:#fff;border:1px solid #e5e9f0;border-radius:9px;padding:20px 22px;margin:18px 0}.field{display:grid;grid-template-columns:150px 90px 1fr;gap:12px;border-top:1px solid #edf0f4;padding:11px 0;font-size:14px}.field:first-child{border-top:0}.type{color:#8066c5;font-family:ui-monospace,monospace}.muted{color:#748096}pre{overflow:auto;background:#151b29;color:#dce5f5;border-radius:8px;padding:18px;font-size:13px;line-height:1.6;margin:0}code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.code-block{position:relative;margin:16px 0}.copy-btn{position:absolute;top:10px;right:10px;border:1px solid #3a4560;background:#243049;color:#dce5f5;border-radius:6px;padding:5px 10px;font-size:12px;cursor:pointer;z-index:1}.copy-btn:hover{background:#2e3a56}.copy-btn.copied{border-color:#36a269;color:#8ee0b5}.response{border-left:3px solid #36a269;padding-left:14px}.status{color:#168451;font-weight:700}@media(max-width:800px){aside{display:none}main{padding:30px 20px}.field{grid-template-columns:1fr;gap:2px}.top{padding:0 20px}}
+  </style>
+</head>
+<body>
+<header class="top"><div class="brand">AI 模型接口 · 视频</div></header>
+<div class="layout">
+<aside><h3>AI 模型接口</h3><a class="active" href="#create">创建视频（推荐）</a><a href="#query">查询视频（推荐）</a></aside>
+<main>
+<h1>视频（Videos）</h1><p class="lead">提交视频生成任务，并通过任务查询接口轮询生成进度和结果。</p>
+<section id="create"><h2>创建视频（推荐）</h2><p>提交文生视频、图生视频、首尾帧或参考素材视频任务。</p><div class="endpoint"><span class="method">POST</span> /v1/video/generations</div><div class="note">需要在请求头中携带 <code>Authorization: Bearer &lt;token&gt;</code>。示例中的请求地址已使用占位符，实际部署地址请按你的环境配置。</div>
+<div class="card"><h3>请求参数</h3><div class="field"><b>model</b><span class="type">string</span><span>模型 ID，例如 <code>seedance-2.5-101010</code>。</span></div><div class="field"><b>prompt</b><span class="type">string</span><span>文本提示词。素材引用名称需要与 <code>@引用</code> 一致。</span></div><div class="field"><b>duration</b><span class="type">integer</span><span>视频时长，单位为秒，默认 5。</span></div><div class="field"><b>ratio</b><span class="type">string</span><span>宽高比，例如 <code>16:9</code>、<code>9:16</code>、<code>1:1</code>。</span></div><div class="field"><b>resolution</b><span class="type">string</span><span>分辨率，例如 <code>720p</code>、<code>1080p</code>。</span></div><div class="field"><b>images</b><span class="type">array</span><span>图片 URL，或包含 <code>url</code>、<code>name</code>、<code>type</code> 的对象。帧类型支持 <code>first_frame</code> 和 <code>end_frame</code>。</span></div><div class="field"><b>videos</b><span class="type">array</span><span>参考视频 URL，或包含 <code>url</code>、<code>name</code> 的对象。</span></div><div class="field"><b>audios</b><span class="type">array</span><span>参考音频 URL，或包含 <code>url</code>、<code>name</code> 的对象。</span></div><div class="field"><b>materials</b><span class="type">array</span><span>可选素材列表，每项包含 <code>type</code>（image/video/audio）和 <code>url</code>。</span></div></div>
+<p><code>model</code> 和 <code>prompt</code> 必填，其余参数可选。<code>model</code> 写在请求体中。所有素材对象的 <code>url</code> 必填；<code>name</code> 可选；<code>materials</code> 每项的 <code>type</code> 也必填。</p>
+<h3>素材与引用规则</h3>
+<ul>
+<li>不传 <code>name</code> 时，按素材类型分别从 1 起自动命名为“图片N”“视频N”“音频N”，在提示词中使用 <code>@图片1</code> 等引用。</li>
+<li>传入 <code>name</code> 时，上游名称和提示词中的 <code>@引用</code> 均使用该名称，例如 <code>@角色1</code>、<code>@场景1</code>。</li>
+<li><code>images[].type</code> 仅为 <code>first_frame</code> 时是图生视频；<code>first_frame</code> + <code>end_frame</code> 为首尾帧视频；不传 <code>type</code> 时为参考图。入站也接受 <code>last_frame</code>，映射为尾帧。</li>
+<li>使用首帧或尾帧类型时，同时传入 <code>audios</code> 会被拒绝。</li>
+<li><code>materials[].type</code> 使用 <code>image</code>、<code>video</code>、<code>audio</code>，与图片的帧类型不同。命名规则相同。</li>
+</ul>
+<div class="note">不要传顶层 <code>first_frame_url</code>、<code>end_frame_url</code>、<code>start_frame</code>、<code>end_frame</code> 或 <code>function_mode</code>。</div>
+<h3>请求示例 · 文生视频</h3>
+<div class="code-block"><button type="button" class="copy-btn">复制</button><pre><code>// 请将 API_BASE 替换为你的实际 API 服务地址
+const API_BASE = "https://your-api.example.com";
+
+fetch(`${API_BASE}/v1/video/generations`, {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": "Bearer your-api-key"
+  },
+  body: JSON.stringify({
+    model: "seedance-2.5-101010",
+    prompt: "宇航员在月球行走，电影级光影，镜头缓慢推进",
+    duration: 10,
+    ratio: "16:9",
+    resolution: "720p"
+  })
+});</code></pre></div>
+<h3>请求示例 · 图生视频</h3>
+<div class="code-block"><button type="button" class="copy-btn">复制</button><pre><code>{
+  "model": "seedance-2.5-101010",
+  "prompt": "图片中的人物开始跳舞",
+  "duration": 10,
+  "ratio": "16:9",
+  "resolution": "720p",
+  "images": [
+    {
+      "type": "first_frame",
+      "url": "https://example.com/first.png"
+    }
+  ]
+}</code></pre></div>
+<h3>请求示例 · 首尾帧</h3>
+<div class="code-block"><button type="button" class="copy-btn">复制</button><pre><code>{
+  "model": "seedance-2.5-101010",
+  "prompt": "图片中的人物在奔跑",
+  "duration": 15,
+  "ratio": "16:9",
+  "resolution": "720p",
+  "images": [
+    {
+      "type": "first_frame",
+      "url": "https://example.com/first.png"
+    },
+    {
+      "type": "end_frame",
+      "url": "https://example.com/end.png"
+    }
+  ]
+}</code></pre></div>
+<h3>请求示例 · 参考素材（自动命名）</h3>
+<div class="code-block"><button type="button" class="copy-btn">复制</button><pre><code>{
+  "model": "seedance-2.5-101010",
+  "prompt": "@图片1和@图片2在@图片3中聊天，@音频1是角色1的音色",
+  "duration": 5,
+  "ratio": "16:9",
+  "resolution": "720p",
+  "images": [
+    "https://example.com/char1.png",
+    "https://example.com/char2.png",
+    "https://example.com/scene1.png"
+  ],
+  "audios": ["https://example.com/voice1.mp3"]
+}</code></pre></div>
+<h3>请求示例 · 参考素材（自定义 name）</h3>
+<div class="code-block"><button type="button" class="copy-btn">复制</button><pre><code>{
+  "model": "seedance-2.5-101010",
+  "prompt": "@角色1和@角色2在@场景1中聊天，@角色1音频是@角色1的音色",
+  "duration": 5,
+  "ratio": "16:9",
+  "resolution": "720p",
+  "images": [
+    { "url": "https://example.com/char1.png", "name": "角色1" },
+    { "url": "https://example.com/char2.png", "name": "角色2" },
+    { "url": "https://example.com/scene1.png", "name": "场景1" }
+  ],
+  "audios": [
+    { "url": "https://example.com/voice1.mp3", "name": "角色1的音色" }
+  ]
+}</code></pre></div>
+<div class="response"><b class="status">200 成功</b>
+<div class="code-block"><button type="button" class="copy-btn">复制</button><pre><code>{
+  "id": "task_xxxxxxxx",
+  "object": "video",
+  "model": "seedance-2.5-101010",
+  "status": "queued",
+  "progress": 0,
+  "created_at": 1700000000
+}</code></pre></div></div></section>
+<section id="query"><h2>查询视频（推荐）</h2><p>查询公开视频任务状态。任务完成后，结果地址位于 <code>result_urls</code>。</p><div class="endpoint"><span class="method">GET</span> /v1/videos/tasks/{task_id}</div><div class="card"><h3>路径参数</h3><div class="field"><b>task_id</b><span class="type">string</span><span>创建接口返回的任务 ID。</span></div><p class="muted">状态枚举：<code>queued</code>、<code>in_progress</code>、<code>completed</code>、<code>failed</code>、<code>unknown</code>。</p></div><h3>轮询示例</h3>
+<div class="code-block"><button type="button" class="copy-btn">复制</button><pre><code>// 请将 API_BASE 替换为你的实际 API 服务地址
+const API_BASE = "https://your-api.example.com";
+const taskId = "task_xxxxxxxx";
+
+const result = await fetch(
+  `${API_BASE}/v1/videos/tasks/${taskId}`,
+  { headers: { "Authorization": "Bearer your-api-key" } }
+).then(response => response.json());
+
+console.log(result.status, result.progress, result.result_urls);</code></pre></div>
+<div class="response"><b class="status">200 成功</b>
+<div class="code-block"><button type="button" class="copy-btn">复制</button><pre><code>{
+  "id": "task_xxxxxxxx",
+  "object": "video",
+  "model": "seedance-2.5-101010",
+  "status": "completed",
+  "progress": 100,
+  "created_at": 1700000000,
+  "completed_at": 1700000060,
+  "result_urls": ["https://cdn.example.com/video.mp4"]
+}</code></pre></div></div></section>
+</main></div>
+<script>
+document.querySelectorAll(".copy-btn").forEach(function (button) {
+  button.addEventListener("click", async function () {
+    var code = button.parentElement.querySelector("pre").innerText;
+    try {
+      await navigator.clipboard.writeText(code);
+    } catch (error) {
+      var textarea = document.createElement("textarea");
+      textarea.value = code;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      textarea.remove();
+    }
+    button.textContent = "已复制";
+    button.classList.add("copied");
+    setTimeout(function () {
+      button.textContent = "复制";
+      button.classList.remove("copied");
+    }, 1500);
+  });
+});
+</script>
+</body></html>

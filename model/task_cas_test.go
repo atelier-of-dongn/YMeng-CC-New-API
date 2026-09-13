@@ -51,6 +51,10 @@ func TestMain(m *testing.M) {
 		&SystemInstance{},
 		&SystemTask{},
 		&SystemTaskLock{},
+		&InvoiceProfile{},
+		&InvoiceApplication{},
+		&InvoiceApplicationItem{},
+		&InvoiceRefundAdjustment{},
 	); err != nil {
 		panic("failed to migrate: " + err.Error())
 	}
@@ -77,6 +81,10 @@ func truncateTables(t *testing.T) {
 		DB.Exec("DELETE FROM system_instances")
 		DB.Exec("DELETE FROM system_task_locks")
 		DB.Exec("DELETE FROM system_tasks")
+		DB.Exec("DELETE FROM invoice_application_items")
+		DB.Exec("DELETE FROM invoice_refund_adjustments")
+		DB.Exec("DELETE FROM invoice_applications")
+		DB.Exec("DELETE FROM invoice_profiles")
 	})
 }
 

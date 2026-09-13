@@ -159,13 +159,14 @@ func Redeem(key string, userId int) (quota int, err error) {
 		if redemption.ExpiredTime != 0 && redemption.ExpiredTime < common.GetTimestamp() {
 			return errors.New("该兑换码已过期")
 		}
+		redeemedAt := common.GetTimestamp()
 		// Compare-and-swap on status: only the transaction that flips
 		// enabled -> used may credit quota, so a concurrent redeem of the
 		// same code loses here even without a row lock (e.g. on SQLite).
 		result := tx.Model(&Redemption{}).
 			Where("id = ? AND status = ?", redemption.Id, common.RedemptionCodeStatusEnabled).
 			Updates(map[string]interface{}{
-				"redeemed_time": common.GetTimestamp(),
+				"redeemed_time": redeemedAt,
 				"status":        common.RedemptionCodeStatusUsed,
 				"used_user_id":  userId,
 			})
@@ -175,7 +176,26 @@ func Redeem(key string, userId int) (quota int, err error) {
 		if result.RowsAffected == 0 {
 			return errors.New("该兑换码已被使用")
 		}
-		return tx.Model(&User{}).Where("id = ?", userId).Update("quota", gorm.Expr("quota + ?", redemption.Quota)).Error
+		if err := tx.Model(&User{}).Where("id = ?", userId).Update("quota", gorm.Expr("quota + ?", redemption.Quota)).Error; err != nil {
+			return err
+		}
+		invoiceAmount, err := InvoiceAmountFromQuota(redemption.Quota)
+		if err != nil {
+			common.SysError(fmt.Sprintf("failed to create redemption invoice snapshot: redemption_id=%d: %v", redemption.Id, err))
+			return nil
+		}
+		return tx.Create(&TopUp{
+			UserId:          userId,
+			Amount:          int64(redemption.Quota),
+			TradeNo:         fmt.Sprintf("redemption:%d", redemption.Id),
+			PaymentMethod:   PaymentProviderRedemption,
+			PaymentProvider: PaymentProviderRedemption,
+			CreateTime:      redemption.CreatedTime,
+			CompleteTime:    redeemedAt,
+			Status:          common.TopUpStatusSuccess,
+			CreditedQuota:   int64(redemption.Quota),
+			InvoiceAmount:   invoiceAmount,
+		}).Error
 	})
 	if err != nil {
 		common.SysError("redemption failed: " + err.Error())

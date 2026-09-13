@@ -27,6 +27,7 @@ import {
   ListTodo,
   MessageSquare,
   Radio,
+  ReceiptText,
   ServerCog,
   Settings,
   Share2,
@@ -37,7 +38,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import { type SidebarData } from '@/components/layout/types'
+import type { SidebarData } from '@/components/layout/types'
 import { ROLE } from '@/lib/roles'
 
 /**
@@ -115,6 +116,11 @@ export function useSidebarData(): SidebarData {
             icon: Share2,
           },
           {
+            title: t('Invoice application'),
+            url: '/invoices',
+            icon: ReceiptText,
+          },
+          {
             title: t('Profile'),
             url: '/profile',
             icon: User,
@@ -149,6 +155,11 @@ export function useSidebarData(): SidebarData {
             title: t('Subscriptions'),
             url: '/subscriptions',
             icon: CreditCard,
+          },
+          {
+            title: t('Invoice management'),
+            url: '/admin-invoices',
+            icon: ReceiptText,
           },
           {
             title: t('System Info'),

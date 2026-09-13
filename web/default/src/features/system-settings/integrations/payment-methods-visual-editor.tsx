@@ -129,7 +129,15 @@ export function PaymentMethodsVisualEditor({
         typeof item.type === 'string' &&
         (!('icon' in item) || typeof item.icon === 'string') &&
         (!('min_topup' in item) || typeof item.min_topup === 'string') &&
-        (!('color' in item) || typeof item.color === 'string')
+        (!('color' in item) || typeof item.color === 'string') &&
+        (!('show_topup_notice' in item) ||
+          typeof item.show_topup_notice === 'string') &&
+        (!('show_topup_link' in item) ||
+          typeof item.show_topup_link === 'string') &&
+        (!('topup_notice_text' in item) ||
+          typeof item.topup_notice_text === 'string') &&
+        (!('topup_link_image' in item) ||
+          typeof item.topup_link_image === 'string')
     )
   }, [value])
 
@@ -387,6 +395,10 @@ export function PaymentMethodsVisualEditor({
                 method.icon,
                 method.min_topup,
                 method.color,
+                method.show_topup_notice,
+                method.show_topup_link,
+                method.topup_notice_text,
+                method.topup_link_image,
               ]
                 .filter(Boolean)
                 .join('-')

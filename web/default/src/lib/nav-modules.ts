@@ -20,6 +20,39 @@ import { getStatus } from '@/lib/api'
 
 export type ModuleAccess = { enabled: boolean; requireAuth: boolean }
 
+export const HEADER_NAV_BUILTIN_KEYS = [
+  'home',
+  'console',
+  'pricing',
+  'rankings',
+  'docs',
+  'about',
+] as const
+
+export const HEADER_NAV_MAX_ENABLED = 10
+export const HEADER_NAV_MAX_CUSTOM_LINKS = 10
+export const HEADER_NAV_DESKTOP_VISIBLE = 6
+export const HEADER_NAV_CUSTOM_PREFIX = 'custom:'
+
+export function splitHeaderNavLinks<T>(links: T[]): {
+  visible: T[]
+  overflow: T[]
+} {
+  return {
+    visible: links.slice(0, HEADER_NAV_DESKTOP_VISIBLE),
+    overflow: links.slice(HEADER_NAV_DESKTOP_VISIBLE),
+  }
+}
+
+export type HeaderNavBuiltinKey = (typeof HEADER_NAV_BUILTIN_KEYS)[number]
+
+export type HeaderNavCustomLink = {
+  id: string
+  enabled: boolean
+  name: string
+  url: string
+}
+
 export type HeaderNavModule = 'rankings' | 'pricing'
 
 export type HeaderNavModules = {
@@ -29,16 +62,19 @@ export type HeaderNavModules = {
   rankings: ModuleAccess
   docs: boolean
   about: boolean
-  [key: string]: boolean | ModuleAccess
+  customLinks: HeaderNavCustomLink[]
+  order: string[]
 }
 
-const DEFAULT_HEADER_NAV_MODULES: HeaderNavModules = {
+export const DEFAULT_HEADER_NAV_MODULES: HeaderNavModules = {
   home: true,
   console: true,
   pricing: { enabled: true, requireAuth: false },
   rankings: { enabled: true, requireAuth: false },
   docs: true,
   about: true,
+  customLinks: [],
+  order: [...HEADER_NAV_BUILTIN_KEYS],
 }
 
 const DEFAULTS: Record<HeaderNavModule, ModuleAccess> = {
@@ -46,11 +82,23 @@ const DEFAULTS: Record<HeaderNavModule, ModuleAccess> = {
   rankings: DEFAULT_HEADER_NAV_MODULES.rankings,
 }
 
-function cloneHeaderNavDefaults(): HeaderNavModules {
+export function getCustomHeaderNavRef(id: string): string {
+  return `${HEADER_NAV_CUSTOM_PREFIX}${id}`
+}
+
+export function getCustomHeaderNavId(reference: string): string | null {
+  if (!reference.startsWith(HEADER_NAV_CUSTOM_PREFIX)) return null
+  const id = reference.slice(HEADER_NAV_CUSTOM_PREFIX.length)
+  return id || null
+}
+
+export function cloneHeaderNavDefaults(): HeaderNavModules {
   return {
     ...DEFAULT_HEADER_NAV_MODULES,
     pricing: { ...DEFAULT_HEADER_NAV_MODULES.pricing },
     rankings: { ...DEFAULT_HEADER_NAV_MODULES.rankings },
+    customLinks: [],
+    order: [...DEFAULT_HEADER_NAV_MODULES.order],
   }
 }
 
@@ -84,13 +132,98 @@ function parseAccess(raw: unknown, fallback: ModuleAccess): ModuleAccess {
     }
   }
   if (raw && typeof raw === 'object') {
-    const r = raw as Record<string, unknown>
+    const record = raw as Record<string, unknown>
     return {
-      enabled: parseHeaderNavBoolean(r.enabled, fallback.enabled),
-      requireAuth: parseHeaderNavBoolean(r.requireAuth, fallback.requireAuth),
+      enabled: parseHeaderNavBoolean(record.enabled, fallback.enabled),
+      requireAuth: parseHeaderNavBoolean(
+        record.requireAuth,
+        fallback.requireAuth
+      ),
     }
   }
   return { ...fallback }
+}
+
+function parseCustomLinks(
+  parsed: Record<string, unknown>
+): HeaderNavCustomLink[] {
+  const rawLinks = Array.isArray(parsed.customLinks) ? parsed.customLinks : []
+  const candidates = [...rawLinks]
+
+  if (
+    candidates.length === 0 &&
+    parsed.customLink &&
+    typeof parsed.customLink === 'object'
+  ) {
+    const legacy = parsed.customLink as Record<string, unknown>
+    if (legacy.name || legacy.url) {
+      candidates.push({ ...legacy, id: 'legacy-custom-link' })
+    }
+  }
+
+  const usedIds = new Set<string>()
+  return candidates
+    .slice(0, HEADER_NAV_MAX_CUSTOM_LINKS)
+    .flatMap((raw, index) => {
+      if (!raw || typeof raw !== 'object') return []
+      const record = raw as Record<string, unknown>
+      const requestedId = typeof record.id === 'string' ? record.id.trim() : ''
+      let id = requestedId || `custom-${index + 1}`
+      while (usedIds.has(id)) id = `${id}-${index + 1}`
+      usedIds.add(id)
+
+      return [
+        {
+          id,
+          enabled: parseHeaderNavBoolean(record.enabled, false),
+          name: typeof record.name === 'string' ? record.name.trim() : '',
+          url: typeof record.url === 'string' ? record.url.trim() : '',
+        },
+      ]
+    })
+}
+
+function parseHeaderNavOrder(
+  raw: unknown,
+  customLinks: HeaderNavCustomLink[]
+): string[] {
+  const available = [
+    ...HEADER_NAV_BUILTIN_KEYS,
+    ...customLinks.map((link) => getCustomHeaderNavRef(link.id)),
+  ]
+  const allowed = new Set<string>(available)
+  const ordered: string[] = []
+
+  if (Array.isArray(raw)) {
+    raw.forEach((value) => {
+      if (
+        typeof value !== 'string' ||
+        !allowed.has(value) ||
+        ordered.includes(value)
+      ) {
+        return
+      }
+      ordered.push(value)
+    })
+  }
+
+  available.forEach((reference) => {
+    if (!ordered.includes(reference)) ordered.push(reference)
+  })
+
+  return ordered
+}
+
+export function isSafeHeaderNavHref(href: string): boolean {
+  const value = href.trim()
+  if (value.startsWith('/') && !value.startsWith('//')) return true
+
+  try {
+    const url = new URL(value)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
 }
 
 function parseHeaderNavRecord(raw: unknown): Record<string, unknown> | null {
@@ -109,29 +242,14 @@ export function parseHeaderNavModules(raw: unknown): HeaderNavModules {
   const parsed = parseHeaderNavRecord(raw)
   if (!parsed) return result
 
-  Object.entries(parsed).forEach(([key, value]) => {
-    if (key === 'pricing') {
-      result.pricing = parseAccess(value, result.pricing)
-      return
-    }
-    if (key === 'rankings') {
-      result.rankings = parseAccess(value, result.rankings)
-      return
-    }
-
-    const fallback = result[key]
-    if (
-      typeof fallback === 'boolean' ||
-      typeof value === 'boolean' ||
-      typeof value === 'number' ||
-      typeof value === 'string'
-    ) {
-      result[key] = parseHeaderNavBoolean(
-        value,
-        typeof fallback === 'boolean' ? fallback : true
-      )
-    }
-  })
+  result.home = parseHeaderNavBoolean(parsed.home, result.home)
+  result.console = parseHeaderNavBoolean(parsed.console, result.console)
+  result.pricing = parseAccess(parsed.pricing, result.pricing)
+  result.rankings = parseAccess(parsed.rankings, result.rankings)
+  result.docs = parseHeaderNavBoolean(parsed.docs, result.docs)
+  result.about = parseHeaderNavBoolean(parsed.about, result.about)
+  result.customLinks = parseCustomLinks(parsed)
+  result.order = parseHeaderNavOrder(parsed.order, result.customLinks)
 
   return result
 }

@@ -106,24 +106,19 @@ func Distribute() func(c *gin.Context) {
 					preferred, err := model.CacheGetChannel(preferredChannelID)
 					if err == nil && preferred != nil && preferred.Status == common.ChannelStatusEnabled &&
 						channelSupportsRequestPath(preferred, c.Request.URL.Path) {
-						if usingGroup == "auto" {
-							userGroup := common.GetContextKeyString(c, constant.ContextKeyUserGroup)
-							autoGroups := service.GetUserAutoGroup(userGroup)
-							for _, g := range autoGroups {
-								if model.IsChannelEnabledForGroupModel(g, modelRequest.Model, preferred.Id) {
-									selectGroup = g
-									common.SetContextKey(c, constant.ContextKeyAutoGroup, g)
-									channel = preferred
-									affinityUsable = true
-									service.MarkChannelAffinityUsed(c, g, preferred.Id)
-									break
-								}
-							}
-						} else if model.IsChannelEnabledForGroupModel(usingGroup, modelRequest.Model, preferred.Id) {
+						userGroup := common.GetContextKeyString(c, constant.ContextKeyUserGroup)
+						tokenGroup := common.GetContextKeyString(c, constant.ContextKeyTokenGroup)
+						tokenGroups := common.GetContextKeyStringSlice(c, constant.ContextKeyTokenGroups)
+						routeGroups := service.GetTokenRouteGroups(userGroup, tokenGroup, tokenGroups)
+						if len(routeGroups) > 0 && model.IsChannelEnabledForGroupModel(routeGroups[0], modelRequest.Model, preferred.Id) {
 							channel = preferred
-							selectGroup = usingGroup
+							selectGroup = routeGroups[0]
 							affinityUsable = true
-							service.MarkChannelAffinityUsed(c, usingGroup, preferred.Id)
+							common.SetContextKey(c, constant.ContextKeyTokenGroupIndex, 0)
+							common.SetContextKey(c, constant.ContextKeySelectedGroup, selectGroup)
+							common.SetContextKey(c, constant.ContextKeyUsingGroup, selectGroup)
+							common.SetContextKey(c, constant.ContextKeyAutoGroup, selectGroup)
+							service.MarkChannelAffinityUsed(c, selectGroup, preferred.Id)
 						}
 					}
 					if !affinityUsable && !service.ShouldKeepChannelAffinityOnChannelDisabled() {

@@ -25,6 +25,14 @@ export function isHttpUrl(value: string): boolean {
   }
 }
 
+export function isHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 export function isLikelyHtml(value: string): boolean {
   return /<!doctype html|<html[\s>]|<head[\s>]|<body[\s>]|<style[\s>]|<script[\s>]|<\/?[a-z][\s\S]*>/i.test(
     value

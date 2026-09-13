@@ -44,8 +44,9 @@ import {
 import { DataTableRowActions } from './data-table-row-actions'
 
 function getQuotaProgressColor(percentage: number): string {
-  if (percentage <= 10)
+  if (percentage <= 10) {
     return '[&_[data-slot=progress-indicator]]:bg-destructive'
+  }
   if (percentage <= 30) return '[&_[data-slot=progress-indicator]]:bg-warning'
   return '[&_[data-slot=progress-indicator]]:bg-success'
 }
@@ -195,6 +196,41 @@ export function useApiKeysColumns(): ColumnDef<ApiKey>[] {
         const apiKey = row.original
         const group = row.getValue('group') as string
         const ratio = group && group !== 'auto' ? groupRatios[group] : undefined
+        const orderedGroups = apiKey.groups
+
+        if (orderedGroups.length >= 2) {
+          const routeLabel = orderedGroups
+            .map((item, index) => `${index + 1}. ${item}`)
+            .join(' → ')
+          return (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <BadgeCell className='max-w-52 gap-1.5 overflow-hidden' />
+                }
+              >
+                {orderedGroups.slice(0, 2).map((item, index) => (
+                  <span key={item} className='flex shrink-0 items-center gap-1'>
+                    <span className='text-muted-foreground text-xs tabular-nums'>
+                      {index + 1}.
+                    </span>
+                    <GroupBadge group={item} ratio={groupRatios[item]} />
+                  </span>
+                ))}
+                {orderedGroups.length > 2 && (
+                  <StatusBadge
+                    label={`+${orderedGroups.length - 2}`}
+                    variant='neutral'
+                    copyable={false}
+                  />
+                )}
+              </TooltipTrigger>
+              <TooltipContent className='max-w-80 text-xs break-words'>
+                {routeLabel}
+              </TooltipContent>
+            </Tooltip>
+          )
+        }
 
         if (group === 'auto') {
           return (
@@ -203,13 +239,6 @@ export function useApiKeysColumns(): ColumnDef<ApiKey>[] {
                 render={<BadgeCell className='gap-1.5 text-xs' />}
               >
                 <GroupBadge group='auto' />
-                {apiKey.cross_group_retry && (
-                  <StatusBadge
-                    label={t('Cross-group')}
-                    variant='info'
-                    copyable={false}
-                  />
-                )}
               </TooltipTrigger>
               <TooltipContent>
                 <span className='text-xs'>

@@ -138,3 +138,40 @@ func TestModelPriceHelperTieredPreConsumeMaxTokensFallback(t *testing.T) {
 		})
 	}
 }
+
+func TestModelPriceHelperTieredReservesHighestGroupRatio(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	saved := map[string]string{}
+	require.NoError(t, config.GlobalConfig.SaveToDB(func(key, value string) error {
+		saved[key] = value
+		return nil
+	}))
+	t.Cleanup(func() {
+		require.NoError(t, config.GlobalConfig.LoadFromDB(saved))
+	})
+
+	require.NoError(t, config.GlobalConfig.LoadFromDB(map[string]string{
+		"billing_setting.billing_mode":    `{"tiered-route-model":"tiered_expr"}`,
+		"billing_setting.billing_expr":    `{"tiered-route-model":"tier(\"base\", p * 2)"}`,
+		"group_ratio_setting.group_ratio": `{"standard":1,"premium":2}`,
+	}))
+
+	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+	ctx.Set("group", "standard")
+	info := &relaycommon.RelayInfo{
+		OriginModelName:      "tiered-route-model",
+		UserGroup:            "standard",
+		UsingGroup:           "standard",
+		PreConsumeGroupRatio: 2,
+		BillingRequestInput:  &billingexpr.RequestInput{Body: []byte(`{}`)},
+	}
+
+	priceData, err := ModelPriceHelper(ctx, info, 1000, &types.TokenCountMeta{MaxTokens: 1})
+	require.NoError(t, err)
+	require.Equal(t, 2000, priceData.QuotaToPreConsume)
+	require.NotNil(t, info.TieredBillingSnapshot)
+	require.Equal(t, 1.0, info.TieredBillingSnapshot.GroupRatio)
+	require.Equal(t, 1000, info.TieredBillingSnapshot.EstimatedQuotaAfterGroup)
+}

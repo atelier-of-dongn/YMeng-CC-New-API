@@ -143,6 +143,12 @@ function formatRatio(ratio: number | undefined): string {
   return ratio.toFixed(4)
 }
 
+function reasoningEffortVariant(effort: string): 'orange' | 'yellow' | 'green' {
+  if (effort === 'high') return 'orange'
+  if (effort === 'medium') return 'yellow'
+  return 'green'
+}
+
 function quotaSaturationKindLabel(
   kind: 'overflow' | 'underflow' | 'nan',
   t: (key: string) => string
@@ -335,8 +341,8 @@ function BillingBreakdown(props: {
 
   return (
     <DetailSection label={t('Billing Details')}>
-      {rows.map((row, idx) => (
-        <DetailRow key={idx} label={row.label} value={row.value} mono />
+      {rows.map((row) => (
+        <DetailRow key={row.label} label={row.label} value={row.value} mono />
       ))}
     </DetailSection>
   )
@@ -401,8 +407,8 @@ function TokenBreakdown(props: { log: UsageLog; other: LogOtherData }) {
 
   return (
     <DetailSection label={t('Token Breakdown')}>
-      {rows.map((row, idx) => (
-        <DetailRow key={idx} label={row.label} value={row.value} mono />
+      {rows.map((row) => (
+        <DetailRow key={row.label} label={row.label} value={row.value} mono />
       ))}
     </DetailSection>
   )
@@ -437,6 +443,10 @@ export function DetailsDialog(props: DetailsDialogProps) {
   const showTiming = isTimingLogType(props.log.type)
   const showAdminIp =
     !!props.log.ip && (showTiming || (props.isAdmin && isTopup))
+  // Request origin of the relayed call: endpoint and region follow the same
+  // visibility as the IP row, so the log owner sees their own request info.
+  const showRequestEndpoint = showTiming && !!other?.request_path
+  const showRegion = showTiming && !!other?.region
   const adminInfo = other?.admin_info
   const topupAuditFields =
     isTopup && props.isAdmin && adminInfo
@@ -536,10 +546,9 @@ export function DetailsDialog(props: DetailsDialogProps) {
       ? t('Native format')
       : conversionChain.join(' -> ')
   const showConversion =
-    props.isAdmin &&
-    props.log.type !== 6 &&
-    (other?.request_path || conversionChain.length > 0)
+    props.isAdmin && props.log.type !== 6 && conversionChain.length > 0
 
+  const paramOverrideOccurrences = new Map<string, number>()
   const useChannel = other?.admin_info?.use_channel
   const channelChain =
     useChannel && useChannel.length > 0 ? useChannel.join(' → ') : undefined
@@ -623,6 +632,14 @@ export function DetailsDialog(props: DetailsDialogProps) {
             />
           )}
 
+          {showRequestEndpoint && (
+            <DetailRow
+              label={t('Endpoint')}
+              value={other?.request_path ?? ''}
+              mono
+            />
+          )}
+
           {showAdminIp && (
             <DetailRow
               label={t('IP Address')}
@@ -637,6 +654,10 @@ export function DetailsDialog(props: DetailsDialogProps) {
               }
               mono
             />
+          )}
+
+          {showRegion && (
+            <DetailRow label={t('Region')} value={other?.region ?? ''} />
           )}
 
           {showTiming && props.log.use_time > 0 && (
@@ -695,13 +716,6 @@ export function DetailsDialog(props: DetailsDialogProps) {
                 )}
               </Button>
               <div className='min-w-0 space-y-1 pr-6'>
-                {other?.request_path && (
-                  <DetailRow
-                    label={t('Path')}
-                    value={other.request_path}
-                    mono
-                  />
-                )}
                 <div className='flex min-w-0 items-center gap-1.5 text-xs'>
                   <Route
                     className='text-muted-foreground size-3'
@@ -808,9 +822,9 @@ export function DetailsDialog(props: DetailsDialogProps) {
             icon={<ShieldCheck className='size-3.5' aria-hidden='true' />}
             label={t('Top-up Audit Info')}
           >
-            {topupAuditFields.map((field, idx) => (
+            {topupAuditFields.map((field) => (
               <DetailRow
-                key={idx}
+                key={field.label}
                 label={field.label}
                 value={field.value}
                 mono
@@ -897,9 +911,9 @@ export function DetailsDialog(props: DetailsDialogProps) {
             {operationText != null && (
               <DetailRow label={t('Operation')} value={operationText} />
             )}
-            {loginAuditFields.map((field, idx) => (
+            {loginAuditFields.map((field) => (
               <DetailRow
-                key={idx}
+                key={field.label}
                 label={field.label}
                 value={field.value}
                 mono
@@ -952,13 +966,7 @@ export function DetailsDialog(props: DetailsDialogProps) {
             value={
               <StatusBadge
                 label={other.reasoning_effort}
-                variant={
-                  other.reasoning_effort === 'high'
-                    ? 'orange'
-                    : other.reasoning_effort === 'medium'
-                      ? 'yellow'
-                      : 'green'
-                }
+                variant={reasoningEffortVariant(other.reasoning_effort)}
                 size='sm'
                 copyable={false}
               />
@@ -1144,12 +1152,14 @@ export function DetailsDialog(props: DetailsDialogProps) {
             icon={<Settings2 className='size-3.5' aria-hidden='true' />}
             label={`${t('Param Override')} (${other.po.length})`}
           >
-            {other.po.filter(Boolean).map((line, idx) => {
+            {other.po.filter(Boolean).map((line) => {
               const parsed = parseAuditLine(line)
               if (!parsed) return null
+              const occurrence = (paramOverrideOccurrences.get(line) ?? 0) + 1
+              paramOverrideOccurrences.set(line, occurrence)
               return (
                 <div
-                  key={idx}
+                  key={`${line}-${occurrence}`}
                   className='bg-background/60 flex min-w-0 flex-col gap-1.5 rounded border p-2 sm:flex-row sm:items-start sm:gap-2'
                 >
                   <StatusBadge

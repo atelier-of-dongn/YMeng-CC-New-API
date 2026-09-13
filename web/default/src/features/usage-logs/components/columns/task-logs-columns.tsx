@@ -36,6 +36,7 @@ import {
   type AudioClip,
 } from '../dialogs/audio-preview-dialog'
 import { FailReasonDialog } from '../dialogs/fail-reason-dialog'
+import { RequestParametersSection } from '../dialogs/request-parameters-section'
 import { useUsageLogsContext } from '../usage-logs-provider'
 import {
   createDurationColumn,
@@ -233,7 +234,14 @@ export function useTaskLogsColumns(isAdmin: boolean): ColumnDef<TaskLog>[] {
                 (c as Record<string, unknown>).audio_url
             )
           ) {
-            return <AudioPreviewCell log={log} />
+            return (
+              <div className='space-y-1'>
+                <AudioPreviewCell log={log} />
+                <RequestParametersSection
+                  requestParameters={log.request_parameters}
+                />
+              </div>
+            )
           }
         }
 
@@ -249,39 +257,49 @@ export function useTaskLogsColumns(isAdmin: boolean): ColumnDef<TaskLog>[] {
         if (isSuccess && isVideoTask && isUrl) {
           const videoUrl = `/v1/videos/${log.task_id}/content`
           return (
-            <a
-              href={videoUrl}
-              target='_blank'
-              rel='noopener noreferrer'
-              className='text-foreground text-xs hover:underline'
-            >
-              {t('Click to preview video')}
-            </a>
+            <div className='space-y-1'>
+              <a
+                href={videoUrl}
+                target='_blank'
+                rel='noopener noreferrer'
+                className='text-foreground text-xs hover:underline'
+              >
+                {t('Click to preview video')}
+              </a>
+              <RequestParametersSection
+                requestParameters={log.request_parameters}
+              />
+            </div>
           )
         }
 
-        if (!failReason) {
+        if (!failReason && !log.request_parameters) {
           return <span className='text-muted-foreground/60 text-xs'>-</span>
         }
 
         return (
-          <>
-            <button
-              type='button'
-              className='group flex max-w-[200px] items-center gap-1 text-left text-xs'
-              onClick={() => setDialogOpen(true)}
-              title={t('Click to view full error message')}
-            >
-              <span className='truncate leading-snug text-red-600 group-hover:underline dark:text-red-400'>
-                {failReason}
-              </span>
-            </button>
+          <div className='space-y-1'>
+            {failReason && (
+              <button
+                type='button'
+                className='group flex max-w-[200px] items-center gap-1 text-left text-xs'
+                onClick={() => setDialogOpen(true)}
+                title={t('Click to view full error message')}
+              >
+                <span className='text-destructive truncate leading-snug group-hover:underline'>
+                  {failReason}
+                </span>
+              </button>
+            )}
+            <RequestParametersSection
+              requestParameters={log.request_parameters}
+            />
             <FailReasonDialog
               failReason={failReason}
               open={dialogOpen}
               onOpenChange={setDialogOpen}
             />
-          </>
+          </div>
         )
       },
       size: 200,

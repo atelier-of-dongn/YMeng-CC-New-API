@@ -70,8 +70,6 @@ export interface PricingToolbarProps {
   onSortChange: (value: string) => void
   tokenUnit: TokenUnit
   onTokenUnitChange: (value: TokenUnit) => void
-  showRechargePrice: boolean
-  onRechargePriceChange: (value: boolean) => void
   viewMode: ViewMode
   onViewModeChange: (value: ViewMode) => void
   quotaTypeFilter: string
@@ -134,7 +132,7 @@ function SegmentedControl(props: {
 
         return (
           <Tooltip key={option.value}>
-            <TooltipTrigger render={button}></TooltipTrigger>
+            <TooltipTrigger render={button} />
             <TooltipContent side='bottom' className='text-xs'>
               {option.tooltip}
             </TooltipContent>
@@ -157,11 +155,6 @@ export function PricingToolbar(props: PricingToolbarProps) {
 
   const handleViewModeChange = useCallback(
     (value: string) => props.onViewModeChange(value as ViewMode),
-    [props]
-  )
-
-  const handleRechargePriceChange = useCallback(
-    (value: string) => props.onRechargePriceChange(value === 'recharge'),
     [props]
   )
 
@@ -200,15 +193,6 @@ export function PricingToolbar(props: PricingToolbarProps) {
 
         <div className='flex flex-wrap items-center gap-2'>
           <div className='hidden items-center gap-2 sm:flex'>
-            <SegmentedControl
-              options={[
-                { value: 'standard', label: t('Standard') },
-                { value: 'recharge', label: t('Recharge') },
-              ]}
-              value={props.showRechargePrice ? 'recharge' : 'standard'}
-              onChange={handleRechargePriceChange}
-              ariaLabel={t('Price display mode')}
-            />
             <SegmentedControl
               options={[
                 { value: 'M', label: '/1M' },

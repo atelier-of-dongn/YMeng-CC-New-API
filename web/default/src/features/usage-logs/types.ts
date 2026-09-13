@@ -92,7 +92,22 @@ export interface ChannelAffinityInfo {
   using_group?: string
 }
 
+export type RequestParameterValue =
+  | null
+  | boolean
+  | number
+  | string
+  | RequestParameterValue[]
+  | { [key: string]: RequestParameterValue }
+
+export interface LogRequestParameters {
+  parameters: RequestParameterValue
+  truncated?: boolean
+  omitted?: boolean
+}
+
 export interface LogOtherData {
+  request_parameters?: LogRequestParameters
   admin_info?: {
     is_multi_key?: boolean
     multi_key_index?: number
@@ -140,6 +155,8 @@ export interface LogOtherData {
   login_method?: string
   user_agent?: string
   request_path?: string
+  // Two-letter country code of the request origin, forwarded by the CDN
+  region?: string
   request_conversion?: string[]
   ws?: boolean
   audio?: boolean
@@ -265,6 +282,7 @@ export interface TaskLog {
   id: number
   user_id: number
   username?: string
+  request_parameters?: LogRequestParameters
   platform: string // suno, kling, runway, etc.
   task_id: string
   action: string // MUSIC, LYRICS, GENERATE, TEXT_GENERATE, etc.

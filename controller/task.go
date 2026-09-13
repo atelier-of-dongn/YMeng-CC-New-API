@@ -60,7 +60,12 @@ func GetUserTask(c *gin.Context) {
 	common.ApiSuccess(c, pageInfo)
 }
 
-func tasksToDto(tasks []*model.Task, fillUser bool) []*dto.TaskDto {
+type taskLogDto struct {
+	*dto.TaskDto
+	RequestParameters *common.RequestParametersSnapshot `json:"request_parameters,omitempty"`
+}
+
+func tasksToDto(tasks []*model.Task, fillUser bool) []*taskLogDto {
 	var userIdMap map[int]*model.UserBase
 	if fillUser {
 		userIdMap = make(map[int]*model.UserBase)
@@ -75,14 +80,14 @@ func tasksToDto(tasks []*model.Task, fillUser bool) []*dto.TaskDto {
 			}
 		}
 	}
-	result := make([]*dto.TaskDto, len(tasks))
+	result := make([]*taskLogDto, len(tasks))
 	for i, task := range tasks {
 		if fillUser {
 			if user, ok := userIdMap[task.UserId]; ok {
 				task.Username = user.Username
 			}
 		}
-		result[i] = relay.TaskModel2Dto(task)
+		result[i] = &taskLogDto{TaskDto: relay.TaskModel2Dto(task), RequestParameters: task.PrivateData.RequestSnapshot}
 	}
 	return result
 }

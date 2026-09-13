@@ -118,6 +118,9 @@ func RedisHSetObj(key string, obj interface{}, expiration time.Duration) error {
 	for i := 0; i < v.NumField(); i++ {
 		field := t.Field(i)
 		value := v.Field(i)
+		if field.Tag.Get("gorm") == "-" {
+			continue
+		}
 
 		// Skip DeletedAt field
 		if field.Type.String() == "gorm.DeletedAt" {
@@ -187,6 +190,9 @@ func RedisHGetObj(key string, obj interface{}) error {
 	t := v.Type()
 	for i := 0; i < v.NumField(); i++ {
 		field := t.Field(i)
+		if field.Tag.Get("gorm") == "-" {
+			continue
+		}
 		fieldName := field.Name
 		if value, ok := result[fieldName]; ok {
 			fieldValue := v.Field(i)

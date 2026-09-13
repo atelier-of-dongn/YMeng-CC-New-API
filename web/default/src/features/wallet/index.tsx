@@ -340,6 +340,7 @@ export function Wallet(props: WalletProps) {
         processing={processing || pancakeProcessing}
         discountRate={getDiscountRate()}
         usdExchangeRate={effectiveUsdExchangeRate}
+        topupLink={topupInfo?.topup_link}
       />
 
       <TransferDialog

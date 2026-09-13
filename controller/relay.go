@@ -122,6 +122,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		newAPIError = types.NewError(err, types.ErrorCodeGenRelayInfoFailed)
 		return
 	}
+	relayInfo.PreConsumeGroupRatio = service.GetMaxTokenGroupRatio(c)
 
 	needSensitiveCheck := setting.ShouldCheckPromptSensitive()
 	needCountToken := constant.CountToken
@@ -188,12 +189,16 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 	relayInfo.RetryIndex = 0
 	relayInfo.LastError = nil
 
-	for ; retryParam.GetRetry() <= common.RetryTimes; retryParam.IncreaseRetry() {
+	for {
 		relayInfo.RetryIndex = retryParam.GetRetry()
 		channel, channelErr := getChannel(c, relayInfo, retryParam)
 		if channelErr != nil {
 			logger.LogError(c, channelErr.Error())
-			newAPIError = channelErr
+			if relayInfo.LastError != nil {
+				newAPIError = relayInfo.LastError
+			} else {
+				newAPIError = channelErr
+			}
 			break
 		}
 
@@ -231,7 +236,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 
 		processChannelError(c, *types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey, common.GetContextKeyString(c, constant.ContextKeyChannelKey), channel.GetAutoBan()), newAPIError)
 
-		if !shouldRetry(c, newAPIError, common.RetryTimes-retryParam.GetRetry()) {
+		if !shouldRetry(c, newAPIError) || !retryParam.AdvanceAfterFailure() {
 			break
 		}
 	}
@@ -305,8 +310,16 @@ func getChannel(c *gin.Context, info *relaycommon.RelayInfo, retryParam *service
 		}, nil
 	}
 	channel, selectGroup, err := service.CacheGetRandomSatisfiedChannel(retryParam)
-
+	info.UsingGroup = selectGroup
 	info.PriceData.GroupRatioInfo = helper.HandleGroupRatio(c, info)
+	if info.TieredBillingSnapshot != nil {
+		info.TieredBillingSnapshot.GroupRatio = info.PriceData.GroupRatioInfo.GroupRatio
+		estimatedQuota, clamp := common.QuotaRoundChecked(info.TieredBillingSnapshot.EstimatedQuotaBeforeGroup * info.PriceData.GroupRatioInfo.GroupRatio)
+		info.TieredBillingSnapshot.EstimatedQuotaAfterGroup = estimatedQuota
+		if clamp != nil && info.QuotaClamp == nil {
+			info.QuotaClamp = clamp
+		}
+	}
 
 	if err != nil {
 		return nil, types.NewError(fmt.Errorf("获取分组 %s 下模型 %s 的可用渠道失败（retry）: %s", selectGroup, info.OriginModelName, err.Error()), types.ErrorCodeGetChannelFailed, types.ErrOptionWithSkipRetry())
@@ -322,7 +335,7 @@ func getChannel(c *gin.Context, info *relaycommon.RelayInfo, retryParam *service
 	return channel, nil
 }
 
-func shouldRetry(c *gin.Context, openaiErr *types.NewAPIError, retryTimes int) bool {
+func shouldRetry(c *gin.Context, openaiErr *types.NewAPIError) bool {
 	if openaiErr == nil {
 		return false
 	}
@@ -333,9 +346,6 @@ func shouldRetry(c *gin.Context, openaiErr *types.NewAPIError, retryTimes int) b
 		return true
 	}
 	if types.IsSkipRetryError(openaiErr) {
-		return false
-	}
-	if retryTimes <= 0 {
 		return false
 	}
 	if _, ok := c.Get("specific_channel_id"); ok {
@@ -478,12 +488,14 @@ func RelayTaskFetch(c *gin.Context) {
 		})
 		return
 	}
+	relayInfo.PreConsumeGroupRatio = service.GetMaxTokenGroupRatio(c)
 	if taskErr := relay.RelayTaskFetch(c, relayInfo.RelayMode); taskErr != nil {
 		respondTaskError(c, taskErr)
 	}
 }
 
 func RelayTask(c *gin.Context) {
+	common.CaptureRequestParameters(c, true)
 	relayInfo, err := relaycommon.GenRelayInfo(c, types.RelayFormatTask, nil, nil)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, &dto.TaskError{
@@ -493,6 +505,7 @@ func RelayTask(c *gin.Context) {
 		})
 		return
 	}
+	relayInfo.PreConsumeGroupRatio = service.GetMaxTokenGroupRatio(c)
 
 	if taskErr := relay.ResolveOriginTask(c, relayInfo); taskErr != nil {
 		respondTaskError(c, taskErr)
@@ -515,8 +528,9 @@ func RelayTask(c *gin.Context) {
 		Retry:       common.GetPointer(0),
 	}
 
-	for ; retryParam.GetRetry() <= common.RetryTimes; retryParam.IncreaseRetry() {
+	for {
 		var channel *model.Channel
+		previousTaskErr := taskErr
 
 		if lockedCh, ok := relayInfo.LockedChannel.(*model.Channel); ok && lockedCh != nil {
 			channel = lockedCh
@@ -531,7 +545,11 @@ func RelayTask(c *gin.Context) {
 			channel, channelErr = getChannel(c, relayInfo, retryParam)
 			if channelErr != nil {
 				logger.LogError(c, channelErr.Error())
-				taskErr = service.TaskErrorWrapperLocal(channelErr.Err, "get_channel_failed", http.StatusInternalServerError)
+				if previousTaskErr != nil {
+					taskErr = previousTaskErr
+				} else {
+					taskErr = service.TaskErrorWrapperLocal(channelErr.Err, "get_channel_failed", http.StatusInternalServerError)
+				}
 				break
 			}
 		}
@@ -560,7 +578,17 @@ func RelayTask(c *gin.Context) {
 				types.NewOpenAIError(taskErr.Error, types.ErrorCodeBadResponseStatusCode, taskErr.StatusCode))
 		}
 
-		if !shouldRetryTaskRelay(c, channel.Id, taskErr, common.RetryTimes-retryParam.GetRetry()) {
+		if !shouldRetryTaskRelay(c, channel.Id, taskErr) {
+			break
+		}
+		if _, locked := relayInfo.LockedChannel.(*model.Channel); locked {
+			if retryParam.GetRetry() >= common.RetryTimes {
+				break
+			}
+			retryParam.SetRetry(retryParam.GetRetry() + 1)
+			continue
+		}
+		if !retryParam.AdvanceAfterFailure() {
 			break
 		}
 	}
@@ -592,6 +620,9 @@ func RelayTask(c *gin.Context) {
 			OriginModelName: relayInfo.OriginModelName,
 			PerCallBilling:  common.StringsContains(constant.TaskPricePatches, relayInfo.OriginModelName) || relayInfo.PriceData.UsePrice,
 		}
+		if snapshot := common.GetRequestParameters(c); snapshot != nil {
+			task.PrivateData.RequestSnapshot = snapshot
+		}
 		task.Quota = result.Quota
 		task.Data = result.TaskData
 		task.Action = relayInfo.Action
@@ -613,14 +644,11 @@ func respondTaskError(c *gin.Context, taskErr *dto.TaskError) {
 	c.JSON(taskErr.StatusCode, taskErr)
 }
 
-func shouldRetryTaskRelay(c *gin.Context, channelId int, taskErr *dto.TaskError, retryTimes int) bool {
+func shouldRetryTaskRelay(c *gin.Context, channelId int, taskErr *dto.TaskError) bool {
 	if taskErr == nil {
 		return false
 	}
 	if service.ShouldSkipRetryAfterChannelAffinityFailure(c) {
-		return false
-	}
-	if retryTimes <= 0 {
 		return false
 	}
 	if _, ok := c.Get("specific_channel_id"); ok {
