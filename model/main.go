@@ -394,7 +394,13 @@ func migrateDB() error {
 			return err
 		}
 	}
-	return nil
+	if err := migrateInvoiceApplicationItemIndexes(); err != nil {
+		return err
+	}
+	if err := BackfillTopUpInvoiceSnapshots(); err != nil {
+		return err
+	}
+	return BackfillRedemptionInvoiceTopUps()
 }
 
 func migrateLOGDB() error {
