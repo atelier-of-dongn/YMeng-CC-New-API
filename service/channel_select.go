@@ -199,10 +199,13 @@ func CacheGetRandomSatisfiedChannel(param *RetryParam) (*model.Channel, string, 
 			return nil, param.TokenGroup, err
 		}
 	}
+	groups, routeErr := param.routeGroups()
+	if routeErr != nil {
+		return nil, param.TokenGroup, routeErr
+	}
 	if len(groups) == 0 {
 		return nil, param.TokenGroup, nil
 	}
-
 	startIndex := param.groupIndex
 	for index := startIndex; index < len(groups); index++ {
 		group := groups[index]
