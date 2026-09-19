@@ -435,12 +435,33 @@ export function ApiKeysMutateDrawer({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>{t('Routing mode')}</FormLabel>
-                    <Select value={field.value ?? 'single'} onValueChange={field.onChange}>
-                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
-                      <SelectContent><SelectGroup>
-                        <SelectItem value='single'>{t('Single group')}</SelectItem>
-                        <SelectItem value='multi'>{t('Multiple groups')}</SelectItem>
-                      </SelectGroup></SelectContent>
+                    <Select
+                      items={[
+                        { value: 'single', label: t('Single group') },
+                        { value: 'multi', label: t('Multiple groups') },
+                      ]}
+                      value={field.value ?? 'single'}
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue>
+                            {routingMode === 'multi'
+                              ? t('Multiple groups')
+                              : t('Single group')}
+                          </SelectValue>
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value='single'>
+                            {t('Single group')}
+                          </SelectItem>
+                          <SelectItem value='multi'>
+                            {t('Multiple groups')}
+                          </SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
                     </Select>
                     <FormDescription>{routingDescription}</FormDescription>
                     <FormMessage />

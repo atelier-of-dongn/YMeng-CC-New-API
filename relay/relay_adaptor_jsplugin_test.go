@@ -8,6 +8,7 @@ import (
 
 	"github.com/QuantumNous/new-api/constant"
 	pluginruntime "github.com/QuantumNous/new-api/pkg/jsplugin"
+	"github.com/QuantumNous/new-api/relay/channel/task/jiasuseedance"
 	jspluginadaptor "github.com/QuantumNous/new-api/relay/channel/task/jsplugin"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
@@ -52,6 +53,28 @@ export function parseTaskResult(ctx, body) { return {taskId: body.id, status: "S
 	adaptor := GetTaskAdaptor(constant.TaskPlatform("registry-fallback"))
 	require.NotNil(t, adaptor)
 	assert.Equal(t, "Registry Fallback", adaptor.GetChannelName())
+}
+
+func TestGetTaskAdaptorUsesLegacyJiaSuSeedanceForType59(t *testing.T) {
+	platform := constant.TaskPlatform(strconv.Itoa(constant.ChannelTypeJiaSuSeedance))
+
+	adaptor := GetTaskAdaptor(platform)
+
+	require.IsType(t, &jiasuseedance.TaskAdaptor{}, adaptor)
+	assert.Equal(t, "jiasu-seedance", adaptor.GetChannelName())
+}
+
+func TestGetTaskAdaptorForRequestUsesLegacyJiaSuSeedanceForType59(t *testing.T) {
+	c, _ := gin.CreateTestContext(httptest.NewRecorder())
+	c.Request = httptest.NewRequest(http.MethodPost, "/v1/videos", nil)
+	platform := constant.TaskPlatform(strconv.Itoa(constant.ChannelTypeJiaSuSeedance))
+
+	resolvedPlatform, adaptor := getTaskAdaptorForRequest(c, platform)
+
+	assert.Equal(t, platform, resolvedPlatform)
+	require.IsType(t, &jiasuseedance.TaskAdaptor{}, adaptor)
+	_, pinned := c.Get(pluginruntime.ContextKeyPinnedPlugin)
+	assert.False(t, pinned)
 }
 
 func TestGetTaskAdaptorReturnsNilForUnknownPlatform(t *testing.T) {
