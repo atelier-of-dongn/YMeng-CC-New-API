@@ -23,6 +23,10 @@ import (
 	"github.com/pkg/errors"
 )
 
+// TaskAdaptor provides adaptor for legacy type-59 JiaSu Seedance channels.
+// New channels should use type-61 Task Plugin channels with task_plugin_key: "jiasu-seedance".
+// This adaptor is preserved for backward compatibility with existing type-59 channels.
+
 const (
 	submitPath = "/v1/video/generations"
 	fetchPath  = "/v1/videos/tasks"

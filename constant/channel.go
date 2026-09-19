@@ -199,7 +199,7 @@ var ChannelTypeNames = map[int]string{
 	ChannelTypeSub2API:        "Sub2API",
 	ChannelTypeNewAPI:         "New API",
 	ChannelTypeTaskPlugin:     "Task Plugin",
-	ChannelTypeJiaSuSeedance:  "JiaSu Seedance",
+	ChannelTypeJiaSuSeedance:  "JiaSu Seedance (Legacy)",
 }
 
 func GetChannelTypeName(channelType int) string {

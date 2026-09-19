@@ -6,16 +6,11 @@ export const meta = {
   version: "1.0.0",
   author: { name: "QuantumNous" },
   baseUrl: "https://ai.jiasuapi.com",
-  channelTypes: [59],
   models: ["seedance-2.5-101010"],
   fetchMode: "per_task",
   usageSchema: {
     seconds: { type: "number", unit: "second", description: { en: "Video generation unit price", zh: "视频生成单价" } },
   },
-  routes: [
-    { method: "POST", path: "/v1/video/generations", type: "submit", decode: "createTask", render: "taskCreated" },
-    { method: "GET", path: "/v1/videos/tasks/:task_id", type: "query", render: "taskStatus" },
-  ],
   protocols: ["openai_video"],
 };
 
@@ -100,10 +95,6 @@ export function buildContentRequest(ctx) {
   return { url: url, method: ctx.clientRequest.method, credentialless: true };
 }
 
-export function renderTask(ctx, task) {
-  return task.data || {};
-}
-
 export const protocols = {
   openai_video: {
     decodeRequest: function (ctx) {
@@ -114,5 +105,3 @@ export const protocols = {
     render: function (ctx, task) { return task.data || {}; },
   },
 };
-
-export const native = { createTask: function (ctx) { return protocols.openai_video.decodeRequest(ctx); }, taskCreated: function (ctx, task) { return task.data || {}; }, taskStatus: renderTask };
