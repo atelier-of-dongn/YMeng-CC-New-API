@@ -152,6 +152,15 @@ func (a *TaskAdaptor) EstimateBilling(c *gin.Context, _ *relaycommon.RelayInfo) 
 	return map[string]float64{"seconds": float64(seconds)}
 }
 
+func (a *TaskAdaptor) ExtractUsageFacts(c *gin.Context, info *relaycommon.RelayInfo) map[string]any {
+	estimated := a.EstimateBilling(c, info)
+	seconds, ok := estimated["seconds"]
+	if !ok {
+		return nil
+	}
+	return map[string]any{"seconds": seconds}
+}
+
 func (a *TaskAdaptor) BuildRequestURL(_ *relaycommon.RelayInfo) (string, error) {
 	return fmt.Sprintf("%s%s", a.baseURL, submitPath), nil
 }

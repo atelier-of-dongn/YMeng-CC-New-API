@@ -117,6 +117,7 @@ func TestValidateRequestAcceptsObjectImages(t *testing.T) {
 	require.Equal(t, "seedance-2.0", req.Model)
 	require.Equal(t, 10, req.Duration)
 	require.Equal(t, map[string]float64{"seconds": 10}, adaptor.EstimateBilling(c, info))
+	require.Equal(t, map[string]any{"seconds": float64(10)}, adaptor.ExtractUsageFacts(c, info))
 }
 
 func TestGetModelListReturnsSeedance2(t *testing.T) {
