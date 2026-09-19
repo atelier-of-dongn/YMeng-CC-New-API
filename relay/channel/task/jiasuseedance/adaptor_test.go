@@ -32,7 +32,7 @@ func newJSONContext(t *testing.T, body string) (*gin.Context, *relaycommon.Relay
 
 func TestConvertToRequestPayloadNormalizesLastFrameAndKeepsMaterials(t *testing.T) {
 	raw := `{
-		"model": "seedance-2.5-101010",
+		"model": "seedance-2.0",
 		"prompt": "@角色1在奔跑",
 		"duration": 15,
 		"ratio": "16:9",
@@ -71,11 +71,11 @@ func TestConvertToRequestPayloadNormalizesLastFrameAndKeepsMaterials(t *testing.
 }
 
 func TestConvertToRequestPayloadDefaultsDuration(t *testing.T) {
-	payload, err := convertToRequestPayload([]byte(`{"model":"seedance-2.5-101010","prompt":"a cat"}`), "")
+	payload, err := convertToRequestPayload([]byte(`{"model":"seedance-2.0","prompt":"a cat"}`), "")
 	require.NoError(t, err)
 	require.Equal(t, DefaultDuration, payload["duration"])
 
-	payload, err = convertToRequestPayload([]byte(`{"model":"seedance-2.5-101010","prompt":"a cat","duration":0}`), "")
+	payload, err = convertToRequestPayload([]byte(`{"model":"seedance-2.0","prompt":"a cat","duration":0}`), "")
 	require.NoError(t, err)
 	require.Equal(t, DefaultDuration, payload["duration"])
 }
@@ -83,13 +83,13 @@ func TestConvertToRequestPayloadDefaultsDuration(t *testing.T) {
 func TestValidateRequestRejectsForbiddenFieldsAndAudioWithFrames(t *testing.T) {
 	adaptor := &TaskAdaptor{}
 
-	c, info := newJSONContext(t, `{"model":"seedance-2.5-101010","prompt":"a cat","first_frame_url":"https://example.com/a.png"}`)
+	c, info := newJSONContext(t, `{"model":"seedance-2.0","prompt":"a cat","first_frame_url":"https://example.com/a.png"}`)
 	taskErr := adaptor.ValidateRequestAndSetAction(c, info)
 	require.NotNil(t, taskErr)
 	assert.Equal(t, "invalid_request", taskErr.Code)
 
 	c, info = newJSONContext(t, `{
-		"model":"seedance-2.5-101010",
+		"model":"seedance-2.0",
 		"prompt":"a cat",
 		"images":[{"url":"https://example.com/a.png","type":"first_frame"}],
 		"audios":["https://example.com/a.mp3"]
@@ -102,7 +102,7 @@ func TestValidateRequestRejectsForbiddenFieldsAndAudioWithFrames(t *testing.T) {
 func TestValidateRequestAcceptsObjectImages(t *testing.T) {
 	adaptor := &TaskAdaptor{}
 	c, info := newJSONContext(t, `{
-		"model":"seedance-2.5-101010",
+		"model":"seedance-2.0",
 		"prompt":"图片中的人物开始跳舞",
 		"duration":10,
 		"images":[{"type":"first_frame","url":"https://m.jiasuapi.com/example/first.png"}]
@@ -114,9 +114,14 @@ func TestValidateRequestAcceptsObjectImages(t *testing.T) {
 
 	req, err := relaycommon.GetTaskRequest(c)
 	require.NoError(t, err)
-	require.Equal(t, "seedance-2.5-101010", req.Model)
+	require.Equal(t, "seedance-2.0", req.Model)
 	require.Equal(t, 10, req.Duration)
 	require.Equal(t, map[string]float64{"seconds": 10}, adaptor.EstimateBilling(c, info))
+}
+
+func TestGetModelListReturnsSeedance2(t *testing.T) {
+	adaptor := &TaskAdaptor{}
+	require.Equal(t, []string{"seedance-2.0"}, adaptor.GetModelList())
 }
 
 func TestParseTaskResultMapsPublicStatusesAndResultURLs(t *testing.T) {
@@ -155,13 +160,13 @@ func TestConvertToOpenAIVideoUsesPublicResultURLs(t *testing.T) {
 		Progress: "100%",
 		Data: []byte(`{
 			"id":"task_upstream",
-			"model":"seedance-2.5-101010",
+			"model":"seedance-2.0",
 			"status":"completed",
 			"progress":100,
 			"result_urls":["https://m.jiasuapi.com/media/xxxx.mp4"]
 		}`),
 	}
-	task.Properties.OriginModelName = "seedance-2.5-101010"
+	task.Properties.OriginModelName = "seedance-2.0"
 
 	body, err := adaptor.ConvertToOpenAIVideo(task)
 	require.NoError(t, err)

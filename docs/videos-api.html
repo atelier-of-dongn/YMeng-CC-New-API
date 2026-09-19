@@ -16,7 +16,7 @@
 <article class="doc active" id="create">
 <div class="page-title"><h1>创建视频（推荐）</h1><button type="button" class="copy-all-btn" data-copy-target="create">复制全部文本</button></div>
 <p class="lead">提交文生视频、图生视频、首尾帧或参考素材视频任务。返回 OpenAI 风格回执后，请用查询接口轮询结果。</p><div class="endpoint"><span class="method">POST</span> /v1/video/generations</div><div class="note">需要在请求头中携带 <code>Authorization: Bearer &lt;token&gt;</code>。示例中的请求地址已使用占位符，实际部署地址请按你的环境配置。</div>
-<div class="card"><h3>请求参数</h3><div class="field"><b>model</b><span class="type">string</span><span>模型 ID，例如 <code>seedance-2.5-101010</code>。</span></div><div class="field"><b>prompt</b><span class="type">string</span><span>文本提示词。素材引用名称需要与 <code>@引用</code> 一致。</span></div><div class="field"><b>duration</b><span class="type">integer</span><span>视频时长，单位为秒，默认 5。</span></div><div class="field"><b>ratio</b><span class="type">string</span><span>宽高比，例如 <code>16:9</code>、<code>9:16</code>、<code>1:1</code>。</span></div><div class="field"><b>resolution</b><span class="type">string</span><span>分辨率，例如 <code>720p</code>、<code>1080p</code>。</span></div><div class="field"><b>images</b><span class="type">array</span><span>图片 URL，或包含 <code>url</code>、<code>name</code>、<code>type</code> 的对象。帧类型支持 <code>first_frame</code> 和 <code>end_frame</code>。</span></div><div class="field"><b>videos</b><span class="type">array</span><span>参考视频 URL，或包含 <code>url</code>、<code>name</code> 的对象。</span></div><div class="field"><b>audios</b><span class="type">array</span><span>参考音频 URL，或包含 <code>url</code>、<code>name</code> 的对象。</span></div><div class="field"><b>materials</b><span class="type">array</span><span>可选素材列表，每项包含 <code>type</code>（image/video/audio）和 <code>url</code>。</span></div></div>
+<div class="card"><h3>请求参数</h3><div class="field"><b>model</b><span class="type">string</span><span>模型 ID，例如 <code>seedance-2.0</code>。</span></div><div class="field"><b>prompt</b><span class="type">string</span><span>文本提示词。素材引用名称需要与 <code>@引用</code> 一致。</span></div><div class="field"><b>duration</b><span class="type">integer</span><span>视频时长，单位为秒，默认 5。</span></div><div class="field"><b>ratio</b><span class="type">string</span><span>宽高比，例如 <code>16:9</code>、<code>9:16</code>、<code>1:1</code>。</span></div><div class="field"><b>resolution</b><span class="type">string</span><span>分辨率，例如 <code>720p</code>、<code>1080p</code>。</span></div><div class="field"><b>images</b><span class="type">array</span><span>图片 URL，或包含 <code>url</code>、<code>name</code>、<code>type</code> 的对象。帧类型支持 <code>first_frame</code> 和 <code>end_frame</code>。</span></div><div class="field"><b>videos</b><span class="type">array</span><span>参考视频 URL，或包含 <code>url</code>、<code>name</code> 的对象。</span></div><div class="field"><b>audios</b><span class="type">array</span><span>参考音频 URL，或包含 <code>url</code>、<code>name</code> 的对象。</span></div><div class="field"><b>materials</b><span class="type">array</span><span>可选素材列表，每项包含 <code>type</code>（image/video/audio）和 <code>url</code>。</span></div></div>
 <p><code>model</code> 和 <code>prompt</code> 必填，其余参数可选。<code>model</code> 写在请求体中。所有素材对象的 <code>url</code> 必填；<code>name</code> 可选；<code>materials</code> 每项的 <code>type</code> 也必填。</p>
 <h3>素材与引用规则</h3>
 <ul>
@@ -38,7 +38,7 @@ fetch(`${API_BASE}/v1/video/generations`, {
     "Authorization": "Bearer your-api-key"
   },
   body: JSON.stringify({
-    model: "seedance-2.5-101010",
+    model: "seedance-2.0",
     prompt: "宇航员在月球行走，电影级光影，镜头缓慢推进",
     duration: 10,
     ratio: "16:9",
@@ -47,7 +47,7 @@ fetch(`${API_BASE}/v1/video/generations`, {
 });</code></pre></div>
 <h3>请求示例 · 图生视频</h3>
 <div class="code-block"><button type="button" class="copy-btn">复制</button><pre><code>{
-  "model": "seedance-2.5-101010",
+  "model": "seedance-2.0",
   "prompt": "图片中的人物开始跳舞",
   "duration": 10,
   "ratio": "16:9",
@@ -61,7 +61,7 @@ fetch(`${API_BASE}/v1/video/generations`, {
 }</code></pre></div>
 <h3>请求示例 · 首尾帧</h3>
 <div class="code-block"><button type="button" class="copy-btn">复制</button><pre><code>{
-  "model": "seedance-2.5-101010",
+  "model": "seedance-2.0",
   "prompt": "图片中的人物在奔跑",
   "duration": 15,
   "ratio": "16:9",
@@ -79,7 +79,7 @@ fetch(`${API_BASE}/v1/video/generations`, {
 }</code></pre></div>
 <h3>请求示例 · 参考素材（自动命名）</h3>
 <div class="code-block"><button type="button" class="copy-btn">复制</button><pre><code>{
-  "model": "seedance-2.5-101010",
+  "model": "seedance-2.0",
   "prompt": "@图片1和@图片2在@图片3中聊天，@音频1是角色1的音色",
   "duration": 5,
   "ratio": "16:9",
@@ -93,7 +93,7 @@ fetch(`${API_BASE}/v1/video/generations`, {
 }</code></pre></div>
 <h3>请求示例 · 参考素材（自定义 name）</h3>
 <div class="code-block"><button type="button" class="copy-btn">复制</button><pre><code>{
-  "model": "seedance-2.5-101010",
+  "model": "seedance-2.0",
   "prompt": "@角色1和@角色2在@场景1中聊天，@角色1音频是@角色1的音色",
   "duration": 5,
   "ratio": "16:9",
@@ -111,7 +111,7 @@ fetch(`${API_BASE}/v1/video/generations`, {
 <div class="code-block"><button type="button" class="copy-btn">复制</button><pre><code>{
   "id": "task_xxxxxxxx",
   "object": "video",
-  "model": "seedance-2.5-101010",
+  "model": "seedance-2.0",
   "status": "queued",
   "progress": 0,
   "created_at": 1700000000
@@ -150,7 +150,7 @@ console.log(result.status, result.progress, result.result_urls);</code></pre></d
 <div class="code-block"><button type="button" class="copy-btn">复制</button><pre><code>{
   "id": "task_xxxxxxxx",
   "object": "video",
-  "model": "seedance-2.5-101010",
+  "model": "seedance-2.0",
   "status": "completed",
   "progress": 100,
   "created_at": 1700000000,
