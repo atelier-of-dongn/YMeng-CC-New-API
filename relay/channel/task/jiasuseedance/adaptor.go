@@ -28,9 +28,10 @@ import (
 // This adaptor is preserved for backward compatibility with existing type-59 channels.
 
 const (
-	submitPath = "/v1/video/generations"
-	fetchPath  = "/v1/videos/tasks"
-	rawBodyKey = "jiasu_seedance_raw_body"
+	submitPath      = "/v1/video/generations"
+	fetchPath       = "/v1/videos/tasks"
+	legacyFetchPath = "/v1/videos"
+	rawBodyKey      = "jiasu_seedance_raw_body"
 )
 
 var forbiddenRequestFields = []string{
@@ -60,6 +61,36 @@ type responseTask struct {
 		Code    string `json:"code"`
 	} `json:"error,omitempty"`
 	Metadata map[string]any `json:"metadata,omitempty"`
+}
+
+func parseResponseTask(body []byte) (responseTask, error) {
+	var task responseTask
+	if err := common.Unmarshal(body, &task); err != nil {
+		return responseTask{}, err
+	}
+	if task.ID != "" || task.TaskID != "" || task.Status != "" || len(task.ResultURLs) > 0 {
+		return task, nil
+	}
+
+	var envelope map[string]any
+	if err := common.Unmarshal(body, &envelope); err != nil {
+		return responseTask{}, err
+	}
+	data, ok := envelope["data"].(map[string]any)
+	if !ok {
+		return task, nil
+	}
+	if nested, ok := data["data"].(map[string]any); ok {
+		data = nested
+	}
+	encoded, err := common.Marshal(data)
+	if err != nil {
+		return responseTask{}, err
+	}
+	if err := common.Unmarshal(encoded, &task); err != nil {
+		return responseTask{}, err
+	}
+	return task, nil
 }
 
 type TaskAdaptor struct {
@@ -199,8 +230,8 @@ func (a *TaskAdaptor) ParseResponse(_ *gin.Context, resp *http.Response, info *r
 	}
 	_ = resp.Body.Close()
 
-	var dResp responseTask
-	if err := common.Unmarshal(responseBody, &dResp); err != nil {
+	dResp, err := parseResponseTask(responseBody)
+	if err != nil {
 		return nil, service.TaskErrorWrapper(errors.Wrapf(err, "body: %s", responseBody), "unmarshal_response_body_failed", http.StatusInternalServerError)
 	}
 
@@ -239,19 +270,29 @@ func (a *TaskAdaptor) FetchTask(baseUrl, key string, task *model.Task, proxy str
 		return nil, fmt.Errorf("invalid task_id")
 	}
 
-	uri := fmt.Sprintf("%s%s/%s", baseUrl, fetchPath, taskID)
-	req, err := http.NewRequest(http.MethodGet, uri, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Authorization", "Bearer "+key)
-
 	client, err := service.GetHttpClientWithProxy(proxy)
 	if err != nil {
 		return nil, fmt.Errorf("new proxy http client failed: %w", err)
 	}
-	return client.Do(req)
+	for _, path := range []string{fetchPath, legacyFetchPath} {
+		uri := fmt.Sprintf("%s%s/%s", baseUrl, path, taskID)
+		req, err := http.NewRequest(http.MethodGet, uri, nil)
+		if err != nil {
+			return nil, err
+		}
+		req.Header.Set("Accept", "application/json")
+		req.Header.Set("Authorization", "Bearer "+key)
+
+		resp, err := client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		if resp.StatusCode != http.StatusInternalServerError {
+			return resp, nil
+		}
+		_ = resp.Body.Close()
+	}
+	return nil, fmt.Errorf("fetch task failed")
 }
 
 func (a *TaskAdaptor) GetModelList() []string {
@@ -263,8 +304,8 @@ func (a *TaskAdaptor) GetChannelName() string {
 }
 
 func (a *TaskAdaptor) ParseTaskResult(_ *model.Task, _ *http.Response, respBody []byte) (*relaycommon.TaskInfo, error) {
-	resTask := responseTask{}
-	if err := common.Unmarshal(respBody, &resTask); err != nil {
+	resTask, err := parseResponseTask(respBody)
+	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal task result failed")
 	}
 
@@ -298,8 +339,8 @@ func (a *TaskAdaptor) ParseTaskResult(_ *model.Task, _ *http.Response, respBody 
 }
 
 func (a *TaskAdaptor) ConvertToOpenAIVideo(originTask *model.Task) ([]byte, error) {
-	var dResp responseTask
-	if err := common.Unmarshal(originTask.Data, &dResp); err != nil {
+	dResp, err := parseResponseTask(originTask.Data)
+	if err != nil {
 		return nil, errors.Wrap(err, "unmarshal jiasu seedance task data failed")
 	}
 

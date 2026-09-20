@@ -1,6 +1,7 @@
 package jiasuseedance
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -160,11 +161,14 @@ func TestConvertToOpenAIVideoUsesPublicResultURLs(t *testing.T) {
 		Status:   model.TaskStatusSuccess,
 		Progress: "100%",
 		Data: []byte(`{
-			"id":"task_upstream",
-			"model":"seedance-2.0",
-			"status":"completed",
-			"progress":100,
-			"result_urls":["https://m.jiasuapi.com/media/xxxx.mp4"]
+			"code":"success",
+			"data":{"data":{
+				"id":"task_upstream",
+				"model":"seedance-2.0",
+				"status":"completed",
+				"progress":100,
+				"result_urls":["https://m.jiasuapi.com/media/xxxx.mp4"]
+			}}
 		}`),
 	}
 	task.Properties.OriginModelName = "seedance-2.0"
@@ -181,6 +185,38 @@ func TestConvertToOpenAIVideoUsesPublicResultURLs(t *testing.T) {
 	require.False(t, hasDeprecatedURL)
 	_, hasDeprecatedTaskID := ov["task_id"]
 	require.False(t, hasDeprecatedTaskID)
+}
+
+func TestFetchTaskFallsBackToGatewayVideoRouteAfterUpstreamRenderFailure(t *testing.T) {
+	service.InitHttpClient()
+	adaptor := &TaskAdaptor{}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/v1/videos/tasks/task_upstream":
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"code":"convert_to_openai_video_failed"}`))
+		case "/v1/videos/task_upstream":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = w.Write([]byte(`{"code":"success","data":{"data":{"id":"task_upstream","model":"seedance-2.0","status":"completed","progress":100,"result_urls":["https://example.com/video.mp4"]}}}`))
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer server.Close()
+
+	resp, err := adaptor.FetchTask(server.URL, "sk-test", &model.Task{TaskID: "task_upstream"}, "")
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "/v1/videos/task_upstream", resp.Request.URL.Path)
+
+	body, err := io.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NoError(t, resp.Body.Close())
+	result, err := adaptor.ParseTaskResult(nil, resp, body)
+	require.NoError(t, err)
+	assert.Equal(t, model.TaskStatusSuccess, result.Status)
+	assert.Equal(t, "https://example.com/video.mp4", result.Url)
 }
 
 func TestBuildRequestURLAndFetchTask(t *testing.T) {
