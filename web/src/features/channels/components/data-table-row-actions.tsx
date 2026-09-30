@@ -20,6 +20,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import type { Row } from '@tanstack/react-table'
 import {
   MoreHorizontal,
+  Activity,
   Boxes,
   Pencil,
   PlugZap,
@@ -141,6 +142,11 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
   const handleManageKeys = () => {
     setCurrentRow(channel)
     setOpen('multi-key-manage')
+  }
+
+  const handleUpstreamMonitor = () => {
+    setCurrentRow(channel)
+    setOpen('upstream-monitor')
   }
 
   const handleToggleStatus = async (
@@ -333,6 +339,14 @@ export function DataTableRowActions({ row }: DataTableRowActionsProps) {
               </DropdownMenuShortcut>
             </DropdownMenuItem>
           )}
+
+          {/* Upstream Cost Monitor */}
+          <DropdownMenuItem onClick={handleUpstreamMonitor}>
+            {t('Upstream Monitor')}
+            <DropdownMenuShortcut>
+              <Activity size={16} />
+            </DropdownMenuShortcut>
+          </DropdownMenuItem>
 
           <DropdownMenuSeparator />
 

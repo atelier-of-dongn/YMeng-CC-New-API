@@ -75,6 +75,11 @@ import { LogCostDisplay } from '../log-cost-display'
 import { ModelBadge } from '../model-badge'
 import { TimingMetricsCell, StreamTpsCell } from '../timing-metrics-cell'
 import { useUsageLogsContext } from '../usage-logs-provider'
+import {
+  ProfitLogCell,
+  UpstreamAmountLogCell,
+  UpstreamRatioLogCell,
+} from './upstream-cost-cells'
 
 interface DetailSegment {
   text: string
@@ -758,8 +763,41 @@ export function useCommonLogsColumns(
         const other = parseLogOther(log.other)
         return <LogCostDisplay quota={quota} other={other} />
       },
-    },
+    }
+  )
 
+  // Upstream cost monitoring (admin only): the backend attaches
+  // `upstream_cost` to admin log items only.
+  if (isAdmin) {
+    columns.push(
+      {
+        id: 'upstream_ratio',
+        header: t('Upstream Ratio'),
+        cell: ({ row }) =>
+          isDisplayableLogType(row.original.type) ? (
+            <UpstreamRatioLogCell log={row.original} />
+          ) : null,
+      },
+      {
+        id: 'upstream_amount',
+        header: t('Upstream Amount'),
+        cell: ({ row }) =>
+          isDisplayableLogType(row.original.type) ? (
+            <UpstreamAmountLogCell log={row.original} />
+          ) : null,
+      },
+      {
+        id: 'upstream_profit',
+        header: t('Profit/Loss'),
+        cell: ({ row }) =>
+          isDisplayableLogType(row.original.type) ? (
+            <ProfitLogCell log={row.original} />
+          ) : null,
+      }
+    )
+  }
+
+  columns.push(
     {
       accessorKey: 'use_time',
       header: t('Timing'),

@@ -58,6 +58,8 @@ const maxAdvancedCustomBalanceResponseBytes = 256 << 10
 type channelBalanceResult struct {
 	Balance     float64
 	RawResponse string
+	// Unlimited marks upstream keys without a quota limit; Balance is then 0.
+	Unlimited bool
 }
 
 type OpenAIUsageResponse struct {
@@ -455,6 +457,11 @@ func fetchAdvancedCustomBalance(channel *model.Channel) (channelBalanceResult, e
 }
 
 func updateChannelBalance(channel *model.Channel) (channelBalanceResult, error) {
+	// Channels monitored through a new-api upstream report balances in the
+	// upstream's display unit, which the generic dashboard query misreads.
+	if balance, unlimited, monitored, err := service.RefreshMonitoredChannelBalance(channel); monitored {
+		return channelBalanceResult{Balance: balance, Unlimited: unlimited}, err
+	}
 	if channel.Type == constant.ChannelTypeAdvancedCustom {
 		return fetchAdvancedCustomBalance(channel)
 	}
@@ -542,7 +549,7 @@ func UpdateChannelBalance(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{"success": false, "message": "Task Plugin channels do not support balance queries"})
 		return
 	}
-	if channel.ChannelInfo.IsMultiKey {
+	if channel.ChannelInfo.IsMultiKey && !service.IsUpstreamCostMonitored(channel.Id) {
 		c.JSON(http.StatusOK, gin.H{
 			"success": false,
 			"message": "多密钥渠道不支持余额查询",
@@ -557,6 +564,9 @@ func UpdateChannelBalance(c *gin.Context) {
 	response := gin.H{
 		"success": true,
 		"message": "",
+	}
+	if result.Unlimited {
+		response["unlimited"] = true
 	}
 	if result.RawResponse == "" {
 		response["balance"] = result.Balance
@@ -587,7 +597,7 @@ func updateAllChannelsBalance() error {
 			continue
 		} else if result.RawResponse == "" {
 			// err is nil & balance <= 0 means quota is used up
-			if result.Balance <= 0 {
+			if result.Balance <= 0 && !result.Unlimited {
 				service.DisableChannel(*types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey, "", channel.GetAutoBan()), "余额不足")
 			}
 		}

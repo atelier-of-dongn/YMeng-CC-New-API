@@ -375,6 +375,9 @@ func migrateDB() error {
 		&InvoiceApplication{},
 		&InvoiceApplicationItem{},
 		&InvoiceRefundAdjustment{},
+		&UpstreamSite{},
+		&UpstreamChannelMonitor{},
+		&UpstreamCostRecord{},
 	)
 	if err != nil {
 		return err

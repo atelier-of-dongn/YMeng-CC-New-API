@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 
@@ -389,6 +390,18 @@ func ExpireStaleSystemTaskLocks(now int64) error {
 		}
 	}
 	return nil
+}
+
+// AcquireNamedLease reuses the system task lock table as a cross-master lease
+// for periodic jobs that keep no run history. The owner doubles as the task id.
+func AcquireNamedLease(name string, owner string, ttl time.Duration) (bool, error) {
+	now := common.GetTimestamp()
+	acquired, _, err := acquireSystemTaskLock(name, owner, owner, now, now+int64(ttl/time.Second))
+	return acquired, err
+}
+
+func ReleaseNamedLease(owner string) error {
+	return ReleaseSystemTaskLock(owner, owner)
 }
 
 func ReleaseSystemTaskLock(taskID string, lockedBy string) error {

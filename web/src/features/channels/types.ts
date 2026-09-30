@@ -199,6 +199,8 @@ export interface ChannelBalanceResponse {
   balance?: number
   currency?: string
   raw_response?: string
+  /** The upstream account has no balance limit (upstream cost monitoring). */
+  unlimited?: boolean
 }
 
 export interface FetchModelsResponse {
@@ -335,6 +337,114 @@ export interface TagOperationParams {
   model_mapping?: string
   models?: string
   groups?: string
+}
+
+// ============================================================================
+// Upstream Cost Monitoring Types
+// ============================================================================
+
+export type UpstreamSiteStatus =
+  | 'pending'
+  | 'newapi'
+  | 'unsupported'
+  | 'unreachable'
+
+export type UpstreamMonitorMode = 'auto' | 'off'
+
+export type UpstreamCostStatus =
+  | 'normal'
+  | 'ratio_changed'
+  | 'inverted'
+  | 'group_offline'
+  | 'unknown'
+
+export type UpstreamRatioSource = 'pricing' | 'log' | ''
+
+export type UpstreamPricingStatus = 'ok' | 'groups_only' | 'error' | ''
+
+export type UpstreamPriceBasis = 'input' | 'output' | 'per_call'
+
+/** Prices are USD per 1K tokens for input/output and USD per call for per_call. */
+export interface UpstreamInvertedModel {
+  model: string
+  upstream_model: string
+  basis: UpstreamPriceBasis
+  upstream_usd: number
+  local_usd: number
+}
+
+export interface UpstreamGroupOption {
+  name: string
+  ratio: number
+  public: boolean
+  offline: boolean
+  desc: string
+}
+
+export interface UpstreamMonitorView {
+  channel_id: number
+  mode: UpstreamMonitorMode
+  site_id: number
+  site_name: string
+  site_base_url: string
+  site_status: UpstreamSiteStatus
+  pricing_status: UpstreamPricingStatus
+  /** Empty when the upstream group is unknown. */
+  effective_group: string
+  detected_group: string
+  manual_group: string
+  /** A manual group is set and differs from the detected group. */
+  group_mismatch: boolean
+  /** 0 when the ratio is unknown. */
+  group_ratio: number
+  /** 0 when there is no previous ratio. */
+  prev_group_ratio: number
+  ratio_source: UpstreamRatioSource
+  /** Unix seconds, 0 when the ratio never changed. */
+  ratio_changed_at: number
+  cost_status: UpstreamCostStatus
+  inverted_models: UpstreamInvertedModel[]
+  unknown_models: string[]
+  /** Billing type differs (per-call vs per-token), so prices are not compared. */
+  mixed_models: string[]
+  balance_unlimited: boolean
+  /** Distinct upstream groups across the keys of a multi-key channel. */
+  key_groups: string[]
+  last_error: string
+  /** Candidate groups for manual selection. */
+  groups: UpstreamGroupOption[]
+  updated_at: number
+}
+
+export interface UpstreamSiteView {
+  id: number
+  base_url: string
+  name: string
+  version: string
+  status: UpstreamSiteStatus
+  cost_factor: number
+  quota_per_unit: number
+  quota_display_type: string
+  usd_exchange_rate: number
+  pricing_status: string
+  last_error: string
+  channel_count: number
+  pricing_fetched_at: number
+  last_log_poll_at: number
+  log_backoff: number
+  updated_at: number
+}
+
+export interface UpdateUpstreamMonitorParams {
+  mode: UpstreamMonitorMode
+  /** Empty string restores automatic group detection. */
+  manual_group: string
+}
+
+export interface UpstreamCostResponse<T> {
+  success: boolean
+  message?: string
+  data?: T
 }
 
 // ============================================================================

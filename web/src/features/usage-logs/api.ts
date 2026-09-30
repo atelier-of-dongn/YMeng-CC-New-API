@@ -27,6 +27,7 @@ import type {
   GetLogStatsResponse,
   GetMidjourneyLogsParams,
   GetTaskLogsParams,
+  GetUpstreamCostStatsResponse,
   TaskArtifactsResponse,
   UserInfo,
 } from './types'
@@ -85,6 +86,17 @@ export const getLogStats = (params: GetLogStatsParams = {}) =>
 export const getUserLogStats = (
   params: Omit<GetLogStatsParams, 'username' | 'channel'> = {}
 ) => fetchLogStats('/api/log', params, false)
+
+/** Upstream cost totals; accepts the same filters as the admin log stats. */
+export async function getUpstreamCostStats(
+  params: GetLogStatsParams = {}
+): Promise<GetUpstreamCostStatsResponse> {
+  const queryParams = buildQueryParams(
+    params as unknown as Record<string, unknown>
+  )
+  const res = await api.get(`/api/log/upstream_cost_stat?${queryParams}`)
+  return res.data
+}
 
 export async function getUserInfo(
   userId: number

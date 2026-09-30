@@ -57,6 +57,17 @@ export const channelsQueryKeys = {
   detail: (id: number) => [...channelsQueryKeys.details(), id] as const,
 }
 
+/**
+ * Upstream cost monitoring keys live outside `channelsQueryKeys.all` so that
+ * channel list invalidations do not refetch every monitor query.
+ */
+export const upstreamCostQueryKeys = {
+  monitors: ['channel-upstream-monitors'] as const,
+  monitorList: (channelIds: number[]) =>
+    [...upstreamCostQueryKeys.monitors, channelIds] as const,
+  sites: ['channel-upstream-sites'] as const,
+}
+
 function getChannelTestResponseTime(
   response: ChannelTestResponse
 ): number | undefined {

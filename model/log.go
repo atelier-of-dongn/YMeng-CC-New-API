@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -340,6 +341,18 @@ type RecordConsumeLogParams struct {
 	Other            *LogOther `json:"other"`
 }
 
+// ConsumeLogHook observes consume logs after they are stored. It runs on the
+// request goroutine, so implementations must return quickly and never block.
+type ConsumeLogHook func(c *gin.Context, log *Log, other *LogOther)
+
+var consumeLogHook atomic.Pointer[ConsumeLogHook]
+
+// SetConsumeLogHook lets higher layers observe consume logs without the model
+// package importing them.
+func SetConsumeLogHook(hook ConsumeLogHook) {
+	consumeLogHook.Store(&hook)
+}
+
 func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams) {
 	if !common.LogConsumeEnabled {
 		return
@@ -375,6 +388,8 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 	err := createLog(log)
 	if err != nil {
 		logger.LogError(c, "failed to record log: "+err.Error())
+	} else if hook := consumeLogHook.Load(); hook != nil {
+		(*hook)(c, log, params.Other)
 	}
 	if common.DataExportEnabled {
 		LogQuotaData(QuotaDataLogParams{

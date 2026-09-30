@@ -111,6 +111,9 @@ func main() {
 
 	// 热更新配置
 	go model.SyncOptions(common.SyncFrequency)
+
+	// Every node records the upstream cost of the requests it relays.
+	service.StartUpstreamCostRecorder()
 	go controller.SyncTaskPlugins()
 
 	// 周期性重载授权策略，保证多节点/多 master 部署下权限变更能传播到每个实例
@@ -132,6 +135,9 @@ func main() {
 
 	// Subscription quota reset task (daily/weekly/monthly/custom)
 	service.StartSubscriptionQuotaResetTask()
+
+	// Upstream cost monitor: new-api upstream ratios, balances and token logs
+	service.StartUpstreamCostMonitor()
 
 	// Report this process as a system instance so the System Info page can show
 	// all currently alive nodes in multi-instance deployments.
@@ -240,6 +246,7 @@ func main() {
 	if common.DataExportEnabled {
 		model.SaveQuotaDataCache()
 	}
+	service.FlushUpstreamCostRecords()
 	common.SysLog("server exited")
 }
 

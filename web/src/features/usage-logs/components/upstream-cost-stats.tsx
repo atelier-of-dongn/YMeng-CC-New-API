@@ -1,0 +1,133 @@
+/*
+Copyright (C) 2023-2026 QuantumNous
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU Affero General Public License as
+published by the Free Software Foundation, either version 3 of the
+License, or (at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU Affero General Public License for more details.
+
+You should have received a copy of the GNU Affero General Public License
+along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+For commercial licensing, please contact support@quantumnous.com
+*/
+import { useQuery } from '@tanstack/react-query'
+import { getRouteApi } from '@tanstack/react-router'
+import { useTranslation } from 'react-i18next'
+
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { formatLogQuota, formatPercent } from '@/lib/format'
+import { requireServerSuccess } from '@/lib/server-error-message'
+
+import { getUpstreamCostStats } from '../api'
+import { summarizeUpstreamCost } from '../lib/upstream-cost'
+import { buildApiParams } from '../lib/utils'
+import { StatBadge } from './stat-badge'
+import { useUsageLogsContext } from './usage-logs-provider'
+
+const route = getRouteApi('/_authenticated/usage-logs/$section')
+
+const SENSITIVE_MASK = '••••'
+
+type UpstreamCostStatsProps = {
+  /** Total usage (`quota`) of the regular log stats for the same filters. */
+  totalQuota: number
+}
+
+/** Admin-only revenue/cost/profit badges for the filtered consume logs. */
+export function UpstreamCostStats(props: UpstreamCostStatsProps) {
+  const { t } = useTranslation()
+  const searchParams = route.useSearch()
+  const { sensitiveVisible } = useUsageLogsContext()
+
+  // The key must start with 'usage-logs-stats' so the filter bar refreshes it.
+  const { data: stats } = useQuery({
+    queryKey: ['usage-logs-stats', 'upstream-cost', searchParams],
+    queryFn: async () => {
+      const params = buildApiParams({
+        page: 1,
+        pageSize: 1,
+        searchParams,
+        columnFilters: [],
+        isAdmin: true,
+      })
+      return (
+        requireServerSuccess(await getUpstreamCostStats(params)).data ?? null
+      )
+    },
+    placeholderData: (previousData) => previousData,
+    // Supplementary to the regular stats: a failure only hides this group.
+    meta: { errorToast: false },
+  })
+
+  if (!stats) {
+    return null
+  }
+  const summary = summarizeUpstreamCost(stats, props.totalQuota)
+  if (summary.recordCount === 0) {
+    return null
+  }
+
+  const formatMoney = (quota: number) =>
+    sensitiveVisible ? formatLogQuota(quota) : SENSITIVE_MASK
+  const formatShare = (value: number | null) =>
+    value === null ? '-' : formatPercent(value * 100)
+
+  return (
+    <>
+      <StatBadge
+        label={t('Revenue')}
+        value={formatMoney(stats.revenue)}
+        accent='bg-chart-2/70'
+      />
+      <StatBadge
+        label={t('Upstream Cost')}
+        value={formatMoney(stats.cost)}
+        accent='bg-warning/70'
+      />
+      <StatBadge
+        label={t('Profit')}
+        value={formatMoney(summary.profit)}
+        accent={summary.profit < 0 ? 'bg-destructive/70' : 'bg-success/70'}
+      />
+      <StatBadge
+        label={t('Gross Margin')}
+        value={formatShare(summary.grossMargin)}
+        accent='bg-chart-4/70'
+      />
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <button
+              type='button'
+              className='focus-visible:ring-ring/50 cursor-help rounded-md outline-none focus-visible:ring-2'
+            />
+          }
+        >
+          <StatBadge
+            label={t('Coverage')}
+            value={formatShare(summary.coverage)}
+            accent='bg-info/70'
+          />
+        </TooltipTrigger>
+        <TooltipContent>
+          <div className='space-y-1'>
+            <p>{t('Share of total usage with a known upstream cost')}</p>
+            <p>{t('Matched: {{count}}', { count: stats.matched })}</p>
+            <p>{t('Estimated: {{count}}', { count: stats.estimated })}</p>
+            <p>{t('Unknown cost: {{count}}', { count: stats.unknown })}</p>
+          </div>
+        </TooltipContent>
+      </Tooltip>
+    </>
+  )
+}

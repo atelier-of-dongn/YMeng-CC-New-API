@@ -25,6 +25,8 @@ import { FetchModelsDialog } from './dialogs/fetch-models-dialog'
 import { MultiKeyManageDialog } from './dialogs/multi-key-manage-dialog'
 import { OllamaModelsDialog } from './dialogs/ollama-models-dialog'
 import { TagBatchEditDialog } from './dialogs/tag-batch-edit-dialog'
+import { UpstreamMonitorDialog } from './dialogs/upstream-monitor-dialog'
+import { UpstreamSitesDialog } from './dialogs/upstream-sites-dialog'
 import { UpstreamUpdateDialog } from './dialogs/upstream-update-dialog'
 import { ChannelMutateDrawer } from './drawers/channel-mutate-drawer'
 
@@ -85,6 +87,18 @@ export function ChannelsDialogs() {
       {/* Edit Tag Dialog */}
       <EditTagDialog
         open={open === 'edit-tag'}
+        onOpenChange={(v) => !v && setOpen(null)}
+      />
+
+      {/* Upstream Cost Monitor Dialog */}
+      <UpstreamMonitorDialog
+        open={open === 'upstream-monitor'}
+        onOpenChange={(v) => !v && setOpen(null)}
+      />
+
+      {/* Upstream Sites Dialog */}
+      <UpstreamSitesDialog
+        open={open === 'upstream-sites'}
         onOpenChange={(v) => !v && setOpen(null)}
       />
 

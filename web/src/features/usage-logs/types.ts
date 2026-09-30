@@ -447,6 +447,25 @@ export interface GetLogStatsResponse {
   data?: LogStatistics
 }
 
+/**
+ * Upstream cost totals for the filtered consume logs (admin only).
+ * `revenue` and `cost` are quota units; `revenue` only covers records whose
+ * upstream cost is known (matched or estimated).
+ */
+export interface UpstreamCostStatistics {
+  revenue: number
+  cost: number
+  matched: number
+  estimated: number
+  unknown: number
+}
+
+export interface GetUpstreamCostStatsResponse {
+  success: boolean
+  message?: string
+  data?: UpstreamCostStatistics
+}
+
 // ============================================================================
 // Drawing Log Types
 // ============================================================================

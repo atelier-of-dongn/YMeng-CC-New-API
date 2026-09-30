@@ -79,6 +79,7 @@ import {
   handleUpdateTagField,
   createChannelFieldUpdateScheduler,
   isTagAggregateRow,
+  upstreamCostQueryKeys,
   type TagRow,
 } from '../lib'
 import { parseUpstreamUpdateMeta } from '../lib/upstream-update-utils'
@@ -94,6 +95,12 @@ import {
   type CodexUsageDialogData,
 } from './dialogs/codex-usage-dialog'
 import { NumericSpinnerInput } from './numeric-spinner-input'
+import { UpstreamGroupCell } from './upstream-group-cell'
+import {
+  UpstreamCostStatusCell,
+  UpstreamRatioCell,
+} from './upstream-monitor-cells'
+import { useUpstreamMonitor } from './upstream-monitor-provider'
 
 function parseIonetMeta(otherInfo: string | null | undefined): null | {
   source?: string
@@ -339,6 +346,9 @@ export function BalanceCell({ channel }: { channel: Channel }) {
   const layout = useContext(ChannelRowActionsLayoutContext)
   const { sensitiveVisible, setCurrentRow } = useChannels()
   const isTagRow = isTagAggregateRow(channel)
+  const upstreamMonitor = useUpstreamMonitor(channel.id)
+  const balanceUnlimited =
+    !isTagRow && upstreamMonitor?.balance_unlimited === true
   const balance = channel.balance || 0
   const usedQuota = channel.used_quota || 0
   const [isUpdating, setIsUpdating] = useState(false)
@@ -453,7 +463,17 @@ export function BalanceCell({ channel }: { channel: Channel }) {
 
     try {
       const response = await updateChannelBalance(channel.id)
-      if (response.success && response.balance !== undefined) {
+      if (response.success && response.unlimited) {
+        toast.success(
+          t('Balance refreshed: the upstream account has no balance limit')
+        )
+        void queryClient.invalidateQueries({
+          queryKey: channelsQueryKeys.lists(),
+        })
+        void queryClient.invalidateQueries({
+          queryKey: upstreamCostQueryKeys.monitors,
+        })
+      } else if (response.success && response.balance !== undefined) {
         toast.success(
           t('Balance updated: {{balance}}', {
             balance: formatCurrencyFromUSD(response.balance, {
@@ -465,6 +485,9 @@ export function BalanceCell({ channel }: { channel: Channel }) {
         )
         void queryClient.invalidateQueries({
           queryKey: channelsQueryKeys.lists(),
+        })
+        void queryClient.invalidateQueries({
+          queryKey: upstreamCostQueryKeys.monitors,
         })
       } else if (response.success && response.raw_response !== undefined) {
         setCurrentRow(channel)
@@ -483,18 +506,24 @@ export function BalanceCell({ channel }: { channel: Channel }) {
     remainingBadgeLabel = t('Updating...')
   } else if (sensitiveVisible && channel.type === 57) {
     remainingBadgeLabel = t('Account Info')
+  } else if (sensitiveVisible && balanceUnlimited) {
+    remainingBadgeLabel = t('Unlimited')
   }
   let remainingTooltipLabel = remainingLabel
   if (!sensitiveVisible) {
     remainingTooltipLabel = maskedRemainingLabel
   } else if (channel.type === 57) {
     remainingTooltipLabel = t('Click to view Codex usage')
+  } else if (balanceUnlimited) {
+    remainingTooltipLabel = `${t('Remaining:')} ${t('Unlimited')}`
   }
   let remainingBadgeVariant: StatusBadgeProps['variant'] = variant
   if (channel.type === 57) {
     remainingBadgeVariant = 'info'
   } else if (isUpdating) {
     remainingBadgeVariant = 'neutral'
+  } else if (balanceUnlimited) {
+    remainingBadgeVariant = 'success'
   }
 
   return (
@@ -1142,6 +1171,33 @@ export function useChannelsColumns(
         header: t('Used / Remaining'),
         cell: ({ row }) => <BalanceCell channel={row.original} />,
         size: 180,
+      },
+
+      // Upstream cost monitoring columns. Cells read monitor data from
+      // UpstreamMonitorProvider, so these definitions stay memoizable.
+      {
+        id: 'upstream_group',
+        header: t('Upstream Group'),
+        meta: { mobileHidden: true },
+        cell: ({ row }) => <UpstreamGroupCell channel={row.original} />,
+        size: 150,
+        enableSorting: false,
+      },
+      {
+        id: 'upstream_ratio',
+        header: t('Upstream Ratio'),
+        meta: { mobileHidden: true },
+        cell: ({ row }) => <UpstreamRatioCell channel={row.original} />,
+        size: 110,
+        enableSorting: false,
+      },
+      {
+        id: 'upstream_cost_status',
+        header: t('Cost Status'),
+        meta: { mobileHidden: true },
+        cell: ({ row }) => <UpstreamCostStatusCell channel={row.original} />,
+        size: 120,
+        enableSorting: false,
       },
 
       // Response Time column

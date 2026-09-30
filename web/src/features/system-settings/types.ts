@@ -401,6 +401,21 @@ export type OperationsSettings = {
   'perf_metrics_setting.flush_interval': number
   'perf_metrics_setting.bucket_time': 'hour' | 'minute' | '5min'
   'perf_metrics_setting.retention_days': number
+  'upstream_cost_setting.enabled': boolean
+  'upstream_cost_setting.auto_detect': boolean
+  'upstream_cost_setting.log_poll_seconds': number
+  'upstream_cost_setting.pricing_minutes': number
+  'upstream_cost_setting.ratio_change_hold_hours': number
+  'upstream_cost_setting.retention_days': number
+  'upstream_cost_setting.feishu_webhook_url': string
+  /** Write-only: the backend hides it, so it always loads as ''. */
+  'upstream_cost_setting.feishu_secret': string
+}
+
+/** Empty fields fall back to the saved webhook URL / secret. */
+export type UpstreamCostFeishuTestRequest = {
+  webhook_url?: string
+  secret?: string
 }
 
 export type SecuritySettings = {
