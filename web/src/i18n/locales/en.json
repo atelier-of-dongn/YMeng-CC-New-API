@@ -6672,6 +6672,26 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Applied at": "Applied at",
+    "Reject": "Reject",
+    "Enter a valid user ID": "Enter a valid user ID",
+    "Enter an amount with up to 6 decimal places": "Enter an amount with up to 6 decimal places",
+    "Enter a valid date": "Enter a valid date",
+    "Keyword must be 255 characters or fewer": "Keyword must be 255 characters or fewer",
+    "Enter a keyword": "Enter a keyword",
+    "Enter a user ID": "Enter a user ID",
+    "Enter an exact amount": "Enter an exact amount",
+    "Search invoice applications": "Search invoice applications",
+    "Search column": "Search column",
+    "Search keyword": "Search keyword",
+    "Failed to load invoice PDF": "Failed to load invoice PDF",
+    "Invoice PDF preview": "Invoice PDF preview",
+    "This browser cannot preview PDF files. Download the file instead.": "This browser cannot preview PDF files. Download the file instead.",
+    "Loading invoice PDF...": "Loading invoice PDF...",
+    "Download PDF": "Download PDF",
+    "Failed to download invoice PDF": "Failed to download invoice PDF",
+    "Preview PDF": "Preview PDF",
+    "No invoice applications match the current search.": "No invoice applications match the current search."
   }
 }

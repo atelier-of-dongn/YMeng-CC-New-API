@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"mime/multipart"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -52,4 +54,36 @@ func TestSaveInvoicePDFRejectsInvalidFiles(t *testing.T) {
 	require.Error(t, err)
 	_, err = ResolveInvoiceFile("../invoice.pdf")
 	require.Error(t, err)
+}
+
+func TestOpenInvoiceFileStaysInsideStorageDir(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("INVOICE_STORAGE_DIR", dir)
+	file, err := SaveInvoicePDF(42, invoiceFileHeaderForTest(t, "invoice.pdf", []byte("%PDF-1.7\n%%EOF")))
+	require.NoError(t, err)
+
+	opened, info, err := OpenInvoiceFile(file.Key)
+	require.NoError(t, err)
+	require.NoError(t, opened.Close())
+	assert.Equal(t, file.Size, info.Size())
+
+	outside := filepath.Join(t.TempDir(), "secret.pdf")
+	require.NoError(t, os.WriteFile(outside, []byte("%PDF-secret"), 0600))
+	require.NoError(t, os.Symlink(outside, filepath.Join(dir, "invoice-link.pdf")))
+	_, _, err = OpenInvoiceFile("invoice-link.pdf")
+	require.Error(t, err)
+	_, err = ResolveInvoiceFile("invoice-link.pdf")
+	require.Error(t, err)
+	_, _, err = OpenInvoiceFile("../secret.pdf")
+	require.Error(t, err)
+}
+
+func TestOpenInvoiceFileDoesNotCreateStorageDir(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "missing")
+	t.Setenv("INVOICE_STORAGE_DIR", dir)
+
+	_, _, err := OpenInvoiceFile("invoice-1-abc.pdf")
+	require.Error(t, err)
+	_, statErr := os.Stat(dir)
+	assert.True(t, os.IsNotExist(statErr))
 }

@@ -25,6 +25,7 @@ import { INVOICE_AMOUNT_SCALE } from '../lib'
 import type {
   ApiResponse,
   InvoiceApplication,
+  InvoiceListFilters,
   InvoicePage,
   InvoiceStatus,
 } from '../types'
@@ -37,7 +38,7 @@ export class InvoiceExportEmptyError extends Error {}
 export class InvoiceExportLimitError extends Error {}
 
 export type InvoicePageLoader = (
-  status: InvoiceStatus | '',
+  filters: InvoiceListFilters,
   page: number,
   pageSize: number
 ) => Promise<ApiResponse<InvoicePage>>
@@ -45,10 +46,10 @@ export type InvoicePageLoader = (
 type InvoiceExportCell = Date | number | string
 
 export async function collectInvoiceApplicationsForExport(
-  status: InvoiceStatus | '',
+  filters: InvoiceListFilters,
   loadPage: InvoicePageLoader
 ): Promise<InvoiceApplication[]> {
-  const firstPage = await loadPage(status, 1, INVOICE_EXPORT_PAGE_SIZE)
+  const firstPage = await loadPage(filters, 1, INVOICE_EXPORT_PAGE_SIZE)
   if (!firstPage.success) throw new Error(firstPage.message)
   if (firstPage.data.total > MAX_XLSX_INVOICE_ROWS) {
     throw new InvoiceExportLimitError()
@@ -72,7 +73,7 @@ export async function collectInvoiceApplicationsForExport(
     )
     const pages = await Promise.all(
       pageNumbers.map((page) =>
-        loadPage(status, page, INVOICE_EXPORT_PAGE_SIZE)
+        loadPage(filters, page, INVOICE_EXPORT_PAGE_SIZE)
       )
     )
     for (const page of pages) {

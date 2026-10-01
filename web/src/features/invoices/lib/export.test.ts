@@ -22,7 +22,7 @@ import { describe, test } from 'node:test'
 import type { TFunction } from 'i18next'
 import * as xlsx from 'xlsx'
 
-import type { InvoiceApplication } from '../types'
+import type { InvoiceApplication, InvoiceListFilters } from '../types'
 import {
   buildInvoiceExportData,
   buildInvoiceExportFilename,
@@ -35,6 +35,12 @@ import {
 } from './export'
 
 const t = ((key: string) => `translated:${key}`) as TFunction
+
+const noFilters: InvoiceListFilters = {
+  status: '',
+  searchField: 'username',
+  keyword: '',
+}
 
 function createApplication(id: number): InvoiceApplication {
   return {
@@ -73,12 +79,21 @@ function createApplication(id: number): InvoiceApplication {
 
 describe('invoice XLSX export', () => {
   test('loads every filtered page in page order', async () => {
-    const calls: Array<{ page: number; pageSize: number; status: string }> = []
+    const filters: InvoiceListFilters = {
+      status: 'rejected',
+      searchField: 'trade_no',
+      keyword: '000001',
+    }
+    const calls: Array<{
+      page: number
+      pageSize: number
+      filters: InvoiceListFilters
+    }> = []
     const applications = Array.from({ length: 205 }, (_, index) =>
       createApplication(205 - index)
     )
-    const loadPage: InvoicePageLoader = async (status, page, pageSize) => {
-      calls.push({ page, pageSize, status })
+    const loadPage: InvoicePageLoader = async (pageFilters, page, pageSize) => {
+      calls.push({ page, pageSize, filters: pageFilters })
       const start = (page - 1) * pageSize
       return {
         success: true,
@@ -90,10 +105,7 @@ describe('invoice XLSX export', () => {
       }
     }
 
-    const result = await collectInvoiceApplicationsForExport(
-      'rejected',
-      loadPage
-    )
+    const result = await collectInvoiceApplicationsForExport(filters, loadPage)
 
     assert.equal(result.length, 205)
     assert.deepEqual(
@@ -103,8 +115,7 @@ describe('invoice XLSX export', () => {
     assert.ok(
       calls.every(
         (call) =>
-          call.status === 'rejected' &&
-          call.pageSize === INVOICE_EXPORT_PAGE_SIZE
+          call.filters === filters && call.pageSize === INVOICE_EXPORT_PAGE_SIZE
       )
     )
     assert.equal(result[0]?.id, 205)
@@ -112,7 +123,7 @@ describe('invoice XLSX export', () => {
   })
 
   test('aborts when a page fails or the worksheet row limit is exceeded', async () => {
-    const failedLoader: InvoicePageLoader = async (_status, page) => ({
+    const failedLoader: InvoicePageLoader = async (_filters, page) => ({
       success: page === 1,
       message: 'page failed',
       data: {
@@ -121,7 +132,7 @@ describe('invoice XLSX export', () => {
       },
     })
     await assert.rejects(
-      collectInvoiceApplicationsForExport('', failedLoader),
+      collectInvoiceApplicationsForExport(noFilters, failedLoader),
       /page failed/
     )
 
@@ -131,7 +142,7 @@ describe('invoice XLSX export', () => {
       data: { items: [], total: MAX_XLSX_INVOICE_ROWS + 1 },
     })
     await assert.rejects(
-      collectInvoiceApplicationsForExport('', oversizedLoader),
+      collectInvoiceApplicationsForExport(noFilters, oversizedLoader),
       InvoiceExportLimitError
     )
   })

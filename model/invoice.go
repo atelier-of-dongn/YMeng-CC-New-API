@@ -538,15 +538,91 @@ func listInvoiceApplications(query *gorm.DB, pageInfo *common.PageInfo) ([]*Invo
 	return applications, total, nil
 }
 
+type InvoiceApplicationFilters struct {
+	Status          string
+	Username        string
+	UserId          *int
+	Title           string
+	TaxId           string
+	TradeNo         string
+	GrossAmountMin  *int64
+	GrossAmountMax  *int64
+	RefundAmountMin *int64
+	RefundAmountMax *int64
+	NetAmountMin    *int64
+	NetAmountMax    *int64
+	CreatedAtFrom   *int64
+	CreatedAtTo     *int64
+}
+
+// invoiceLikeCondition uses "!" as the LIKE escape character because a
+// backslash literal is itself an escape in MySQL's default SQL mode.
+const invoiceLikeCondition = "LOWER(%s) LIKE ? ESCAPE '!'"
+
+func invoiceLikePattern(value string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	value = strings.NewReplacer("!", "!!", "%", "!%", "_", "!_").Replace(value)
+	return "%" + value + "%"
+}
+
+func applyInvoiceApplicationFilters(query *gorm.DB, filters InvoiceApplicationFilters) *gorm.DB {
+	if filters.Status != "" {
+		query = query.Where("status = ?", filters.Status)
+	}
+	if filters.UserId != nil {
+		query = query.Where("user_id = ?", *filters.UserId)
+	}
+	if filters.Username != "" {
+		userQuery := DB.Model(&User{}).Select("id").Where(
+			fmt.Sprintf(invoiceLikeCondition, "username"), invoiceLikePattern(filters.Username),
+		)
+		query = query.Where("user_id IN (?)", userQuery)
+	}
+	if filters.Title != "" {
+		query = query.Where(fmt.Sprintf(invoiceLikeCondition, "title"), invoiceLikePattern(filters.Title))
+	}
+	if filters.TaxId != "" {
+		query = query.Where(fmt.Sprintf(invoiceLikeCondition, "tax_id"), invoiceLikePattern(filters.TaxId))
+	}
+	if filters.TradeNo != "" {
+		itemQuery := DB.Model(&InvoiceApplicationItem{}).Select("application_id").Where(
+			fmt.Sprintf(invoiceLikeCondition, "trade_no"), invoiceLikePattern(filters.TradeNo),
+		)
+		query = query.Where("id IN (?)", itemQuery)
+	}
+	if filters.GrossAmountMin != nil {
+		query = query.Where("gross_amount >= ?", *filters.GrossAmountMin)
+	}
+	if filters.GrossAmountMax != nil {
+		query = query.Where("gross_amount <= ?", *filters.GrossAmountMax)
+	}
+	if filters.RefundAmountMin != nil {
+		query = query.Where("refund_amount >= ?", *filters.RefundAmountMin)
+	}
+	if filters.RefundAmountMax != nil {
+		query = query.Where("refund_amount <= ?", *filters.RefundAmountMax)
+	}
+	if filters.NetAmountMin != nil {
+		query = query.Where("net_amount >= ?", *filters.NetAmountMin)
+	}
+	if filters.NetAmountMax != nil {
+		query = query.Where("net_amount <= ?", *filters.NetAmountMax)
+	}
+	if filters.CreatedAtFrom != nil {
+		query = query.Where("created_at >= ?", *filters.CreatedAtFrom)
+	}
+	if filters.CreatedAtTo != nil {
+		query = query.Where("created_at < ?", *filters.CreatedAtTo)
+	}
+	return query
+}
+
 func GetUserInvoiceApplications(userId int, pageInfo *common.PageInfo) ([]*InvoiceApplication, int64, error) {
 	return listInvoiceApplications(DB.Where("user_id = ?", userId), pageInfo)
 }
 
-func GetAllInvoiceApplications(status string, pageInfo *common.PageInfo) ([]*InvoiceApplication, int64, error) {
-	query := DB
-	if status != "" {
-		query = query.Where("status = ?", status)
-	}
+func GetAllInvoiceApplications(filters InvoiceApplicationFilters, pageInfo *common.PageInfo) ([]*InvoiceApplication, int64, error) {
+	query := applyInvoiceApplicationFilters(DB, filters)
 	applications, total, err := listInvoiceApplications(query, pageInfo)
 	if err != nil || len(applications) == 0 {
 		return applications, total, err

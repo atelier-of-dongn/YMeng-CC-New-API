@@ -25,7 +25,7 @@ type InvoiceFile struct {
 	FullPath string
 }
 
-func invoiceStorageDir() (string, error) {
+func invoiceStorageDir(create bool) (string, error) {
 	dir := strings.TrimSpace(os.Getenv("INVOICE_STORAGE_DIR"))
 	if dir == "" {
 		dir = "./invoices"
@@ -34,8 +34,10 @@ func invoiceStorageDir() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if err := os.MkdirAll(abs, 0750); err != nil {
-		return "", err
+	if create {
+		if err := os.MkdirAll(abs, 0750); err != nil {
+			return "", err
+		}
 	}
 	return abs, nil
 }
@@ -57,7 +59,7 @@ func SaveInvoicePDF(applicationId int, header *multipart.FileHeader) (*InvoiceFi
 	}
 	defer source.Close()
 
-	dir, err := invoiceStorageDir()
+	dir, err := invoiceStorageDir(true)
 	if err != nil {
 		return nil, err
 	}
@@ -119,19 +121,60 @@ func SaveInvoicePDF(applicationId int, header *multipart.FileHeader) (*InvoiceFi
 	}, nil
 }
 
-func ResolveInvoiceFile(key string) (string, error) {
-	if key == "" || filepath.Base(key) != key {
-		return "", errors.New("invalid invoice file key")
+func validateInvoiceFileKey(key string) error {
+	if key == "" || filepath.Base(key) != key || filepath.IsAbs(key) {
+		return errors.New("invalid invoice file key")
 	}
-	dir, err := invoiceStorageDir()
+	return nil
+}
+
+func ResolveInvoiceFile(key string) (string, error) {
+	if err := validateInvoiceFileKey(key); err != nil {
+		return "", err
+	}
+	dir, err := invoiceStorageDir(false)
 	if err != nil {
 		return "", err
 	}
 	path := filepath.Join(dir, key)
-	if _, err := os.Stat(path); err != nil {
+	info, err := os.Lstat(path)
+	if err != nil {
 		return "", err
 	}
+	if !info.Mode().IsRegular() {
+		return "", errors.New("invoice file is not a regular file")
+	}
 	return path, nil
+}
+
+// OpenInvoiceFile opens a stored invoice without following a symlink outside the storage root.
+func OpenInvoiceFile(key string) (*os.File, os.FileInfo, error) {
+	if err := validateInvoiceFileKey(key); err != nil {
+		return nil, nil, err
+	}
+	dir, err := invoiceStorageDir(false)
+	if err != nil {
+		return nil, nil, err
+	}
+	root, err := os.OpenRoot(dir)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer root.Close()
+	file, err := root.Open(key)
+	if err != nil {
+		return nil, nil, err
+	}
+	info, err := file.Stat()
+	if err != nil {
+		_ = file.Close()
+		return nil, nil, err
+	}
+	if !info.Mode().IsRegular() {
+		_ = file.Close()
+		return nil, nil, errors.New("invoice file is not a regular file")
+	}
+	return file, info, nil
 }
 
 func RemoveInvoiceFile(path string) {

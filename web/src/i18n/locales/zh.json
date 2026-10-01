@@ -6672,6 +6672,26 @@
     "Zhipu": "智谱",
     "Zhipu GLM": "智谱GLM",
     "Zhipu V4": "智谱 V4",
-    "Zoom": "缩放"
+    "Zoom": "缩放",
+    "Applied at": "申请时间",
+    "Reject": "拒绝",
+    "Enter a valid user ID": "请输入有效的用户 ID",
+    "Enter an amount with up to 6 decimal places": "请输入最多 6 位小数的金额",
+    "Enter a valid date": "请输入有效的日期",
+    "Keyword must be 255 characters or fewer": "关键词不能超过 255 个字符",
+    "Enter a keyword": "请输入关键词",
+    "Enter a user ID": "请输入用户 ID",
+    "Enter an exact amount": "请输入精确金额",
+    "Search invoice applications": "搜索发票申请",
+    "Search column": "搜索列",
+    "Search keyword": "搜索关键词",
+    "Failed to load invoice PDF": "发票 PDF 加载失败",
+    "Invoice PDF preview": "发票 PDF 预览",
+    "This browser cannot preview PDF files. Download the file instead.": "当前浏览器无法预览 PDF 文件，请下载后查看。",
+    "Loading invoice PDF...": "正在加载发票 PDF...",
+    "Download PDF": "下载 PDF",
+    "Failed to download invoice PDF": "发票 PDF 下载失败",
+    "Preview PDF": "预览 PDF",
+    "No invoice applications match the current search.": "没有符合当前搜索条件的发票申请。"
   }
 }

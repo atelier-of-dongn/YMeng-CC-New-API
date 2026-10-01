@@ -256,3 +256,59 @@ func TestQuotaOverrideCreatesRefundOnlyWhenDecreasing(t *testing.T) {
 	assert.Equal(t, int64(5_000), adjustment.Quota)
 	assert.Equal(t, int64(50*InvoiceAmountScale), adjustment.Amount)
 }
+
+func TestAdminInvoiceFiltersApplyBeforePagination(t *testing.T) {
+	truncateTables(t)
+	require.NoError(t, DB.Create(&[]User{
+		{Id: 2001, Username: "alice_%", AffCode: "invoice-filter-a", Status: common.UserStatusEnabled},
+		{Id: 2002, Username: "bob", AffCode: "invoice-filter-b", Status: common.UserStatusEnabled},
+	}).Error)
+	applications := []*InvoiceApplication{
+		{UserId: 2001, Title: "Acme 100%", TaxId: "TAX-A", GrossAmount: 600 * InvoiceAmountScale, NetAmount: 600 * InvoiceAmountScale, Status: InvoiceStatusApplied, CreatedAt: 1000, UpdatedAt: 1000},
+		{UserId: 2002, Title: "Beta", TaxId: "TAX-B", GrossAmount: 700 * InvoiceAmountScale, NetAmount: 700 * InvoiceAmountScale, Status: InvoiceStatusIssued, CreatedAt: 2000, UpdatedAt: 2000},
+		{UserId: 2002, Title: "acme lab", TaxId: "TAX-C", GrossAmount: 800 * InvoiceAmountScale, NetAmount: 800 * InvoiceAmountScale, Status: InvoiceStatusIssued, CreatedAt: 3000, UpdatedAt: 3000},
+	}
+	require.NoError(t, DB.Create(&applications).Error)
+	require.NoError(t, DB.Create(&[]InvoiceApplicationItem{
+		{ApplicationId: applications[0].Id, Type: InvoiceItemTypeOrder, TradeNo: "T-1", Amount: 300 * InvoiceAmountScale, OccurredAt: 900},
+		{ApplicationId: applications[0].Id, Type: InvoiceItemTypeOrder, TradeNo: "T-10", Amount: 300 * InvoiceAmountScale, OccurredAt: 900},
+		{ApplicationId: applications[1].Id, Type: InvoiceItemTypeOrder, TradeNo: "X-T-1", Amount: 700 * InvoiceAmountScale, OccurredAt: 1900},
+		{ApplicationId: applications[2].Id, Type: InvoiceItemTypeOrder, TradeNo: "Z-9", Amount: 800 * InvoiceAmountScale, OccurredAt: 2900},
+	}).Error)
+	amount700 := int64(700 * InvoiceAmountScale)
+	createdFrom, createdTo := int64(2000), int64(3000)
+
+	tests := []struct {
+		name    string
+		filters InvoiceApplicationFilters
+		wantIds []int
+	}{
+		{"order number matches one application once", InvoiceApplicationFilters{TradeNo: "t-1"}, []int{applications[1].Id, applications[0].Id}},
+		{"title search is case-insensitive", InvoiceApplicationFilters{Title: "ACME"}, []int{applications[2].Id, applications[0].Id}},
+		{"wildcards are matched literally", InvoiceApplicationFilters{Title: "100%"}, []int{applications[0].Id}},
+		{"username wildcards are matched literally", InvoiceApplicationFilters{Username: "_%"}, []int{applications[0].Id}},
+		{"amount range is inclusive", InvoiceApplicationFilters{NetAmountMin: &amount700, NetAmountMax: &amount700}, []int{applications[1].Id}},
+		{"applied time upper bound is exclusive", InvoiceApplicationFilters{CreatedAtFrom: &createdFrom, CreatedAtTo: &createdTo}, []int{applications[1].Id}},
+		{"filters combine with status", InvoiceApplicationFilters{Status: InvoiceStatusIssued, Title: "acme"}, []int{applications[2].Id}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result, total, err := GetAllInvoiceApplications(tt.filters, &common.PageInfo{Page: 1, PageSize: 10})
+			require.NoError(t, err)
+			assert.Equal(t, int64(len(tt.wantIds)), total)
+			ids := make([]int, 0, len(result))
+			for _, application := range result {
+				ids = append(ids, application.Id)
+			}
+			assert.Equal(t, tt.wantIds, ids)
+		})
+	}
+
+	result, total, err := GetAllInvoiceApplications(InvoiceApplicationFilters{TradeNo: "T-1"}, &common.PageInfo{Page: 2, PageSize: 1})
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), total)
+	require.Len(t, result, 1)
+	assert.Equal(t, applications[0].Id, result[0].Id)
+	assert.Equal(t, "alice_%", result[0].Username)
+	assert.Len(t, result[0].Items, 2, "matching one order must still load every order of the application")
+}

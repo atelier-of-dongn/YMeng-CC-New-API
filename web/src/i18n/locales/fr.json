@@ -6672,6 +6672,26 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Applied at": "Date de demande",
+    "Reject": "Refuser",
+    "Enter a valid user ID": "Saisissez un ID utilisateur valide",
+    "Enter an amount with up to 6 decimal places": "Saisissez un montant avec au plus 6 décimales",
+    "Enter a valid date": "Saisissez une date valide",
+    "Keyword must be 255 characters or fewer": "Le mot-clé ne doit pas dépasser 255 caractères",
+    "Enter a keyword": "Saisissez un mot-clé",
+    "Enter a user ID": "Saisissez un ID utilisateur",
+    "Enter an exact amount": "Saisissez un montant exact",
+    "Search invoice applications": "Rechercher des demandes de facture",
+    "Search column": "Colonne de recherche",
+    "Search keyword": "Mot-clé de recherche",
+    "Failed to load invoice PDF": "Échec du chargement du PDF de la facture",
+    "Invoice PDF preview": "Aperçu du PDF de la facture",
+    "This browser cannot preview PDF files. Download the file instead.": "Ce navigateur ne peut pas prévisualiser les fichiers PDF. Téléchargez plutôt le fichier.",
+    "Loading invoice PDF...": "Chargement du PDF de la facture...",
+    "Download PDF": "Télécharger le PDF",
+    "Failed to download invoice PDF": "Échec du téléchargement du PDF de la facture",
+    "Preview PDF": "Aperçu du PDF",
+    "No invoice applications match the current search.": "Aucune demande de facture ne correspond à la recherche actuelle."
   }
 }

@@ -17,36 +17,31 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Download, FileUp, XCircle } from 'lucide-react'
-import { useState } from 'react'
+import { getRouteApi } from '@tanstack/react-router'
+import { Download } from 'lucide-react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
+import { DataTablePage, useDataTable } from '@/components/data-table'
 import { SectionPageLayout } from '@/components/layout'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Input } from '@/components/ui/input'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
+import { useTableUrlState } from '@/hooks/use-table-url-state'
+import { requireServerSuccess } from '@/lib/server-error-message'
 
 import {
+  downloadInvoicePDF,
   getAdminInvoices,
   markInvoiceProcessing,
   rejectInvoice,
   uploadInvoicePDF,
 } from './api'
-import { InvoiceStatusDetails } from './components/invoice-status-details'
+import { useAdminInvoiceColumns } from './components/admin-invoice-columns'
+import type { AdminInvoiceRowActionHandlers } from './components/admin-invoice-row-actions'
+import { InvoicePdfPreviewDialog } from './components/invoice-pdf-preview-dialog'
+import { InvoiceSearchBar } from './components/invoice-search-bar'
 import { RejectInvoiceDialog } from './components/reject-invoice-dialog'
-import { formatInvoiceAmount, formatInvoiceTime } from './lib'
 import {
   buildInvoiceExportFilename,
   buildInvoiceExportWorkbook,
@@ -54,24 +49,72 @@ import {
   InvoiceExportEmptyError,
   InvoiceExportLimitError,
 } from './lib/export'
+import { DEFAULT_INVOICE_SEARCH_FIELD } from './lib/filters'
 import type {
   InvoiceApplication,
-  InvoiceStatus as InvoiceStatusType,
+  InvoiceListFilters,
+  InvoiceSearchField,
+  InvoiceStatus,
 } from './types'
+
+const route = getRouteApi('/_authenticated/admin-invoices/')
 
 export function AdminInvoicePage() {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [status, setStatus] = useState<InvoiceStatusType | ''>('')
+  const search = route.useSearch()
+  const navigate = route.useNavigate()
   const [rejectingApplication, setRejectingApplication] =
     useState<InvoiceApplication | null>(null)
+  const [previewApplication, setPreviewApplication] =
+    useState<InvoiceApplication | null>(null)
+
+  const {
+    columnFilters,
+    onColumnFiltersChange,
+    pagination,
+    onPaginationChange,
+    ensurePageInRange,
+  } = useTableUrlState({
+    search,
+    navigate,
+    pagination: { defaultPage: 1, defaultPageSize: 20 },
+    globalFilter: { enabled: false },
+    columnFilters: [{ columnId: 'status', searchKey: 'status', type: 'array' }],
+  })
+  const statusFilter = columnFilters.find((filter) => filter.id === 'status')
+    ?.value as InvoiceStatus[] | undefined
+  const filters = useMemo(
+    (): InvoiceListFilters => ({
+      status: statusFilter?.[0] ?? '',
+      searchField: search.searchField ?? DEFAULT_INVOICE_SEARCH_FIELD,
+      keyword: search.keyword ?? '',
+    }),
+    [search.keyword, search.searchField, statusFilter]
+  )
+
   const applications = useQuery({
-    queryKey: ['admin-invoices', status],
-    queryFn: async () => {
-      const response = await getAdminInvoices(status)
-      if (!response.success) throw new Error(response.message)
-      return response.data
+    queryKey: [
+      'admin-invoices',
+      filters,
+      pagination.pageIndex + 1,
+      pagination.pageSize,
+    ],
+    queryFn: async ({ signal }) => {
+      const response = requireServerSuccess(
+        await getAdminInvoices(
+          filters,
+          pagination.pageIndex + 1,
+          pagination.pageSize,
+          signal
+        )
+      )
+      return {
+        items: response.data.items || [],
+        total: response.data.total || 0,
+      }
     },
+    placeholderData: (previous) => previous,
   })
 
   const refresh = () =>
@@ -79,8 +122,7 @@ export function AdminInvoicePage() {
 
   const processing = useMutation({
     mutationFn: async (id: number) => {
-      const response = await markInvoiceProcessing(id)
-      if (!response.success) throw new Error(response.message)
+      requireServerSuccess(await markInvoiceProcessing(id))
     },
     onSuccess: async () => {
       await refresh()
@@ -90,13 +132,19 @@ export function AdminInvoicePage() {
 
   const upload = useMutation({
     mutationFn: async (input: { id: number; file: File }) => {
-      const response = await uploadInvoicePDF(input.id, input.file)
-      if (!response.success) throw new Error(response.message)
+      requireServerSuccess(await uploadInvoicePDF(input.id, input.file))
     },
     onSuccess: async () => {
       await refresh()
       toast.success(t('Invoice PDF uploaded'))
     },
+  })
+
+  const download = useMutation({
+    mutationFn: (application: InvoiceApplication) =>
+      downloadInvoicePDF(application, 'admin'),
+    onError: (error) =>
+      toast.error(error.message || t('Failed to download invoice PDF')),
   })
 
   const reject = useMutation({
@@ -121,10 +169,10 @@ export function AdminInvoicePage() {
   })
 
   const exporting = useMutation({
-    mutationFn: async (exportStatus: InvoiceStatusType | '') => {
+    mutationFn: async (exportFilters: InvoiceListFilters) => {
       const [xlsx, exportApplications] = await Promise.all([
         import('xlsx'),
-        collectInvoiceApplicationsForExport(exportStatus, getAdminInvoices),
+        collectInvoiceApplicationsForExport(exportFilters, getAdminInvoices),
       ])
       if (exportApplications.length === 0) {
         throw new InvoiceExportEmptyError()
@@ -148,21 +196,63 @@ export function AdminInvoicePage() {
     },
   })
 
-  const handleFile = (application: InvoiceApplication, file?: File) => {
-    if (!file) return
-    if (
-      file.type !== 'application/pdf' &&
-      !file.name.toLowerCase().endsWith('.pdf')
-    ) {
-      toast.error(t('Please select a PDF file'))
-      return
-    }
-    upload.mutate({ id: application.id, file })
+  const rowActions = useMemo(
+    (): AdminInvoiceRowActionHandlers => ({
+      pendingProcessingId: processing.isPending
+        ? processing.variables
+        : undefined,
+      pendingUploadId: upload.isPending ? upload.variables?.id : undefined,
+      pendingDownloadId: download.isPending
+        ? download.variables?.id
+        : undefined,
+      onStartProcessing: (application) => processing.mutate(application.id),
+      onUpload: (application, file) => {
+        if (!file) return
+        if (
+          file.type !== 'application/pdf' &&
+          !file.name.toLowerCase().endsWith('.pdf')
+        ) {
+          toast.error(t('Please select a PDF file'))
+          return
+        }
+        upload.mutate({ id: application.id, file })
+      },
+      onReject: setRejectingApplication,
+      onPreview: setPreviewApplication,
+      onDownload: (application) => download.mutate(application),
+    }),
+    [download, processing, t, upload]
+  )
+  const columns = useAdminInvoiceColumns(rowActions)
+
+  const { table } = useDataTable({
+    data: applications.data?.items ?? [],
+    columns,
+    columnFilters,
+    pagination,
+    onColumnFiltersChange,
+    onPaginationChange,
+    manualPagination: true,
+    manualFiltering: true,
+    totalCount: applications.data?.total ?? 0,
+    ensurePageInRange,
+    getRowId: (row) => String(row.id),
+  })
+
+  const handleSearch = (searchField: InvoiceSearchField, keyword: string) => {
+    navigate({
+      search: (previous) => ({
+        ...previous,
+        page: undefined,
+        searchField: keyword ? searchField : undefined,
+        keyword: keyword || undefined,
+      }),
+    })
   }
 
   return (
     <>
-      <SectionPageLayout>
+      <SectionPageLayout fixedContent>
         <SectionPageLayout.Title>
           {t('Invoice management')}
         </SectionPageLayout.Title>
@@ -174,7 +264,7 @@ export function AdminInvoicePage() {
               !applications.data ||
               applications.data.total === 0
             }
-            onClick={() => exporting.mutate(status)}
+            onClick={() => exporting.mutate(filters)}
           >
             {exporting.isPending ? (
               <Spinner data-icon='inline-start' />
@@ -183,184 +273,45 @@ export function AdminInvoicePage() {
             )}
             {exporting.isPending ? t('Exporting...') : t('Export Excel')}
           </Button>
-          <NativeSelect
-            value={status}
-            aria-label={t('Filter invoice status')}
-            onChange={(event) =>
-              setStatus(event.target.value as InvoiceStatusType | '')
-            }
-          >
-            <NativeSelectOption value=''>
-              {t('All statuses')}
-            </NativeSelectOption>
-            <NativeSelectOption value='applied'>
-              {t('Applied')}
-            </NativeSelectOption>
-            <NativeSelectOption value='processing'>
-              {t('Processing')}
-            </NativeSelectOption>
-            <NativeSelectOption value='issued'>
-              {t('Issued')}
-            </NativeSelectOption>
-            <NativeSelectOption value='rejected'>
-              {t('Rejected')}
-            </NativeSelectOption>
-          </NativeSelect>
         </SectionPageLayout.Actions>
         <SectionPageLayout.Content>
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('Invoice applications')}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {applications.data ? (
-                <div className='overflow-hidden rounded-lg border'>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t('User')}</TableHead>
-                        <TableHead>{t('Invoice information')}</TableHead>
-                        <TableHead>{t('Orders')}</TableHead>
-                        <TableHead>{t('Order amount')}</TableHead>
-                        <TableHead>{t('Refund deduction')}</TableHead>
-                        <TableHead>{t('Net invoice amount')}</TableHead>
-                        <TableHead>{t('Applied at')}</TableHead>
-                        <TableHead>{t('Status')}</TableHead>
-                        <TableHead className='text-right'>
-                          {t('Actions')}
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {(applications.data.items || []).length === 0 && (
-                        <TableRow>
-                          <TableCell colSpan={9} className='text-center'>
-                            {t('No invoice applications')}
-                          </TableCell>
-                        </TableRow>
-                      )}
-                      {(applications.data.items || []).map((application) => {
-                        const orderNumbers = application.items
-                          .filter((item) => item.type === 'order')
-                          .map((item) => item.trade_no)
-                          .filter(Boolean)
-                          .join(', ')
-                        return (
-                          <TableRow key={application.id}>
-                            <TableCell>
-                              <div className='font-medium'>
-                                {application.username || '-'}
-                              </div>
-                              <div className='text-muted-foreground text-xs tabular-nums'>
-                                ID: {application.user_id}
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className='font-medium'>
-                                {application.title}
-                              </div>
-                              <div className='text-muted-foreground text-xs'>
-                                {application.tax_id}
-                              </div>
-                            </TableCell>
-                            <TableCell
-                              className='max-w-64 truncate'
-                              title={orderNumbers}
-                            >
-                              {orderNumbers || '-'}
-                            </TableCell>
-                            <TableCell className='tabular-nums'>
-                              {formatInvoiceAmount(application.gross_amount)}
-                            </TableCell>
-                            <TableCell className='tabular-nums'>
-                              -{formatInvoiceAmount(application.refund_amount)}
-                            </TableCell>
-                            <TableCell className='font-medium tabular-nums'>
-                              {formatInvoiceAmount(application.net_amount)}
-                            </TableCell>
-                            <TableCell className='tabular-nums'>
-                              {formatInvoiceTime(application.created_at)}
-                            </TableCell>
-                            <TableCell>
-                              <InvoiceStatusDetails
-                                status={application.status}
-                                rejectReason={application.reject_reason}
-                              />
-                            </TableCell>
-                            <TableCell className='text-right'>
-                              <div className='flex justify-end gap-2'>
-                                {application.status === 'applied' ? (
-                                  <Button
-                                    size='sm'
-                                    variant='outline'
-                                    disabled={processing.isPending}
-                                    onClick={() =>
-                                      processing.mutate(application.id)
-                                    }
-                                  >
-                                    {t('Start processing')}
-                                  </Button>
-                                ) : null}
-                                {application.status === 'processing' ? (
-                                  <label className='inline-flex'>
-                                    <Input
-                                      type='file'
-                                      accept='application/pdf,.pdf'
-                                      className='sr-only'
-                                      disabled={upload.isPending}
-                                      onChange={(event) => {
-                                        handleFile(
-                                          application,
-                                          event.target.files?.[0]
-                                        )
-                                        event.target.value = ''
-                                      }}
-                                    />
-                                    <Button
-                                      size='sm'
-                                      variant='outline'
-                                      render={<span />}
-                                      nativeButton={false}
-                                      disabled={upload.isPending}
-                                    >
-                                      <FileUp
-                                        data-icon='inline-start'
-                                        aria-hidden='true'
-                                      />
-                                      {t('Upload PDF')}
-                                    </Button>
-                                  </label>
-                                ) : null}
-                                {application.status === 'applied' ||
-                                application.status === 'processing' ? (
-                                  <Button
-                                    size='sm'
-                                    variant='destructive'
-                                    disabled={reject.isPending}
-                                    onClick={() =>
-                                      setRejectingApplication(application)
-                                    }
-                                  >
-                                    <XCircle
-                                      data-icon='inline-start'
-                                      aria-hidden='true'
-                                    />
-                                    {t('Reject')}
-                                  </Button>
-                                ) : null}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              ) : (
-                <Skeleton className='h-96 w-full rounded-lg' />
-              )}
-            </CardContent>
-          </Card>
+          <DataTablePage
+            table={table}
+            columns={columns}
+            isLoading={applications.isLoading}
+            isFetching={applications.isFetching}
+            emptyTitle={t('No invoice applications')}
+            emptyDescription={t(
+              'No invoice applications match the current search.'
+            )}
+            skeletonKeyPrefix='admin-invoices-skeleton'
+            toolbarProps={{
+              customSearch: (
+                <InvoiceSearchBar
+                  key={`${filters.searchField}:${filters.keyword}`}
+                  field={filters.searchField}
+                  keyword={filters.keyword}
+                  onSearch={handleSearch}
+                />
+              ),
+              filters: [
+                {
+                  columnId: 'status',
+                  title: t('Status'),
+                  singleSelect: true,
+                  options: [
+                    { label: t('Applied'), value: 'applied' },
+                    { label: t('Processing'), value: 'processing' },
+                    { label: t('Issued'), value: 'issued' },
+                    { label: t('Rejected'), value: 'rejected' },
+                  ],
+                },
+              ],
+              hasAdditionalFilters: filters.keyword !== '',
+              onReset: () => handleSearch(filters.searchField, ''),
+              hideViewOptions: true,
+            }}
+          />
         </SectionPageLayout.Content>
       </SectionPageLayout>
       {rejectingApplication ? (
@@ -373,6 +324,16 @@ export function AdminInvoicePage() {
           onReject={(reason) =>
             reject.mutate({ id: rejectingApplication.id, reason })
           }
+        />
+      ) : null}
+      {previewApplication ? (
+        <InvoicePdfPreviewDialog
+          key={previewApplication.id}
+          application={previewApplication}
+          scope='admin'
+          onOpenChange={(open) => {
+            if (!open) setPreviewApplication(null)
+          }}
         />
       ) : null}
     </>

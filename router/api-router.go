@@ -194,6 +194,7 @@ func SetApiRouter(router *gin.Engine) {
 			invoiceAdminRoute.PATCH("/:id/processing", controller.MarkInvoiceProcessing)
 			invoiceAdminRoute.PATCH("/:id/reject", controller.RejectInvoiceApplication)
 			invoiceAdminRoute.POST("/:id/file", controller.UploadInvoicePDF)
+			invoiceAdminRoute.GET("/:id/file", controller.DownloadInvoicePDF)
 		}
 
 		// Subscription billing (plans, purchase, admin management)

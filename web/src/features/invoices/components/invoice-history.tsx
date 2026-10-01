@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { useMutation } from '@tanstack/react-query'
 import { Download } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -40,7 +41,9 @@ export function InvoiceHistory(props: { applications: InvoiceApplication[] }) {
   const { t } = useTranslation()
   const download = useMutation({
     mutationFn: (application: InvoiceApplication) =>
-      downloadInvoicePDF(application.id, application.file_name),
+      downloadInvoicePDF(application, 'self'),
+    onError: (error) =>
+      toast.error(error.message || t('Failed to download invoice PDF')),
   })
 
   return (

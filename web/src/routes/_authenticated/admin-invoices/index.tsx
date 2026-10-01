@@ -17,10 +17,23 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { createFileRoute, redirect } from '@tanstack/react-router'
+import z from 'zod'
 
 import { AdminInvoicePage } from '@/features/invoices'
+import { INVOICE_SEARCH_FIELDS } from '@/features/invoices/lib/filters'
 import { ROLE } from '@/lib/roles'
 import { useAuthStore } from '@/stores/auth-store'
+
+const adminInvoicesSearchSchema = z.object({
+  page: z.number().optional().catch(1),
+  pageSize: z.number().optional().catch(undefined),
+  status: z
+    .array(z.enum(['applied', 'processing', 'issued', 'rejected']))
+    .optional()
+    .catch([]),
+  searchField: z.enum(INVOICE_SEARCH_FIELDS).optional().catch(undefined),
+  keyword: z.string().optional().catch(''),
+})
 
 export const Route = createFileRoute('/_authenticated/admin-invoices/')({
   beforeLoad: () => {
@@ -29,5 +42,6 @@ export const Route = createFileRoute('/_authenticated/admin-invoices/')({
       throw redirect({ to: '/403' })
     }
   },
+  validateSearch: adminInvoicesSearchSchema,
   component: AdminInvoicePage,
 })

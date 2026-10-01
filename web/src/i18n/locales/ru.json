@@ -6672,6 +6672,26 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Applied at": "Дата заявки",
+    "Reject": "Отклонить",
+    "Enter a valid user ID": "Введите корректный ID пользователя",
+    "Enter an amount with up to 6 decimal places": "Введите сумму не более чем с 6 знаками после запятой",
+    "Enter a valid date": "Введите корректную дату",
+    "Keyword must be 255 characters or fewer": "Ключевое слово должно содержать не более 255 символов",
+    "Enter a keyword": "Введите ключевое слово",
+    "Enter a user ID": "Введите ID пользователя",
+    "Enter an exact amount": "Введите точную сумму",
+    "Search invoice applications": "Поиск заявок на счета",
+    "Search column": "Столбец поиска",
+    "Search keyword": "Ключевое слово поиска",
+    "Failed to load invoice PDF": "Не удалось загрузить PDF счёта",
+    "Invoice PDF preview": "Предпросмотр PDF счёта",
+    "This browser cannot preview PDF files. Download the file instead.": "Этот браузер не может показать PDF-файлы. Скачайте файл.",
+    "Loading invoice PDF...": "Загрузка PDF счёта...",
+    "Download PDF": "Скачать PDF",
+    "Failed to download invoice PDF": "Не удалось скачать PDF счёта",
+    "Preview PDF": "Просмотреть PDF",
+    "No invoice applications match the current search.": "Нет заявок на счета, соответствующих текущему поиску."
   }
 }

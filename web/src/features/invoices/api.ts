@@ -18,12 +18,15 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { api } from '@/lib/api'
 
+import { buildInvoiceListParams } from './lib/filters'
+import { ensureInvoicePDFBlob, saveInvoicePDF } from './lib/pdf'
 import type {
   ApiResponse,
   InvoiceApplication,
   InvoiceEligibility,
+  InvoiceFileScope,
+  InvoiceListFilters,
   InvoicePage,
-  InvoiceStatus,
 } from './types'
 
 export async function getInvoiceEligibility() {
@@ -54,13 +57,21 @@ export async function createInvoice(payload: {
 }
 
 export async function getAdminInvoices(
-  status: InvoiceStatus | '',
+  filters: InvoiceListFilters,
   page = 1,
-  pageSize = 50
+  pageSize = 50,
+  signal?: AbortSignal
 ) {
   const response = await api.get<ApiResponse<InvoicePage>>(
     '/api/invoice/admin/',
-    { params: { status, p: page, page_size: pageSize } }
+    {
+      params: {
+        ...buildInvoiceListParams(filters),
+        p: page,
+        page_size: pageSize,
+      },
+      signal,
+    }
   )
   return response.data
 }
@@ -91,17 +102,34 @@ export async function uploadInvoicePDF(id: number, file: File) {
   return response.data
 }
 
-export async function downloadInvoicePDF(id: number, fileName?: string) {
-  const response = await api.get(`/api/invoice/self/${id}/file`, {
+export async function fetchInvoicePDF(
+  id: number,
+  scope: InvoiceFileScope,
+  signal?: AbortSignal
+): Promise<Blob> {
+  // Native links and frames cannot carry the dashboard Bearer token, so the
+  // PDF is always fetched through the shared client and shown as a Blob.
+  const response = await api.get<Blob>(`/api/invoice/${scope}/${id}/file`, {
     responseType: 'blob',
+    signal,
+    disableDuplicate: true,
     skipBusinessError: true,
+    skipErrorHandler: true,
   })
-  const url = URL.createObjectURL(response.data as Blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = fileName || `invoice-${id}.pdf`
-  document.body.append(anchor)
-  anchor.click()
-  anchor.remove()
-  URL.revokeObjectURL(url)
+  return ensureInvoicePDFBlob(response.data)
+}
+
+export function getInvoicePDFFileName(application: {
+  id: number
+  file_name?: string
+}) {
+  return application.file_name || `invoice-${application.id}.pdf`
+}
+
+export async function downloadInvoicePDF(
+  application: { id: number; file_name?: string },
+  scope: InvoiceFileScope
+) {
+  const blob = await fetchInvoicePDF(application.id, scope)
+  saveInvoicePDF(blob, getInvoicePDFFileName(application))
 }

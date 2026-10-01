@@ -6672,6 +6672,26 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Applied at": "Thời gian yêu cầu",
+    "Reject": "Từ chối",
+    "Enter a valid user ID": "Nhập ID người dùng hợp lệ",
+    "Enter an amount with up to 6 decimal places": "Nhập số tiền có tối đa 6 chữ số thập phân",
+    "Enter a valid date": "Nhập ngày hợp lệ",
+    "Keyword must be 255 characters or fewer": "Từ khóa không được vượt quá 255 ký tự",
+    "Enter a keyword": "Nhập từ khóa",
+    "Enter a user ID": "Nhập ID người dùng",
+    "Enter an exact amount": "Nhập số tiền chính xác",
+    "Search invoice applications": "Tìm kiếm yêu cầu hóa đơn",
+    "Search column": "Cột tìm kiếm",
+    "Search keyword": "Từ khóa tìm kiếm",
+    "Failed to load invoice PDF": "Không thể tải PDF hóa đơn",
+    "Invoice PDF preview": "Xem trước PDF hóa đơn",
+    "This browser cannot preview PDF files. Download the file instead.": "Trình duyệt này không thể xem trước tệp PDF. Hãy tải tệp xuống.",
+    "Loading invoice PDF...": "Đang tải PDF hóa đơn...",
+    "Download PDF": "Tải PDF xuống",
+    "Failed to download invoice PDF": "Không thể tải xuống PDF hóa đơn",
+    "Preview PDF": "Xem trước PDF",
+    "No invoice applications match the current search.": "Không có yêu cầu hóa đơn nào khớp với tìm kiếm hiện tại."
   }
 }

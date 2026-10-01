@@ -80,6 +80,25 @@ export type InvoiceApplication = {
   items: InvoiceItem[]
 }
 
+export type InvoiceSearchField =
+  | 'username'
+  | 'user_id'
+  | 'title'
+  | 'tax_id'
+  | 'trade_no'
+  | 'gross_amount'
+  | 'refund_amount'
+  | 'net_amount'
+  | 'created_at'
+
+export type InvoiceListFilters = {
+  status: InvoiceStatus | ''
+  searchField: InvoiceSearchField
+  keyword: string
+}
+
+export type InvoiceFileScope = 'admin' | 'self'
+
 export type InvoicePage = {
   items: InvoiceApplication[]
   total: number
