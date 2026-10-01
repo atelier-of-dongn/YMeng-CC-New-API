@@ -127,3 +127,74 @@ func TestCacheGetRandomSatisfiedChannelUsesTokenAutoGroupsWhenGlobalAutoIsEmpty(
 	assert.Equal(t, "default", selectedGroup)
 	assert.Equal(t, "default", common.GetContextKeyString(ctx, constant.ContextKeyAutoGroup))
 }
+
+// A multi-group token must fall back to its next group after the current
+// group's retries are exhausted, including when RetryTimes is 0.
+func TestRetryParamFallsBackThroughTokenGroupSequence(t *testing.T) {
+	tests := []struct {
+		name        string
+		retryTimes  int
+		crossGroup  bool
+		wantBudgets []int
+		wantGroups  []string
+	}{
+		{
+			name:        "no retries still falls back to next group",
+			retryTimes:  0,
+			crossGroup:  true,
+			wantBudgets: []int{1},
+			wantGroups:  []string{"vip", "default"},
+		},
+		{
+			name:        "retries stay in group before falling back",
+			retryTimes:  2,
+			crossGroup:  true,
+			wantBudgets: []int{2, 1, 1, 2, 1},
+			wantGroups:  []string{"vip", "vip", "vip", "default", "default", "default"},
+		},
+		{
+			name:        "without cross-group retry no fallback",
+			retryTimes:  0,
+			crossGroup:  false,
+			wantBudgets: nil,
+			wantGroups:  []string{"vip"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			db := setupChannelSelectAutoGroupsTest(t)
+			const modelName = "token-group-fallback-model"
+			createChannelSelectAutoGroupsChannel(t, db, 2201, "vip", modelName)
+			createChannelSelectAutoGroupsChannel(t, db, 2202, "default", modelName)
+			model.InitChannelCache()
+			common.RetryTimes = tt.retryTimes
+
+			gin.SetMode(gin.TestMode)
+			ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+			common.SetContextKey(ctx, constant.ContextKeyUserGroup, "default")
+			common.SetContextKey(ctx, constant.ContextKeyTokenGroups, []string{"vip", "default"})
+			common.SetContextKey(ctx, constant.ContextKeyTokenCrossGroupRetry, tt.crossGroup)
+			param := &RetryParam{Ctx: ctx, TokenGroup: "vip", ModelName: modelName, Retry: common.GetPointer(0)}
+
+			var budgets []int
+			var groups []string
+			for {
+				channel, group, err := CacheGetRandomSatisfiedChannel(param)
+				require.NoError(t, err)
+				require.NotNil(t, channel)
+				groups = append(groups, group)
+				budget := param.RemainingRetryBudget()
+				if budget == 0 {
+					break
+				}
+				budgets = append(budgets, budget)
+				require.True(t, param.AdvanceAfterFailure())
+				if len(groups) > 10 {
+					t.Fatal("retry loop did not terminate")
+				}
+			}
+			assert.Equal(t, tt.wantGroups, groups)
+			assert.Equal(t, tt.wantBudgets, budgets)
+		})
+	}
+}

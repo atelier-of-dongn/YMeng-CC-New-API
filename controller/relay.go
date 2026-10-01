@@ -194,8 +194,10 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 	relayInfo.RetryIndex = 0
 	relayInfo.LastError = nil
 
-	for {
-		relayInfo.RetryIndex = retryParam.GetRetry()
+	// Attempts are counted separately because a cross-group fallback resets the
+	// per-group retry counter.
+	for attempt := 0; ; attempt++ {
+		relayInfo.RetryIndex = attempt
 		channel, channelErr := getChannel(c, relayInfo, retryParam)
 		if channelErr != nil {
 			logger.LogError(c, channelErr.Error())
@@ -245,7 +247,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 
 		processChannelError(c, *types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey, common.GetContextKeyString(c, constant.ContextKeyChannelKey), channel.GetAutoBan()), newAPIError, relayInfo)
 
-		if !shouldRetry(c, newAPIError, common.RetryTimes-retryParam.GetRetry()) || !retryParam.AdvanceAfterFailure() {
+		if !shouldRetry(c, newAPIError, retryParam.RemainingRetryBudget()) || !retryParam.AdvanceAfterFailure() {
 			break
 		}
 	}
@@ -630,10 +632,13 @@ func executeTaskSubmissionWith(
 		Retry:       common.GetPointer(0),
 	}
 
-	for ; retryParam.GetRetry() <= common.RetryTimes; retryParam.IncreaseRetry() {
+	// Attempts are counted separately because a cross-group fallback resets the
+	// per-group retry counter.
+	var attempt int
+	for attempt = 1; ; attempt++ {
 		stage = "select_channel"
 		if requestErr := c.Request.Context().Err(); requestErr != nil {
-			diagnostics.cancelled("before_attempt", retryParam.GetRetry()+1)
+			diagnostics.cancelled("before_attempt", attempt)
 			taskErr = service.TaskErrorWrapperLocal(requestErr, "request_cancelled", http.StatusRequestTimeout)
 			break
 		}
@@ -642,7 +647,7 @@ func executeTaskSubmissionWith(
 
 		if lockedCh, ok := relayInfo.LockedChannel.(*model.Channel); ok && lockedCh != nil {
 			channel = lockedCh
-			if retryParam.GetRetry() > 0 {
+			if attempt > 1 {
 				if setupErr := middleware.SetupContextForSelectedChannel(c, channel, relayInfo.OriginModelName); setupErr != nil {
 					taskErr = service.TaskErrorWrapperLocal(setupErr.Err, "setup_locked_channel_failed", http.StatusInternalServerError)
 					break
@@ -661,7 +666,7 @@ func executeTaskSubmissionWith(
 				break
 			}
 		}
-		diagnostics.attempt(retryParam.GetRetry()+1, channel, relayInfo.LockedChannel != nil)
+		diagnostics.attempt(attempt, channel, relayInfo.LockedChannel != nil)
 
 		addUsedChannel(c, channel.Id)
 		bodyStorage, bodyErr := common.GetBodyStorage(c)
@@ -679,12 +684,12 @@ func executeTaskSubmissionWith(
 		stage = "submit"
 		result, taskErr = submit(c, relayInfo)
 		if requestErr := c.Request.Context().Err(); requestErr != nil {
-			diagnostics.cancelled("after_submit", retryParam.GetRetry()+1)
+			diagnostics.cancelled("after_submit", attempt)
 			taskErr = service.TaskErrorWrapperLocal(requestErr, "request_cancelled", http.StatusRequestTimeout)
 			break
 		}
 		if taskErr == nil {
-			diagnostics.attemptSucceeded(retryParam.GetRetry()+1, result)
+			diagnostics.attemptSucceeded(attempt, result)
 			break
 		}
 
@@ -696,9 +701,21 @@ func executeTaskSubmissionWith(
 				relayInfo)
 		}
 
-		willRetry := shouldRetryTaskRelay(c, channel.Id, taskErr, common.RetryTimes-retryParam.GetRetry())
-		diagnostics.attemptFailed(retryParam.GetRetry()+1, channel, taskErr, willRetry)
+		// A locked channel only retries in place; otherwise the budget includes
+		// falling back to the token's next configured group.
+		lockedChannel := relayInfo.LockedChannel != nil
+		retryBudget := retryParam.RemainingRetryBudget()
+		if lockedChannel {
+			retryBudget = common.RetryTimes - retryParam.GetRetry()
+		}
+		willRetry := shouldRetryTaskRelay(c, channel.Id, taskErr, retryBudget)
+		diagnostics.attemptFailed(attempt, channel, taskErr, willRetry)
 		if !willRetry {
+			break
+		}
+		if lockedChannel {
+			retryParam.IncreaseRetry()
+		} else if !retryParam.AdvanceAfterFailure() {
 			break
 		}
 	}
@@ -719,7 +736,7 @@ func executeTaskSubmissionWith(
 		return nil, taskErr
 	}
 	if requestErr := c.Request.Context().Err(); requestErr != nil {
-		diagnostics.cancelled("before_reserve", retryParam.GetRetry()+1)
+		diagnostics.cancelled("before_reserve", attempt)
 		return nil, service.TaskErrorWrapperLocal(requestErr, "request_cancelled", http.StatusRequestTimeout)
 	}
 
@@ -738,7 +755,7 @@ func executeTaskSubmissionWith(
 		diagnostics.reserve("reserve_complete", result.Quota)
 	}
 	if requestErr := c.Request.Context().Err(); requestErr != nil {
-		diagnostics.cancelled("before_insert", retryParam.GetRetry()+1)
+		diagnostics.cancelled("before_insert", attempt)
 		return nil, service.TaskErrorWrapperLocal(requestErr, "request_cancelled", http.StatusRequestTimeout)
 	}
 

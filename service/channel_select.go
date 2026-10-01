@@ -85,6 +85,28 @@ func (p *RetryParam) ensureInitialized() {
 	}
 }
 
+func (p *RetryParam) canMoveToNextGroup() bool {
+	if !common.GetContextKeyBool(p.Ctx, constant.ContextKeyTokenCrossGroupRetry) {
+		return false
+	}
+	groups, err := p.routeGroups()
+	return err == nil && p.groupIndex+1 < len(groups)
+}
+
+// RemainingRetryBudget reports how many further attempts may follow a failure:
+// the current group's remaining retries, or one when the request can still
+// fall back to the next configured group.
+func (p *RetryParam) RemainingRetryBudget() int {
+	p.ensureInitialized()
+	if remaining := common.RetryTimes - p.GetRetry(); remaining > 0 {
+		return remaining
+	}
+	if p.canMoveToNextGroup() {
+		return 1
+	}
+	return 0
+}
+
 // AdvanceAfterFailure advances within the current group's retry budget, then
 // moves to the next configured group when cross-group retry is enabled.
 func (p *RetryParam) AdvanceAfterFailure() bool {
@@ -93,11 +115,7 @@ func (p *RetryParam) AdvanceAfterFailure() bool {
 		p.SetRetry(p.GetRetry() + 1)
 		return true
 	}
-	if !common.GetContextKeyBool(p.Ctx, constant.ContextKeyTokenCrossGroupRetry) {
-		return false
-	}
-	groups, err := p.routeGroups()
-	if err != nil || p.groupIndex+1 >= len(groups) {
+	if !p.canMoveToNextGroup() {
 		return false
 	}
 	p.groupIndex++
