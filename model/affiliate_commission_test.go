@@ -3,6 +3,12 @@ package model
 import (
 	"math"
 	"testing"
+	"time"
+
+	"github.com/glebarez/sqlite"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 // settleOnce 复刻 CreditAffiliateCommission 内的纯计算部分，
@@ -98,4 +104,71 @@ func TestMaskAffiliateEmail(t *testing.T) {
 			t.Fatalf("maskAffiliateEmail(%q) = %q, want %q", input, got, want)
 		}
 	}
+}
+func setupAffiliateAnalyticsModelTest(t *testing.T) {
+	t.Helper()
+	originalDB := DB
+	t.Cleanup(func() { DB = originalDB })
+	var err error
+	DB, err = gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, DB.AutoMigrate(&User{}, &AffiliateCommission{}))
+}
+
+func TestAffiliateAdminAnalyticsUsesAttributedUsersAndCompletedCommissions(t *testing.T) {
+	setupAffiliateAnalyticsModelTest(t)
+	const day = int64(86_400)
+	start := int64(1_800_000_000 / 86_400 * 86_400)
+	end := start + day - 1
+
+	users := []User{
+		{Id: 1, Username: "inviter-one", Password: "password", DisplayName: "Inviter One", AffCode: "code-one", CreatedAt: start - day},
+		{Id: 2, Username: "inviter-two", Password: "password", DisplayName: "Inviter Two", AffCode: "code-two", CreatedAt: start - day},
+		{Id: 3, Username: "invitee-a", Password: "password", DisplayName: "Invitee A", AffCode: "code-a", InviterId: 1, CreatedAt: start + 10},
+		{Id: 4, Username: "invitee-b", Password: "password", DisplayName: "Invitee B", AffCode: "code-b", InviterId: 1, CreatedAt: start + day - 10},
+		{Id: 5, Username: "invitee-c", Password: "password", DisplayName: "Invitee C", AffCode: "code-c", InviterId: 2, CreatedAt: end + 1},
+	}
+	require.NoError(t, DB.Create(&users).Error)
+
+	commissions := []AffiliateCommission{
+		{InviterId: 1, InviteeId: 3, SourceKey: "completed-a", ModelName: "model-a", BillingSource: "wallet", ConsumedQuota: 100, RatePercent: 5, RewardAmount: 5, CreditedQuota: 5, Status: AffiliateCommissionStatusCompleted, CreatedAt: start + 20},
+		{InviterId: 1, InviteeId: 4, SourceKey: "completed-b", ModelName: "model-b", BillingSource: "wallet", ConsumedQuota: 200, RatePercent: 5, RewardAmount: 10, CreditedQuota: 10, Status: AffiliateCommissionStatusCompleted, CreatedAt: end - 10},
+		{InviterId: 1, InviteeId: 3, SourceKey: "pending-a", Status: AffiliateCommissionStatusPending, CreatedAt: start + 30},
+		{InviterId: 2, InviteeId: 5, SourceKey: "outside-range", Status: AffiliateCommissionStatusCompleted, CreditedQuota: 99, CreatedAt: end + 1},
+	}
+	require.NoError(t, DB.Create(&commissions).Error)
+
+	overview, trend, err := GetAffiliateAdminAnalyticsOverview(start, end)
+	require.NoError(t, err)
+	assert.Equal(t, int64(2), overview.ReferralCount)
+	assert.Equal(t, int64(1), overview.ActiveInviterCount)
+	assert.Equal(t, int64(2), overview.CommissionCount)
+	assert.Equal(t, int64(15), overview.CreditedQuota)
+	require.Len(t, trend, 1)
+	assert.Equal(t, time.Unix(start, 0).UTC().Format("2006-01-02"), trend[0].Date)
+	assert.Equal(t, int64(2), trend[0].ReferralCount)
+	assert.Equal(t, int64(2), trend[0].CommissionCount)
+	assert.Equal(t, int64(15), trend[0].CreditedQuota)
+
+	rankings, rankingTotal, err := GetAffiliateAdminAnalyticsRankings("inviter-one", start, end, 0, 10)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), rankingTotal)
+	require.Len(t, rankings, 1)
+	assert.Equal(t, int64(1), rankings[0].InviterId)
+	assert.Equal(t, int64(2), rankings[0].ReferralCount)
+	assert.Equal(t, int64(2), rankings[0].CommissionCount)
+	assert.Equal(t, int64(15), rankings[0].CreditedQuota)
+
+	rows, total, err := GetAffiliateAdminAnalyticsCommissions("invitee-a", AffiliateCommissionStatusCompleted, start, end, 0, 10)
+	require.NoError(t, err)
+	require.Equal(t, int64(1), total)
+	require.Len(t, rows, 1)
+	assert.Equal(t, "Inviter One", rows[0].InviterName)
+	assert.Equal(t, "Invitee A", rows[0].InviteeName)
+	assert.Equal(t, AffiliateCommissionStatusCompleted, rows[0].Status)
+
+	rows, total, err = GetAffiliateAdminAnalyticsCommissions("", "", start, end, 1, 1)
+	require.NoError(t, err)
+	require.Equal(t, int64(3), total)
+	require.Len(t, rows, 1)
 }

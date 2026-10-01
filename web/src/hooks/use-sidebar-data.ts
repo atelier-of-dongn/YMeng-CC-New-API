@@ -170,6 +170,11 @@ export function useSidebarData(): SidebarData {
             icon: CreditCard,
           },
           {
+            title: t('Referral Analytics'),
+            url: '/affiliate-admin',
+            icon: Share2,
+          },
+          {
             title: t('Invoice management'),
             url: '/admin-invoices',
             icon: ReceiptText,

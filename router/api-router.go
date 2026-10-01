@@ -178,6 +178,15 @@ func SetApiRouter(router *gin.Engine) {
 			affiliateAdminRoute.GET("/user-commissions", controller.GetAffiliateAdminUserCommissions)
 		}
 
+		// 推广看板：面向管理员的全站推荐数据分析。
+		affiliateAnalyticsAdminRoute := apiRouter.Group("/affiliate/analytics/admin")
+		affiliateAnalyticsAdminRoute.Use(middleware.AdminAuth())
+		{
+			affiliateAnalyticsAdminRoute.GET("/overview", controller.GetAffiliateAdminAnalyticsOverview)
+			affiliateAnalyticsAdminRoute.GET("/rankings", controller.GetAffiliateAdminAnalyticsRankings)
+			affiliateAnalyticsAdminRoute.GET("/commissions", controller.GetAffiliateAdminAnalyticsCommissions)
+		}
+
 		invoiceRoute := apiRouter.Group("/invoice")
 		invoiceRoute.Use(middleware.UserAuth())
 		{

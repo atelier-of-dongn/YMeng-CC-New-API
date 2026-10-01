@@ -93,7 +93,7 @@ func GetAffiliateAdminSettings(c *gin.Context) {
 		"success": true,
 		"message": "",
 		"data": gin.H{
-			"enabled":                setting.Enabled,
+			"enabled":                 setting.Enabled,
 			"commission_rate_percent": operation_setting.GetAffiliateCommissionRatePercent(),
 		},
 	})
@@ -148,5 +148,114 @@ func GetAffiliateAdminUserCommissions(c *gin.Context) {
 			"items": items,
 			"total": total,
 		},
+	})
+}
+
+const (
+	affiliateAnalyticsDefaultPageSize = 20
+	affiliateAnalyticsMaxPageSize     = 100
+	affiliateAnalyticsMaxRangeSeconds = 366 * 24 * 60 * 60
+)
+
+func affiliateAnalyticsRange(c *gin.Context) (int64, int64, bool) {
+	start, err := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
+	if err != nil || start < 0 {
+		common.ApiErrorMsg(c, "invalid start_timestamp")
+		return 0, 0, false
+	}
+	end, err := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
+	if err != nil || end < start || end-start > affiliateAnalyticsMaxRangeSeconds {
+		common.ApiErrorMsg(c, "invalid end_timestamp")
+		return 0, 0, false
+	}
+	return start, end, true
+}
+
+func affiliateAnalyticsPaging(c *gin.Context) (int, int, bool) {
+	page := 1
+	if value := c.Query("page"); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil || parsed < 1 || parsed > 1_000_000 {
+			common.ApiErrorMsg(c, "invalid page")
+			return 0, 0, false
+		}
+		page = parsed
+	}
+	pageSize := affiliateAnalyticsDefaultPageSize
+	if value := c.Query("page_size"); value != "" {
+		parsed, err := strconv.Atoi(value)
+		if err != nil || parsed < 1 || parsed > affiliateAnalyticsMaxPageSize {
+			common.ApiErrorMsg(c, "invalid page_size")
+			return 0, 0, false
+		}
+		pageSize = parsed
+	}
+	return (page - 1) * pageSize, pageSize, true
+}
+
+// GetAffiliateAdminAnalyticsOverview returns site-wide referral and commission metrics.
+func GetAffiliateAdminAnalyticsOverview(c *gin.Context) {
+	start, end, ok := affiliateAnalyticsRange(c)
+	if !ok {
+		return
+	}
+	overview, trend, err := model.GetAffiliateAdminAnalyticsOverview(start, end)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    gin.H{"overview": overview, "trend": trend},
+	})
+}
+
+// GetAffiliateAdminAnalyticsRankings returns inviter rankings for a time range.
+func GetAffiliateAdminAnalyticsRankings(c *gin.Context) {
+	start, end, ok := affiliateAnalyticsRange(c)
+	if !ok {
+		return
+	}
+	offset, limit, ok := affiliateAnalyticsPaging(c)
+	if !ok {
+		return
+	}
+	items, total, err := model.GetAffiliateAdminAnalyticsRankings(c.Query("keyword"), start, end, offset, limit)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    gin.H{"items": items, "total": total},
+	})
+}
+
+// GetAffiliateAdminAnalyticsCommissions returns filtered site-wide commission records.
+func GetAffiliateAdminAnalyticsCommissions(c *gin.Context) {
+	start, end, ok := affiliateAnalyticsRange(c)
+	if !ok {
+		return
+	}
+	offset, limit, ok := affiliateAnalyticsPaging(c)
+	if !ok {
+		return
+	}
+	status := c.Query("status")
+	if status != "" && status != model.AffiliateCommissionStatusCompleted && status != model.AffiliateCommissionStatusPending && status != model.AffiliateCommissionStatusFailed {
+		common.ApiErrorMsg(c, "invalid status")
+		return
+	}
+	items, total, err := model.GetAffiliateAdminAnalyticsCommissions(c.Query("keyword"), status, start, end, offset, limit)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"message": "",
+		"data":    gin.H{"items": items, "total": total},
 	})
 }
