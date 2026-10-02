@@ -61,6 +61,7 @@ const UPSTREAM_PRICING_STATUS_DISPLAY: Record<string, UpstreamStatusDisplay> = {
 const UPSTREAM_RATIO_SOURCE_LABELS: Record<string, string> = {
   pricing: 'Upstream pricing',
   log: 'Upstream logs',
+  manual: 'Manual',
 }
 
 const UPSTREAM_PRICE_BASIS_LABELS: Record<UpstreamPriceBasis, string> = {

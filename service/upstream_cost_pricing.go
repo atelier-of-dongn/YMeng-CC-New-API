@@ -187,7 +187,7 @@ func estimateUpstreamCostQuota(channel *upstreamCostChannelSnapshot, upstreamMod
 	if upstreamRatio <= 0 {
 		return 0, false
 	}
-	if pricing, ok := channel.modelPricing[upstreamModel]; ok {
+	if pricing, ok := channel.modelPricing[upstreamModel]; ok && channel.site != nil {
 		if usd, _, priced := pricingBaseUSD(pricing, channel.site.QuotaPerUnit, usage); priced {
 			return common.QuotaFromFloat(usd * upstreamRatio * common.QuotaPerUnit * channel.costFactor), true
 		}

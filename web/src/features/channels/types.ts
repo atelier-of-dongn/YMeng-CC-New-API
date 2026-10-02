@@ -349,7 +349,7 @@ export type UpstreamSiteStatus =
   | 'unsupported'
   | 'unreachable'
 
-export type UpstreamMonitorMode = 'auto' | 'off'
+export type UpstreamMonitorMode = 'auto' | 'manual' | 'off'
 
 export type UpstreamCostStatus =
   | 'normal'
@@ -393,6 +393,7 @@ export interface UpstreamMonitorView {
   effective_group: string
   detected_group: string
   manual_group: string
+  manual_ratio: number | null
   /** A manual group is set and differs from the detected group. */
   group_mismatch: boolean
   /** 0 when the ratio is unknown. */
@@ -439,6 +440,7 @@ export interface UpdateUpstreamMonitorParams {
   mode: UpstreamMonitorMode
   /** Empty string restores automatic group detection. */
   manual_group: string
+  manual_ratio: number | null
 }
 
 export interface UpstreamCostResponse<T> {

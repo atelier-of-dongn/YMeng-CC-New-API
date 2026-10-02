@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -321,7 +322,7 @@ func TestBuildUpstreamCostRecordEstimatesWithUpstreamPrices(t *testing.T) {
 		{name: "upstream model price", upstreamModel: "up-a", localRatio: 1, wantStatus: model.UpstreamCostRecordEstimated, wantCost: 2700},
 		// 1000 local quota scaled by the upstream/local group ratio and factor.
 		{name: "group ratio fallback", upstreamModel: "unknown", localRatio: 1, wantStatus: model.UpstreamCostRecordEstimated, wantCost: 1350},
-		{name: "no usable price", upstreamModel: "unknown", localRatio: 0, wantStatus: model.UpstreamCostRecordUnknown},
+		{name: "no usable price", upstreamModel: "unknown", localRatio: 0, wantStatus: model.UpstreamCostRecordEstimated, wantCost: 1000},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -337,6 +338,70 @@ func TestBuildUpstreamCostRecordEstimatesWithUpstreamPrices(t *testing.T) {
 			assert.Equal(t, 1.5, record.UpstreamGroupRatio)
 		})
 	}
+}
+
+func TestManualUpstreamCostWithoutNewAPISite(t *testing.T) {
+	ratio := 1.7
+	snapshot := buildUpstreamCostSnapshot("v", nil, []*model.UpstreamChannelMonitor{
+		{ChannelId: 1, Mode: model.UpstreamMonitorModeManual, ManualRatio: &ratio},
+		{ChannelId: 2, Mode: model.UpstreamMonitorModeAuto},
+		{ChannelId: 3, Mode: model.UpstreamMonitorModeOff},
+	})
+	require.Len(t, snapshot.channels, 1)
+	channel := snapshot.channels[1]
+	record := buildUpstreamCostRecord(upstreamCostPending{
+		record: &model.UpstreamCostRecord{Quota: 1000}, channel: channel,
+	})
+	assert.Equal(t, model.UpstreamCostRecordEstimated, record.Status)
+	assert.Equal(t, 1700, record.CostQuota)
+	assert.Equal(t, 1.7, record.UpstreamGroupRatio)
+}
+
+func TestManualUpstreamCostPrefersPricingAndMatchedCharge(t *testing.T) {
+	ratio := 1.5
+	site := &model.UpstreamSite{Id: 4, Status: model.UpstreamSiteStatusNewAPI, QuotaPerUnit: 500000, CostFactor: 0.5,
+		ModelPricing: `{"up-a":{"model_ratio":1,"completion_ratio":2}}`}
+	channel := buildUpstreamCostSnapshot("v", []*model.UpstreamSite{site}, []*model.UpstreamChannelMonitor{
+		{ChannelId: 1, SiteId: 4, Mode: model.UpstreamMonitorModeManual, ManualRatio: &ratio},
+	}).channels[1]
+	record := buildUpstreamCostRecord(upstreamCostPending{
+		record:  &model.UpstreamCostRecord{Quota: 1000, PromptTokens: 1000, CompletionTokens: 500},
+		channel: channel, upstreamModel: "up-a", localRatio: 4,
+	})
+	assert.Equal(t, model.UpstreamCostRecordEstimated, record.Status)
+	assert.Equal(t, 1500, record.CostQuota)
+	record = buildUpstreamCostRecord(upstreamCostPending{
+		record: &model.UpstreamCostRecord{Quota: 1000}, channel: channel, upstreamModel: "missing",
+	})
+	assert.Equal(t, 750, record.CostQuota)
+}
+
+func TestUpdateUpstreamMonitorRejectsInvalidManualRatio(t *testing.T) {
+	for _, value := range []float64{0, -1, 101, math.NaN(), math.Inf(1)} {
+		_, err := UpdateUpstreamMonitor(1, model.UpstreamMonitorModeManual, "", &value)
+		assert.Error(t, err)
+	}
+	_, err := UpdateUpstreamMonitor(1, model.UpstreamMonitorModeManual, "", nil)
+	assert.Error(t, err)
+}
+
+func TestManualMonitorPersistsForUnsupportedChannel(t *testing.T) {
+	setupUpstreamCostTables(t)
+	channel := &model.Channel{Id: 1729, Type: 3, Status: common.ChannelStatusEnabled}
+	require.NoError(t, model.DB.Create(channel).Error)
+	ratio := 1.25
+	view, err := UpdateUpstreamMonitor(channel.Id, model.UpstreamMonitorModeManual, "", &ratio)
+	require.NoError(t, err)
+	assert.Equal(t, model.UpstreamMonitorModeManual, view.Mode)
+	assert.Equal(t, 0, view.SiteId)
+	assert.Equal(t, 1.25, view.GroupRatio)
+	assert.Equal(t, "manual", view.RatioSource)
+
+	_, err = UpdateUpstreamMonitor(channel.Id, model.UpstreamMonitorModeAuto, "", nil)
+	assert.Error(t, err, "an unsupported channel must not enter automatic monitoring")
+	view, err = UpdateUpstreamMonitor(channel.Id, model.UpstreamMonitorModeOff, "", nil)
+	require.NoError(t, err)
+	assert.Equal(t, model.UpstreamMonitorModeOff, view.Mode)
 }
 
 func TestSumUpstreamCostOnlyCountsKnownCosts(t *testing.T) {

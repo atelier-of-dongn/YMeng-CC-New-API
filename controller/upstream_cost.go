@@ -41,14 +41,15 @@ func UpdateUpstreamCostMonitor(c *gin.Context) {
 		return
 	}
 	var request struct {
-		Mode        string `json:"mode"`
-		ManualGroup string `json:"manual_group"`
+		Mode        string   `json:"mode"`
+		ManualGroup string   `json:"manual_group"`
+		ManualRatio *float64 `json:"manual_ratio"`
 	}
 	if err := c.ShouldBindJSON(&request); err != nil {
 		common.ApiError(c, err)
 		return
 	}
-	view, err := service.UpdateUpstreamMonitor(channelId, request.Mode, request.ManualGroup)
+	view, err := service.UpdateUpstreamMonitor(channelId, request.Mode, request.ManualGroup, request.ManualRatio)
 	if err != nil {
 		common.ApiError(c, err)
 		return

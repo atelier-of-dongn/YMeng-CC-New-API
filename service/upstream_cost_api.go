@@ -38,6 +38,7 @@ type UpstreamMonitorView struct {
 	EffectiveGroup   string                  `json:"effective_group"`
 	DetectedGroup    string                  `json:"detected_group"`
 	ManualGroup      string                  `json:"manual_group"`
+	ManualRatio      *float64                `json:"manual_ratio"`
 	GroupMismatch    bool                    `json:"group_mismatch"`
 	GroupRatio       float64                 `json:"group_ratio"`
 	PrevGroupRatio   float64                 `json:"prev_group_ratio"`
@@ -103,6 +104,7 @@ func buildUpstreamMonitorView(monitor *model.UpstreamChannelMonitor, site *model
 		EffectiveGroup: monitor.ManualGroup,
 		DetectedGroup:  monitor.DetectedGroup,
 		ManualGroup:    monitor.ManualGroup,
+		ManualRatio:    monitor.ManualRatio,
 		GroupMismatch:  monitor.ManualGroup != "" && monitor.DetectedGroup != "" && monitor.ManualGroup != monitor.DetectedGroup,
 		GroupRatio:     monitor.GroupRatio,
 		PrevGroupRatio: monitor.PrevGroupRatio,
@@ -117,7 +119,16 @@ func buildUpstreamMonitorView(monitor *model.UpstreamChannelMonitor, site *model
 		Groups:         []UpstreamGroupOption{},
 		UpdatedAt:      monitor.UpdatedAt / 1000,
 	}
-	if view.EffectiveGroup == "" {
+	if monitor.Mode == model.UpstreamMonitorModeManual {
+		view.EffectiveGroup = monitor.ManualGroup
+		view.GroupMismatch = false
+		if monitor.ManualRatio != nil {
+			view.GroupRatio = *monitor.ManualRatio
+			view.RatioSource = "manual"
+		}
+		view.PrevGroupRatio = 0
+		view.RatioChangedAt = 0
+	} else if view.EffectiveGroup == "" {
 		view.EffectiveGroup = monitor.DetectedGroup
 	}
 	for _, state := range decodeUpstreamJSON[map[int]upstreamKeyState](monitor.KeyStates) {
@@ -188,9 +199,15 @@ func GetUpstreamSiteViews() ([]UpstreamSiteView, error) {
 
 // UpdateUpstreamMonitor stores the administrator's monitoring choice for a
 // channel, creating the monitor when auto detection has not linked it yet.
-func UpdateUpstreamMonitor(channelId int, mode string, manualGroup string) (*UpstreamMonitorView, error) {
-	if mode != model.UpstreamMonitorModeAuto && mode != model.UpstreamMonitorModeOff {
+func UpdateUpstreamMonitor(channelId int, mode string, manualGroup string, manualRatio *float64) (*UpstreamMonitorView, error) {
+	if mode != model.UpstreamMonitorModeAuto && mode != model.UpstreamMonitorModeManual && mode != model.UpstreamMonitorModeOff {
 		return nil, errors.New("无效的监控模式")
+	}
+	if manualRatio != nil && (math.IsNaN(*manualRatio) || math.IsInf(*manualRatio, 0) || *manualRatio <= 0 || *manualRatio > 100) {
+		return nil, errors.New("手动倍率必须大于 0 且不超过 100")
+	}
+	if mode == model.UpstreamMonitorModeManual && manualRatio == nil {
+		return nil, errors.New("手动模式需要设置上游倍率")
 	}
 	manualGroup = strings.TrimSpace(manualGroup)
 	if len(manualGroup) > 64 {
@@ -200,23 +217,28 @@ func UpdateUpstreamMonitor(channelId int, mode string, manualGroup string) (*Ups
 	if err != nil {
 		return nil, err
 	}
+	baseURL := upstreamCostBaseURL(channel)
+	if mode == model.UpstreamMonitorModeAuto && baseURL == "" {
+		return nil, errors.New("该渠道没有可监控的 new-api 上游地址")
+	}
 	monitor, err := model.GetUpstreamChannelMonitor(channelId)
 	switch {
 	case errors.Is(err, gorm.ErrRecordNotFound):
-		baseURL := upstreamCostBaseURL(channel)
-		if baseURL == "" {
-			return nil, errors.New("该渠道没有可监控的 new-api 上游地址")
-		}
-		site, err := model.GetOrCreateUpstreamSite(baseURL)
-		if err != nil {
-			return nil, err
+		siteId := 0
+		if baseURL != "" {
+			site, err := model.GetOrCreateUpstreamSite(baseURL)
+			if err != nil {
+				return nil, err
+			}
+			siteId = site.Id
 		}
 		monitor = &model.UpstreamChannelMonitor{
 			ChannelId:   channelId,
-			SiteId:      site.Id,
+			SiteId:      siteId,
 			BaseURL:     baseURL,
 			Mode:        mode,
 			ManualGroup: manualGroup,
+			ManualRatio: manualRatio,
 			CostStatus:  model.UpstreamCostStatusUnknown,
 		}
 		if err := model.CreateUpstreamChannelMonitor(monitor); err != nil {
@@ -228,6 +250,7 @@ func UpdateUpstreamMonitor(channelId int, mode string, manualGroup string) (*Ups
 		err := model.UpdateUpstreamChannelMonitor(channelId, map[string]any{
 			"mode":         mode,
 			"manual_group": manualGroup,
+			"manual_ratio": manualRatio,
 		})
 		if err != nil {
 			return nil, err
@@ -363,7 +386,7 @@ func RefreshMonitoredChannelBalance(channel *model.Channel) (balance float64, un
 		return 0, false, false, nil
 	}
 	entry, ok := snapshot.channels[channel.Id]
-	if !ok {
+	if !ok || entry.site == nil || entry.mode != model.UpstreamMonitorModeAuto {
 		return 0, false, false, nil
 	}
 	site := entry.site

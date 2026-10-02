@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"math"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -25,6 +26,8 @@ const (
 // upstreamCostChannelSnapshot is the immutable per-channel view the consume
 // hook and the batch writer use to attribute and estimate upstream cost.
 type upstreamCostChannelSnapshot struct {
+	mode         string
+	manualRatio  float64
 	site         *model.UpstreamSite
 	costFactor   float64
 	keys         map[int]upstreamKeyState
@@ -170,22 +173,40 @@ func buildUpstreamCostSnapshot(version string, sites []*model.UpstreamSite, moni
 		channels: make(map[int]*upstreamCostChannelSnapshot, len(monitors)),
 	}
 	for _, monitor := range monitors {
+		if monitor.Mode == model.UpstreamMonitorModeOff {
+			continue
+		}
 		site, ok := siteById[monitor.SiteId]
-		if !ok || monitor.Mode != model.UpstreamMonitorModeAuto {
+		if monitor.Mode == model.UpstreamMonitorModeAuto && !ok {
+			continue
+		}
+		if monitor.Mode == model.UpstreamMonitorModeManual && (monitor.ManualRatio == nil || *monitor.ManualRatio <= 0 || *monitor.ManualRatio > 100 || math.IsNaN(*monitor.ManualRatio) || math.IsInf(*monitor.ManualRatio, 0)) {
 			continue
 		}
 		group := monitor.ManualGroup
-		if group == "" {
+		if group == "" && monitor.Mode == model.UpstreamMonitorModeAuto {
 			group = monitor.DetectedGroup
 		}
-		snapshot.channels[monitor.ChannelId] = &upstreamCostChannelSnapshot{
-			site:         site.site,
-			costFactor:   upstreamCostFactor(site.site),
-			keys:         decodeUpstreamJSON[map[int]upstreamKeyState](monitor.KeyStates),
-			group:        group,
-			ratio:        monitor.GroupRatio,
-			modelPricing: site.modelPricing,
+		ratio := monitor.GroupRatio
+		if monitor.Mode == model.UpstreamMonitorModeManual {
+			ratio = *monitor.ManualRatio
 		}
+		channel := &upstreamCostChannelSnapshot{
+			mode:        monitor.Mode,
+			manualRatio: ratio,
+			costFactor:  1,
+			group:       group,
+			ratio:       ratio,
+		}
+		if ok {
+			channel.site = site.site
+			channel.costFactor = upstreamCostFactor(site.site)
+			channel.modelPricing = site.modelPricing
+			if monitor.Mode == model.UpstreamMonitorModeAuto {
+				channel.keys = decodeUpstreamJSON[map[int]upstreamKeyState](monitor.KeyStates)
+			}
+		}
+		snapshot.channels[monitor.ChannelId] = channel
 	}
 	return snapshot
 }
@@ -217,6 +238,10 @@ func recordUpstreamCostConsumeLog(c *gin.Context, log *model.Log, other *model.L
 	if mapped, _ := values["upstream_model_name"].(string); mapped != "" {
 		upstreamModel = mapped
 	}
+	siteId := 0
+	if channel.site != nil {
+		siteId = channel.site.Id
+	}
 	pending := upstreamCostPending{
 		record: &model.UpstreamCostRecord{
 			RequestId:         log.RequestId,
@@ -231,7 +256,7 @@ func recordUpstreamCostConsumeLog(c *gin.Context, log *model.Log, other *model.L
 			Quota:             log.Quota,
 			PromptTokens:      log.PromptTokens,
 			CompletionTokens:  log.CompletionTokens,
-			SiteId:            channel.site.Id,
+			SiteId:            siteId,
 			KeyIndex:          keyIndex,
 		},
 		channel:       channel,
@@ -253,8 +278,10 @@ func buildUpstreamCostRecord(pending upstreamCostPending) *model.UpstreamCostRec
 	record := pending.record
 	channel := pending.channel
 	group, ratio := channel.group, channel.ratio
-	if key, ok := channel.keys[record.KeyIndex]; ok && key.EffectiveGroup != "" && key.EffectiveRatio > 0 {
-		group, ratio = key.EffectiveGroup, key.EffectiveRatio
+	if channel.mode != model.UpstreamMonitorModeManual {
+		if key, ok := channel.keys[record.KeyIndex]; ok && key.EffectiveGroup != "" && key.EffectiveRatio > 0 {
+			group, ratio = key.EffectiveGroup, key.EffectiveRatio
+		}
 	}
 	record.UpstreamGroup = group
 	record.UpstreamGroupRatio = ratio
@@ -263,10 +290,18 @@ func buildUpstreamCostRecord(pending upstreamCostPending) *model.UpstreamCostRec
 		CompletionTokens: record.CompletionTokens,
 		CacheTokens:      pending.cacheTokens,
 	}
-	if cost, ok := estimateUpstreamCostQuota(channel, pending.upstreamModel, usage, record.Quota, pending.localRatio, ratio); ok {
-		record.CostQuota = cost
-		record.Status = model.UpstreamCostRecordEstimated
+	localRatio := pending.localRatio
+	if channel.mode == model.UpstreamMonitorModeManual {
+		localRatio = 0
 	}
+	if cost, ok := estimateUpstreamCostQuota(channel, pending.upstreamModel, usage, record.Quota, localRatio, ratio); ok {
+		record.CostQuota = cost
+	} else if channel.mode == model.UpstreamMonitorModeManual {
+		record.CostQuota = common.QuotaFromFloat(float64(max(record.Quota, 0)) * channel.manualRatio * channel.costFactor)
+	} else {
+		record.CostQuota = max(record.Quota, 0)
+	}
+	record.Status = model.UpstreamCostRecordEstimated
 	return record
 }
 

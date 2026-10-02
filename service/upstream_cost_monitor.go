@@ -387,7 +387,7 @@ func loadUpstreamSiteWorks(now int64) ([]*upstreamSiteWork, error) {
 		siteIds = append(siteIds, site.Id)
 	}
 	var monitors []*model.UpstreamChannelMonitor
-	err = model.DB.Where("site_id IN ? AND mode = ?", siteIds, model.UpstreamMonitorModeAuto).Order("channel_id asc").Find(&monitors).Error
+	err = model.DB.Where("site_id IN ? AND mode IN ?", siteIds, []string{model.UpstreamMonitorModeAuto, model.UpstreamMonitorModeManual}).Order("channel_id asc").Find(&monitors).Error
 	if err != nil {
 		return nil, err
 	}

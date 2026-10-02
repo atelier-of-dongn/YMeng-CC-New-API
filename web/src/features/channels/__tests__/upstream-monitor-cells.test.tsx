@@ -41,6 +41,7 @@ function monitor(
     effective_group: '',
     detected_group: '',
     manual_group: '',
+    manual_ratio: null,
     group_mismatch: false,
     group_ratio: 0,
     prev_group_ratio: 0,

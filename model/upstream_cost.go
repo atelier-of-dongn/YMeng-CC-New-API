@@ -23,8 +23,9 @@ const (
 )
 
 const (
-	UpstreamMonitorModeAuto = "auto"
-	UpstreamMonitorModeOff  = "off"
+	UpstreamMonitorModeAuto   = "auto"
+	UpstreamMonitorModeManual = "manual"
+	UpstreamMonitorModeOff    = "off"
 )
 
 const (
@@ -72,21 +73,22 @@ type UpstreamSite struct {
 // ManualGroup are owned by administrators; the remaining state is written only
 // by the master monitor.
 type UpstreamChannelMonitor struct {
-	ChannelId      int     `json:"channel_id" gorm:"primaryKey;autoIncrement:false"`
-	SiteId         int     `json:"site_id" gorm:"index"`
-	BaseURL        string  `json:"base_url" gorm:"type:varchar(191)"`
-	Mode           string  `json:"mode" gorm:"type:varchar(8)"`
-	ManualGroup    string  `json:"manual_group" gorm:"type:varchar(64)"`
-	DetectedGroup  string  `json:"detected_group" gorm:"type:varchar(64)"`
-	GroupRatio     float64 `json:"group_ratio"`
-	PrevGroupRatio float64 `json:"prev_group_ratio"`
-	RatioSource    string  `json:"ratio_source" gorm:"type:varchar(8)"`
-	RatioChangedAt int64   `json:"ratio_changed_at"`
-	CostStatus     string  `json:"cost_status" gorm:"type:varchar(16)"`
-	StatusDetail   string  `json:"-" gorm:"type:text"`
-	KeyStates      string  `json:"-" gorm:"type:text"`
-	AlertState     string  `json:"-" gorm:"type:text"`
-	UpdatedAt      int64   `json:"updated_at" gorm:"index;autoUpdateTime:milli"`
+	ChannelId      int      `json:"channel_id" gorm:"primaryKey;autoIncrement:false"`
+	SiteId         int      `json:"site_id" gorm:"index"`
+	BaseURL        string   `json:"base_url" gorm:"type:varchar(191)"`
+	Mode           string   `json:"mode" gorm:"type:varchar(8)"`
+	ManualGroup    string   `json:"manual_group" gorm:"type:varchar(64)"`
+	ManualRatio    *float64 `json:"manual_ratio"`
+	DetectedGroup  string   `json:"detected_group" gorm:"type:varchar(64)"`
+	GroupRatio     float64  `json:"group_ratio"`
+	PrevGroupRatio float64  `json:"prev_group_ratio"`
+	RatioSource    string   `json:"ratio_source" gorm:"type:varchar(8)"`
+	RatioChangedAt int64    `json:"ratio_changed_at"`
+	CostStatus     string   `json:"cost_status" gorm:"type:varchar(16)"`
+	StatusDetail   string   `json:"-" gorm:"type:text"`
+	KeyStates      string   `json:"-" gorm:"type:text"`
+	AlertState     string   `json:"-" gorm:"type:text"`
+	UpdatedAt      int64    `json:"updated_at" gorm:"index;autoUpdateTime:milli"`
 }
 
 // UpstreamCostRecord mirrors one consume log of a monitored channel together
