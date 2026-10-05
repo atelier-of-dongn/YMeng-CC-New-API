@@ -537,10 +537,10 @@ func TestSumUpstreamCostOnlyCountsKnownCosts(t *testing.T) {
 		{RequestId: "d", CreatedAt: 400, Username: "bob", ChannelId: 2, Quota: 1000, CostQuota: 10, Status: model.UpstreamCostRecordMatched},
 	}))
 
-	stat, err := model.SumUpstreamCost(0, 350, "", "al%", "", 1, "")
+	stat, err := model.SumUpstreamCost(0, 350, "", "al%", "", 1, "", false)
 
 	require.NoError(t, err)
-	assert.Equal(t, model.UpstreamCostStat{Revenue: 150, Cost: 140, Matched: 1, Estimated: 1, Unknown: 1}, stat)
+	assert.Equal(t, model.UpstreamCostStat{Revenue: 150, Cost: 140, CoveredQuota: 150, Matched: 1, Estimated: 1, Unknown: 1}, stat)
 }
 
 func TestAttachUpstreamCostToLogsAlignsSharedRequestIds(t *testing.T) {

@@ -6718,6 +6718,7 @@
     "Download PDF": "Tải PDF xuống",
     "Failed to download invoice PDF": "Không thể tải xuống PDF hóa đơn",
     "Preview PDF": "Xem trước PDF",
-    "No invoice applications match the current search.": "Không có yêu cầu hóa đơn nào khớp với tìm kiếm hiện tại."
+    "No invoice applications match the current search.": "Không có yêu cầu hóa đơn nào khớp với tìm kiếm hiện tại.",
+    "Internal account profit/loss": "Lãi/lỗ tài khoản nội bộ"
   }
 }

@@ -126,7 +126,8 @@ func GetUpstreamCostStat(c *gin.Context) {
 	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
 	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
 	channel, _ := strconv.Atoi(c.Query("channel"))
-	stat, err := model.SumUpstreamCost(startTimestamp, endTimestamp, c.Query("model_name"), c.Query("username"), c.Query("token_name"), channel, c.Query("group"))
+	internalAccounting, _ := strconv.ParseBool(c.Query("internal_accounting"))
+	stat, err := model.SumUpstreamCost(startTimestamp, endTimestamp, c.Query("model_name"), c.Query("username"), c.Query("token_name"), channel, c.Query("group"), internalAccounting)
 	if err != nil {
 		common.ApiError(c, err)
 		return

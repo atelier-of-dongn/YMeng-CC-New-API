@@ -41,6 +41,10 @@ const (
 	UpstreamCostRecordUnknown   = 0
 	UpstreamCostRecordEstimated = 1
 	UpstreamCostRecordMatched   = 2
+
+	// InternalCostUserID identifies the account whose usage is treated as
+	// internal cost instead of customer revenue in the new accounting view.
+	InternalCostUserID = 1
 )
 
 // UpstreamSite is a new-api compatible upstream shared by the channels whose
@@ -123,12 +127,18 @@ type UpstreamCostPendingKey struct {
 	KeyIndex  int
 }
 
+// UpstreamCostStat contains the cost-monitoring totals for the filtered logs.
+// Revenue keeps the legacy all-users total unless internalAccounting is true.
 type UpstreamCostStat struct {
-	Revenue   int64 `json:"revenue"`
-	Cost      int64 `json:"cost"`
-	Matched   int64 `json:"matched"`
-	Estimated int64 `json:"estimated"`
-	Unknown   int64 `json:"unknown"`
+	Revenue               int64 `json:"revenue"`
+	Cost                  int64 `json:"cost"`
+	CoveredQuota          int64 `json:"covered_quota"`
+	InternalCost          int64 `json:"internal_cost"`
+	InternalEstimatedCost int64 `json:"internal_estimated_cost"`
+	Matched               int64 `json:"matched"`
+	Estimated             int64 `json:"estimated"`
+	Unknown               int64 `json:"unknown"`
+	InternalUnknown       int64 `json:"internal_unknown"`
 }
 
 func GetUpstreamSites() ([]*UpstreamSite, error) {
@@ -300,11 +310,12 @@ func GetUpstreamCostRecordsByRequestIds(requestIds []string) ([]*UpstreamCostRec
 }
 
 // SumUpstreamCost aggregates records with the same filters as SumUsedQuota.
-// Revenue and cost only cover records whose upstream cost is known.
-func SumUpstreamCost(startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, channel int, group string) (UpstreamCostStat, error) {
+// Revenue and cost only cover records whose upstream cost is known. In the
+// internal accounting view, user 1 contributes cost but not revenue.
+func SumUpstreamCost(startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, channel int, group string, internalAccounting bool) (UpstreamCostStat, error) {
 	stat := UpstreamCostStat{}
 	tx := DB.Model(&UpstreamCostRecord{}).
-		Select("status, COUNT(*) AS record_count, COALESCE(SUM(quota), 0) AS quota_sum, COALESCE(SUM(cost_quota), 0) AS cost_sum")
+		Select("status, user_id, COUNT(*) AS record_count, COALESCE(SUM(quota), 0) AS quota_sum, COALESCE(SUM(cost_quota), 0) AS cost_sum")
 	var err error
 	if tx, err = applyUpstreamCostTextFilter(tx, "username", username); err != nil {
 		return stat, err
@@ -329,25 +340,39 @@ func SumUpstreamCost(startTimestamp int64, endTimestamp int64, modelName string,
 	}
 	var rows []struct {
 		Status      int
+		UserId      int
 		RecordCount int64
 		QuotaSum    int64
 		CostSum     int64
 	}
-	if err := tx.Group("status").Scan(&rows).Error; err != nil {
+	if err := tx.Group("status, user_id").Scan(&rows).Error; err != nil {
 		return stat, err
 	}
 	for _, row := range rows {
+		internal := row.UserId == InternalCostUserID
 		switch row.Status {
 		case UpstreamCostRecordMatched:
 			stat.Matched += row.RecordCount
 		case UpstreamCostRecordEstimated:
 			stat.Estimated += row.RecordCount
+			if internal {
+				stat.InternalEstimatedCost += row.CostSum
+			}
 		default:
 			stat.Unknown += row.RecordCount
+			if internal {
+				stat.InternalUnknown += row.RecordCount
+			}
 			continue
 		}
-		stat.Revenue += row.QuotaSum
 		stat.Cost += row.CostSum
+		stat.CoveredQuota += row.QuotaSum
+		if internal {
+			stat.InternalCost += row.CostSum
+		}
+		if !internalAccounting || !internal {
+			stat.Revenue += row.QuotaSum
+		}
 	}
 	return stat, nil
 }

@@ -110,6 +110,7 @@ async function renderFilter(
 afterEach(() => {
   cleanup()
   vi.restoreAllMocks()
+  localStorage.removeItem('usage-logs:internal-accounting')
   useAuthStore.getState().auth.setUser(null)
   if (pointerCaptureDescriptor) {
     Object.defineProperty(
@@ -120,6 +121,26 @@ afterEach(() => {
   } else {
     Reflect.deleteProperty(HTMLElement.prototype, 'setPointerCapture')
   }
+})
+
+it('keeps the internal accounting switch off by default and persists it for admin views', async () => {
+  useAuthStore.getState().auth.setUser({ id: 1, username: 'admin', role: 10 })
+  await renderFilter()
+
+  const toggle = screen.getByRole('switch', {
+    name: 'Internal account profit/loss',
+  })
+  expect(toggle).toHaveAttribute('data-unchecked')
+
+  await userEvent.click(toggle)
+  expect(toggle).toHaveAttribute('data-checked')
+  expect(localStorage.getItem('usage-logs:internal-accounting')).toBe('true')
+
+  cleanup()
+  await renderFilter()
+  expect(
+    screen.getByRole('switch', { name: 'Internal account profit/loss' })
+  ).toHaveAttribute('data-checked')
 })
 
 it('loads personal groups and filters choices without submitting until Search', async () => {

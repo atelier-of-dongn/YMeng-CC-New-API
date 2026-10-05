@@ -38,9 +38,13 @@ export function hasKnownUpstreamCost(
 /** Our charge minus the upstream cost; null while the cost is unknown. */
 export function getLogProfit(
   quota: number,
-  cost: UpstreamCostInfo | null | undefined
+  cost: UpstreamCostInfo | null | undefined,
+  internalAccounting = false
 ): number | null {
   if (!hasKnownUpstreamCost(cost)) return null
+  if (internalAccounting && cost.internal_use) {
+    return -cost.cost_quota
+  }
   return quota - cost.cost_quota
 }
 

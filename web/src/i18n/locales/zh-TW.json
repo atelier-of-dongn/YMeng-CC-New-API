@@ -6718,6 +6718,7 @@
     "Download PDF": "下載 PDF",
     "Failed to download invoice PDF": "發票 PDF 下載失敗",
     "Preview PDF": "預覽 PDF",
-    "No invoice applications match the current search.": "沒有符合目前搜尋條件的發票申請。"
+    "No invoice applications match the current search.": "沒有符合目前搜尋條件的發票申請。",
+    "Internal account profit/loss": "內部帳號損益"
   }
 }

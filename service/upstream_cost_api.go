@@ -66,6 +66,7 @@ type UpstreamCostLogView struct {
 	UpstreamGroupRatio float64 `json:"upstream_group_ratio"`
 	UpstreamQuota      int     `json:"upstream_quota"`
 	CostQuota          int     `json:"cost_quota"`
+	InternalUse        bool    `json:"internal_use"`
 }
 
 // AdminLogItem decorates an admin log row with its upstream cost without
@@ -357,6 +358,7 @@ func AttachUpstreamCostToLogs(logs []*model.Log) []AdminLogItem {
 			UpstreamGroupRatio: record.UpstreamGroupRatio,
 			UpstreamQuota:      record.UpstreamQuota,
 			CostQuota:          record.CostQuota,
+			InternalUse:        record.UserId == model.InternalCostUserID,
 		}
 	}
 	return items

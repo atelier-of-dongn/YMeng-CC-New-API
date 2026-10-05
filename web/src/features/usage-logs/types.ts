@@ -439,6 +439,7 @@ export interface GetLogStatsParams {
   group?: string
   request_id?: string
   upstream_request_id?: string
+  internal_accounting?: boolean
 }
 
 export interface GetLogStatsResponse {
@@ -455,9 +456,13 @@ export interface GetLogStatsResponse {
 export interface UpstreamCostStatistics {
   revenue: number
   cost: number
+  covered_quota: number
+  internal_cost: number
+  internal_estimated_cost: number
   matched: number
   estimated: number
   unknown: number
+  internal_unknown: number
 }
 
 export interface GetUpstreamCostStatsResponse {

@@ -117,7 +117,12 @@ export function UpstreamAmountLogCell(props: { log: UsageLog }) {
 
 /** Our charge minus the upstream cost, colored by sign. */
 export function ProfitLogCell(props: { log: UsageLog }) {
-  const profit = getLogProfit(props.log.quota, props.log.upstream_cost)
+  const { internalAccounting } = useUsageLogsContext()
+  const profit = getLogProfit(
+    props.log.quota,
+    props.log.upstream_cost,
+    internalAccounting
+  )
 
   if (profit === null) {
     return <EmptyUpstreamCostCell />

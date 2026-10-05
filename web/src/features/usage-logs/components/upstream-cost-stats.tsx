@@ -47,19 +47,27 @@ type UpstreamCostStatsProps = {
 export function UpstreamCostStats(props: UpstreamCostStatsProps) {
   const { t } = useTranslation()
   const searchParams = route.useSearch()
-  const { sensitiveVisible } = useUsageLogsContext()
+  const { sensitiveVisible, internalAccounting } = useUsageLogsContext()
 
   // The key must start with 'usage-logs-stats' so the filter bar refreshes it.
   const { data: stats } = useQuery({
-    queryKey: ['usage-logs-stats', 'upstream-cost', searchParams],
+    queryKey: [
+      'usage-logs-stats',
+      'upstream-cost',
+      searchParams,
+      internalAccounting,
+    ],
     queryFn: async () => {
-      const params = buildApiParams({
-        page: 1,
-        pageSize: 1,
-        searchParams,
-        columnFilters: [],
-        isAdmin: true,
-      })
+      const params = {
+        ...buildApiParams({
+          page: 1,
+          pageSize: 1,
+          searchParams,
+          columnFilters: [],
+          isAdmin: true,
+        }),
+        internal_accounting: internalAccounting,
+      }
       return (
         requireServerSuccess(await getUpstreamCostStats(params)).data ?? null
       )

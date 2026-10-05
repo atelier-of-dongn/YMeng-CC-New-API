@@ -31,6 +31,7 @@ export const upstreamCostSchema = z.object({
   upstream_group_ratio: z.number().default(0),
   upstream_quota: z.number().default(0),
   cost_quota: z.number().default(0),
+  internal_use: z.boolean().default(false),
 })
 
 export type UpstreamCostInfo = z.infer<typeof upstreamCostSchema>

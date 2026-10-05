@@ -6718,6 +6718,7 @@
     "Download PDF": "PDF をダウンロード",
     "Failed to download invoice PDF": "請求書 PDF のダウンロードに失敗しました",
     "Preview PDF": "PDF をプレビュー",
-    "No invoice applications match the current search.": "現在の検索条件に一致する請求書申請はありません。"
+    "No invoice applications match the current search.": "現在の検索条件に一致する請求書申請はありません。",
+    "Internal account profit/loss": "内部アカウントの損益"
   }
 }

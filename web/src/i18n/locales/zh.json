@@ -6718,6 +6718,7 @@
     "Download PDF": "下载 PDF",
     "Failed to download invoice PDF": "发票 PDF 下载失败",
     "Preview PDF": "预览 PDF",
-    "No invoice applications match the current search.": "没有符合当前搜索条件的发票申请。"
+    "No invoice applications match the current search.": "没有符合当前搜索条件的发票申请。",
+    "Internal account profit/loss": "内部账号盈亏"
   }
 }

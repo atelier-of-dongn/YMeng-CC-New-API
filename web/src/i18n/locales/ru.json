@@ -6718,6 +6718,7 @@
     "Download PDF": "Скачать PDF",
     "Failed to download invoice PDF": "Не удалось скачать PDF счёта",
     "Preview PDF": "Просмотреть PDF",
-    "No invoice applications match the current search.": "Нет заявок на счета, соответствующих текущему поиску."
+    "No invoice applications match the current search.": "Нет заявок на счета, соответствующих текущему поиску.",
+    "Internal account profit/loss": "Прибыль/убыток внутреннего аккаунта"
   }
 }

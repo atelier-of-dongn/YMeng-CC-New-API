@@ -35,6 +35,7 @@ function upstreamCost(status: number, costQuota: number): UpstreamCostInfo {
     upstream_group_ratio: 1.5,
     upstream_quota: 3000,
     cost_quota: costQuota,
+    internal_use: false,
   }
 }
 
@@ -44,9 +45,13 @@ function stats(
   return {
     revenue: 0,
     cost: 0,
+    covered_quota: 0,
+    internal_cost: 0,
+    internal_estimated_cost: 0,
     matched: 0,
     estimated: 0,
     unknown: 0,
+    internal_unknown: 0,
     ...overrides,
   }
 }
@@ -80,6 +85,7 @@ describe('usage log upstream cost field', () => {
       upstream_group_ratio: 0,
       upstream_quota: 0,
       cost_quota: 800,
+      internal_use: false,
     })
   })
 })
@@ -106,6 +112,16 @@ describe('log profit', () => {
     expect(
       getLogProfit(1000, upstreamCost(UPSTREAM_COST_STATUS.ESTIMATED, 1250))
     ).toBe(-250)
+  })
+
+  test('treats internal usage as cost-only when internal accounting is enabled', () => {
+    const cost = {
+      ...upstreamCost(UPSTREAM_COST_STATUS.MATCHED, 800),
+      internal_use: true,
+    }
+
+    expect(getLogProfit(1000, cost, true)).toBe(-800)
+    expect(getLogProfit(1000, cost, false)).toBe(200)
   })
 
   test('returns no profit while the upstream cost is unknown or absent', () => {
