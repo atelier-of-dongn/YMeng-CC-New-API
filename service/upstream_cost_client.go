@@ -50,8 +50,10 @@ type upstreamStatusData struct {
 }
 
 // isNewAPI recognizes new-api compatible upstreams from their public status.
+// Some compatible deployments omit the version, so quota metadata is the
+// required signal.
 func (s *upstreamStatusData) isNewAPI() bool {
-	return s.Version != "" && s.QuotaPerUnit > 0 && (s.QuotaDisplayType != nil || s.DisplayInCurrency != nil)
+	return s.QuotaPerUnit > 0 && (s.QuotaDisplayType != nil || s.DisplayInCurrency != nil)
 }
 
 // displayType falls back to display_in_currency for upstreams that predate

@@ -386,13 +386,31 @@ func TestUpdateUpstreamMonitorRejectsInvalidManualRatio(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestUpstreamStatusRequiresQuotaMetadata(t *testing.T) {
+	usd := "USD"
+	inCurrency := true
+	for _, tt := range []struct {
+		name   string
+		status upstreamStatusData
+		want   bool
+	}{
+		{name: "version without quota does not identify site", status: upstreamStatusData{Version: "v1", QuotaDisplayType: &usd}},
+		{name: "version without display type does not identify site", status: upstreamStatusData{Version: "v1", QuotaPerUnit: 500000}},
+		{name: "legacy display flag identifies site without version", status: upstreamStatusData{QuotaPerUnit: 500000, DisplayInCurrency: &inCurrency}, want: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equal(t, tt.want, tt.status.isNewAPI())
+		})
+	}
+}
+
 func TestAutoMonitorDetectsCompatibleUpstreamAndReadsPublicPricing(t *testing.T) {
 	setupUpstreamCostTables(t)
 	logResponse := "empty"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/status":
-			_, _ = w.Write([]byte(`{"success":true,"data":{"version":"v1","system_name":"Upstream","quota_per_unit":500000,"quota_display_type":"USD"}}`))
+			_, _ = w.Write([]byte(`{"success":true,"data":{"version":"","system_name":"Upstream","quota_per_unit":500000,"quota_display_type":"USD"}}`))
 		case "/api/pricing":
 			_, _ = w.Write([]byte(`{"success":true,"group_ratio":{"vip":1.5},"usable_group":{"vip":"VIP"},"data":[{"model_name":"gpt-a","model_ratio":1,"completion_ratio":2}]}`))
 		case "/v1/dashboard/billing/subscription":
