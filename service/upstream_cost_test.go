@@ -342,7 +342,7 @@ func TestBuildUpstreamCostRecordEstimatesWithUpstreamPrices(t *testing.T) {
 }
 
 func TestManualUpstreamCostWithoutNewAPISite(t *testing.T) {
-	ratio := 1.7
+	ratio := 0.15
 	snapshot := buildUpstreamCostSnapshot("v", nil, []*model.UpstreamChannelMonitor{
 		{ChannelId: 1, Mode: model.UpstreamMonitorModeManual, ManualRatio: &ratio},
 		{ChannelId: 2, Mode: model.UpstreamMonitorModeAuto},
@@ -350,12 +350,24 @@ func TestManualUpstreamCostWithoutNewAPISite(t *testing.T) {
 	})
 	require.Len(t, snapshot.channels, 1)
 	channel := snapshot.channels[1]
-	record := buildUpstreamCostRecord(upstreamCostPending{
-		record: &model.UpstreamCostRecord{Quota: 1000}, channel: channel,
-	})
-	assert.Equal(t, model.UpstreamCostRecordEstimated, record.Status)
-	assert.Equal(t, 1700, record.CostQuota)
-	assert.Equal(t, 1.7, record.UpstreamGroupRatio)
+	for _, tc := range []struct {
+		name       string
+		localRatio float64
+		wantCost   int
+		wantStatus int
+	}{
+		{name: "local group ratio is removed", localRatio: 0.18, wantCost: 42146, wantStatus: model.UpstreamCostRecordEstimated},
+		{name: "missing local ratio cannot be estimated", wantCost: 0, wantStatus: model.UpstreamCostRecordUnknown},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			record := buildUpstreamCostRecord(upstreamCostPending{
+				record: &model.UpstreamCostRecord{Quota: 50576}, channel: channel, localRatio: tc.localRatio,
+			})
+			assert.Equal(t, tc.wantStatus, record.Status)
+			assert.Equal(t, tc.wantCost, record.CostQuota)
+			assert.Equal(t, ratio, record.UpstreamGroupRatio)
+		})
+	}
 }
 
 func TestManualUpstreamCostPrefersPricingAndMatchedCharge(t *testing.T) {
@@ -372,9 +384,10 @@ func TestManualUpstreamCostPrefersPricingAndMatchedCharge(t *testing.T) {
 	assert.Equal(t, model.UpstreamCostRecordEstimated, record.Status)
 	assert.Equal(t, 1500, record.CostQuota)
 	record = buildUpstreamCostRecord(upstreamCostPending{
-		record: &model.UpstreamCostRecord{Quota: 1000}, channel: channel, upstreamModel: "missing",
+		record: &model.UpstreamCostRecord{Quota: 1000}, channel: channel, upstreamModel: "missing", localRatio: 4,
 	})
-	assert.Equal(t, 750, record.CostQuota)
+	assert.Equal(t, model.UpstreamCostRecordEstimated, record.Status)
+	assert.Equal(t, 187, record.CostQuota)
 }
 
 func TestUpdateUpstreamMonitorRejectsInvalidManualRatio(t *testing.T) {

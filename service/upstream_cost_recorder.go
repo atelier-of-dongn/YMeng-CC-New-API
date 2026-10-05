@@ -27,7 +27,6 @@ const (
 // hook and the batch writer use to attribute and estimate upstream cost.
 type upstreamCostChannelSnapshot struct {
 	mode         string
-	manualRatio  float64
 	site         *model.UpstreamSite
 	costFactor   float64
 	keys         map[int]upstreamKeyState
@@ -192,11 +191,10 @@ func buildUpstreamCostSnapshot(version string, sites []*model.UpstreamSite, moni
 			ratio = *monitor.ManualRatio
 		}
 		channel := &upstreamCostChannelSnapshot{
-			mode:        monitor.Mode,
-			manualRatio: ratio,
-			costFactor:  1,
-			group:       group,
-			ratio:       ratio,
+			mode:       monitor.Mode,
+			costFactor: 1,
+			group:      group,
+			ratio:      ratio,
 		}
 		if ok {
 			channel.site = site.site
@@ -290,18 +288,15 @@ func buildUpstreamCostRecord(pending upstreamCostPending) *model.UpstreamCostRec
 		CompletionTokens: record.CompletionTokens,
 		CacheTokens:      pending.cacheTokens,
 	}
-	localRatio := pending.localRatio
-	if channel.mode == model.UpstreamMonitorModeManual {
-		localRatio = 0
-	}
-	if cost, ok := estimateUpstreamCostQuota(channel, pending.upstreamModel, usage, record.Quota, localRatio, ratio); ok {
+	if cost, ok := estimateUpstreamCostQuota(channel, pending.upstreamModel, usage, record.Quota, pending.localRatio, ratio); ok {
 		record.CostQuota = cost
+		record.Status = model.UpstreamCostRecordEstimated
 	} else if channel.mode == model.UpstreamMonitorModeManual {
-		record.CostQuota = common.QuotaFromFloat(float64(max(record.Quota, 0)) * channel.manualRatio * channel.costFactor)
+		record.Status = model.UpstreamCostRecordUnknown
 	} else {
 		record.CostQuota = max(record.Quota, 0)
+		record.Status = model.UpstreamCostRecordEstimated
 	}
-	record.Status = model.UpstreamCostRecordEstimated
 	return record
 }
 
