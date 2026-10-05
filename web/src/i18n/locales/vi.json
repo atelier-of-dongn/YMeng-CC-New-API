@@ -6720,6 +6720,8 @@
     "Preview PDF": "Xem trước PDF",
     "No invoice applications match the current search.": "Không có yêu cầu hóa đơn nào khớp với tìm kiếm hiện tại.",
     "Internal account profit/loss": "Lãi/lỗ tài khoản nội bộ",
-    "Verification email sent. If you don't see it, please check your spam or junk folder.": "Email xác minh đã được gửi. Nếu không thấy, vui lòng kiểm tra thư mục spam hoặc thư rác."
+    "Verification email sent. If you don't see it, please check your spam or junk folder.": "Email xác minh đã được gửi. Nếu không thấy, vui lòng kiểm tra thư mục spam hoặc thư rác.",
+    "New invoice application": "Đơn đề nghị hóa đơn mới",
+    "The net invoice amount must be greater than 500.": "Số tiền hóa đơn ròng phải lớn hơn 500."
   }
 }

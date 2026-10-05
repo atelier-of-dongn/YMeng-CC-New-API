@@ -6720,6 +6720,8 @@
     "Preview PDF": "PDF をプレビュー",
     "No invoice applications match the current search.": "現在の検索条件に一致する請求書申請はありません。",
     "Internal account profit/loss": "内部アカウントの損益",
-    "Verification email sent. If you don't see it, please check your spam or junk folder.": "確認メールを送信しました。見当たらない場合は、迷惑メールフォルダーをご確認ください。"
+    "Verification email sent. If you don't see it, please check your spam or junk folder.": "確認メールを送信しました。見当たらない場合は、迷惑メールフォルダーをご確認ください。",
+    "New invoice application": "新しい請求書申請",
+    "The net invoice amount must be greater than 500.": "請求書純額は 500 より大きい必要があります。"
   }
 }

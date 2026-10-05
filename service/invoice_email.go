@@ -53,7 +53,7 @@ func SendIssuedInvoiceEmail(applicationID int) error {
 		fileName = fmt.Sprintf("invoice-%d.pdf", application.Id)
 	}
 	if err := common.SendEmailWithAttachment(
-		fmt.Sprintf("%s 发票已开具", common.SystemName),
+		fmt.Sprintf("%s invoice issued", common.SystemName),
 		recipient,
 		buildInvoiceEmailHTML(application, fileName),
 		fileName,
@@ -70,11 +70,11 @@ func buildInvoiceEmailHTML(application model.InvoiceApplication, fileName string
 	invoiceNumber := fmt.Sprintf("INV-%08d", application.Id)
 	amount := formatInvoiceAmount(application.NetAmount)
 	return fmt.Sprintf(`<!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>发票已开具</title>
+<title>Invoice issued</title>
 </head>
 <body style="margin:0;background:#f3f6fa;color:#172033;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Microsoft YaHei',Arial,sans-serif;">
 <table role="presentation" cellpadding="0" cellspacing="0" width="100%%" style="background:#f3f6fa;padding:32px 12px;">
@@ -82,20 +82,20 @@ func buildInvoiceEmailHTML(application model.InvoiceApplication, fileName string
 <table role="presentation" cellpadding="0" cellspacing="0" width="100%%" style="max-width:640px;background:#ffffff;border:1px solid #e3e9f1;border-radius:12px;overflow:hidden;">
 <tr><td style="padding:28px 32px;background:#15253d;color:#ffffff;">
 <div style="font-size:13px;letter-spacing:1.2px;text-transform:uppercase;color:#b8c7dc;">%s</div>
-<div style="font-size:26px;font-weight:700;margin-top:12px;">发票已开具</div>
-<div style="font-size:14px;line-height:1.7;color:#d7e1ee;margin-top:8px;">您的电子发票已经开具完成，PDF 文件已作为附件发送。</div>
+<div style="font-size:26px;font-weight:700;margin-top:12px;">Invoice issued</div>
+<div style="font-size:14px;line-height:1.7;color:#d7e1ee;margin-top:8px;">Your invoice is ready. The PDF is attached to this email.</div>
 </td></tr>
 <tr><td style="padding:32px;">
 <table role="presentation" cellpadding="0" cellspacing="0" width="100%%" style="border-collapse:collapse;">
-<tr><td style="padding:0 0 18px;color:#718096;font-size:13px;">发票号码</td><td align="right" style="padding:0 0 18px;font-weight:600;font-size:15px;">%s</td></tr>
-<tr><td style="padding:14px 0;border-top:1px solid #edf1f5;color:#718096;font-size:13px;">发票抬头</td><td align="right" style="padding:14px 0;border-top:1px solid #edf1f5;font-size:15px;">%s</td></tr>
-<tr><td style="padding:14px 0;border-top:1px solid #edf1f5;color:#718096;font-size:13px;">税号</td><td align="right" style="padding:14px 0;border-top:1px solid #edf1f5;font-size:15px;">%s</td></tr>
-<tr><td style="padding:14px 0;border-top:1px solid #edf1f5;color:#718096;font-size:13px;">价税合计</td><td align="right" style="padding:14px 0;border-top:1px solid #edf1f5;color:#15253d;font-size:20px;font-weight:700;">¥ %s</td></tr>
-<tr><td style="padding:14px 0 0;border-top:1px solid #edf1f5;color:#718096;font-size:13px;">开具时间</td><td align="right" style="padding:14px 0 0;font-size:15px;">%s</td></tr>
+<tr><td style="padding:0 0 18px;color:#718096;font-size:13px;">Invoice number</td><td align="right" style="padding:0 0 18px;font-weight:600;font-size:15px;">%s</td></tr>
+<tr><td style="padding:14px 0;border-top:1px solid #edf1f5;color:#718096;font-size:13px;">Bill to</td><td align="right" style="padding:14px 0;border-top:1px solid #edf1f5;font-size:15px;">%s</td></tr>
+<tr><td style="padding:14px 0;border-top:1px solid #edf1f5;color:#718096;font-size:13px;">Tax ID</td><td align="right" style="padding:14px 0;border-top:1px solid #edf1f5;font-size:15px;">%s</td></tr>
+<tr><td style="padding:14px 0;border-top:1px solid #edf1f5;color:#718096;font-size:13px;">Total</td><td align="right" style="padding:14px 0;border-top:1px solid #edf1f5;color:#15253d;font-size:20px;font-weight:700;">¥ %s</td></tr>
+<tr><td style="padding:14px 0 0;border-top:1px solid #edf1f5;color:#718096;font-size:13px;">Issued at</td><td align="right" style="padding:14px 0 0;font-size:15px;">%s</td></tr>
 </table>
-<div style="margin-top:28px;padding:16px 18px;background:#f5f8fc;border-radius:8px;color:#4a5a70;font-size:14px;line-height:1.7;">附件：<strong>%s</strong><br>请下载并妥善保存 PDF 文件。如未看到附件，请检查邮件客户端的附件显示设置。</div>
+<div style="margin-top:28px;padding:16px 18px;background:#f5f8fc;border-radius:8px;color:#4a5a70;font-size:14px;line-height:1.7;">Attachment: <strong>%s</strong><br>Please download and keep the PDF. If you do not see the attachment, check your email client's attachment settings.</div>
 </td></tr>
-<tr><td style="padding:20px 32px 26px;border-top:1px solid #edf1f5;color:#8a96a8;font-size:12px;line-height:1.6;">此邮件由 %s 自动发送，请勿直接回复。</td></tr>
+<tr><td style="padding:20px 32px 26px;border-top:1px solid #edf1f5;color:#8a96a8;font-size:12px;line-height:1.6;">This email was sent automatically by %s. Please do not reply.</td></tr>
 </table>
 </td></tr>
 </table>

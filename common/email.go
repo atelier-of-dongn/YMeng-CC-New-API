@@ -133,7 +133,7 @@ func buildEmailHTML(content string) string {
 
 	systemName := html.EscapeString(SystemName)
 	return fmt.Sprintf(`<!doctype html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -147,7 +147,7 @@ func buildEmailHTML(content string) string {
 <table role="presentation" cellpadding="0" cellspacing="0" width="100%%" style="max-width:600px;background:#ffffff;border:1px solid #e3e9f1;border-radius:10px;overflow:hidden;">
 <tr><td style="padding:22px 30px;background:#15253d;color:#ffffff;font-size:18px;font-weight:700;">%s</td></tr>
 <tr><td style="padding:30px;font-size:15px;line-height:1.8;color:#344256;">%s</td></tr>
-<tr><td style="padding:18px 30px 22px;border-top:1px solid #edf1f5;color:#8995a6;font-size:12px;line-height:1.6;">此邮件由 %s 自动发送，请勿直接回复。</td></tr>
+<tr><td style="padding:18px 30px 22px;border-top:1px solid #edf1f5;color:#8995a6;font-size:12px;line-height:1.6;">This email was sent automatically by %s. Please do not reply.</td></tr>
 </table>
 </td></tr>
 </table>

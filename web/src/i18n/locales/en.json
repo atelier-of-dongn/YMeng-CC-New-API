@@ -6720,6 +6720,8 @@
     "Preview PDF": "Preview PDF",
     "No invoice applications match the current search.": "No invoice applications match the current search.",
     "Internal account profit/loss": "Internal account profit/loss",
-    "Verification email sent. If you don't see it, please check your spam or junk folder.": "Verification email sent. If you don't see it, please check your spam or junk folder."
+    "Verification email sent. If you don't see it, please check your spam or junk folder.": "Verification email sent. If you don't see it, please check your spam or junk folder.",
+    "New invoice application": "New invoice application",
+    "The net invoice amount must be greater than 500.": "The net invoice amount must be greater than 500."
   }
 }

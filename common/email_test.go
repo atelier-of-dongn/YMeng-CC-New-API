@@ -306,6 +306,9 @@ func TestBuildEmailHTMLWrapsFragmentsAndPreservesDocuments(t *testing.T) {
 	require.Contains(t, wrapped, "New &lt;API&gt;")
 	require.Contains(t, wrapped, "<p>验证内容</p>")
 	require.Contains(t, wrapped, "background:#15253d")
+	require.Contains(t, wrapped, `lang="en"`)
+	require.Contains(t, wrapped, "This email was sent automatically by New &lt;API&gt;. Please do not reply.")
+	require.NotContains(t, wrapped, "此邮件由")
 
 	document := "<!doctype html><html><body>custom</body></html>"
 	require.Equal(t, document, buildEmailHTML(document))

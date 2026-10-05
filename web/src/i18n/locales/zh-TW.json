@@ -6720,6 +6720,8 @@
     "Preview PDF": "預覽 PDF",
     "No invoice applications match the current search.": "沒有符合目前搜尋條件的發票申請。",
     "Internal account profit/loss": "內部帳號損益",
-    "Verification email sent. If you don't see it, please check your spam or junk folder.": "驗證郵件已寄出。如果收件匣沒有，請檢查垃圾郵件或垃圾信件匣。"
+    "Verification email sent. If you don't see it, please check your spam or junk folder.": "驗證郵件已寄出。如果收件匣沒有，請檢查垃圾郵件或垃圾信件匣。",
+    "New invoice application": "新增發票申請",
+    "The net invoice amount must be greater than 500.": "淨開票金額必須大於 500。"
   }
 }

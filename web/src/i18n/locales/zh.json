@@ -6720,6 +6720,8 @@
     "Preview PDF": "预览 PDF",
     "No invoice applications match the current search.": "没有符合当前搜索条件的发票申请。",
     "Internal account profit/loss": "内部账号盈亏",
-    "Verification email sent. If you don't see it, please check your spam or junk folder.": "验证邮件已发送。如果收件箱中没有，请检查垃圾邮件或垃圾箱。"
+    "Verification email sent. If you don't see it, please check your spam or junk folder.": "验证邮件已发送。如果收件箱中没有，请检查垃圾邮件或垃圾箱。",
+    "New invoice application": "新建发票申请",
+    "The net invoice amount must be greater than 500.": "净开票金额必须大于 500。"
   }
 }

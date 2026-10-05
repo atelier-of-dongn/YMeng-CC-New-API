@@ -6720,6 +6720,8 @@
     "Preview PDF": "Просмотреть PDF",
     "No invoice applications match the current search.": "Нет заявок на счета, соответствующих текущему поиску.",
     "Internal account profit/loss": "Прибыль/убыток внутреннего аккаунта",
-    "Verification email sent. If you don't see it, please check your spam or junk folder.": "Письмо для подтверждения отправлено. Если вы его не видите, проверьте папку со спамом."
+    "Verification email sent. If you don't see it, please check your spam or junk folder.": "Письмо для подтверждения отправлено. Если вы его не видите, проверьте папку со спамом.",
+    "New invoice application": "Новая заявка на счёт",
+    "The net invoice amount must be greater than 500.": "Чистая сумма счёта должна быть больше 500."
   }
 }
