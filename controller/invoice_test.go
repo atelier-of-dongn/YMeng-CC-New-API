@@ -1,7 +1,9 @@
 package controller
 
 import (
+	"bytes"
 	"fmt"
+	"mime/multipart"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -27,7 +29,7 @@ func setupInvoiceControllerTestDB(t *testing.T) *gorm.DB {
 	db, err := gorm.Open(sqlite.Open(dsn), &gorm.Config{})
 	require.NoError(t, err)
 	model.DB = db
-	require.NoError(t, db.AutoMigrate(&model.InvoiceApplication{}, &model.InvoiceRefundAdjustment{}))
+	require.NoError(t, db.AutoMigrate(&model.User{}, &model.InvoiceApplication{}, &model.InvoiceRefundAdjustment{}))
 	t.Cleanup(func() {
 		model.DB = previousDB
 		sqlDB, dbErr := db.DB()
@@ -91,6 +93,65 @@ func TestGetAllInvoiceApplicationsAPIRejectsInvalidFilters(t *testing.T) {
 		GetAllInvoiceApplications(ctx)
 		assert.Contains(t, recorder.Body.String(), `"success":false`, query)
 	}
+}
+
+func TestUploadInvoicePDFFailsAfterIssuingWhenEmailDeliveryFails(t *testing.T) {
+	db := setupInvoiceControllerTestDB(t)
+	dir := t.TempDir()
+	t.Setenv("INVOICE_STORAGE_DIR", dir)
+	previousServer, previousPort := common.SMTPServer, common.SMTPPort
+	previousFrom, previousAccount, previousToken := common.SMTPFrom, common.SMTPAccount, common.SMTPToken
+	previousSSL, previousStartTLS := common.SMTPSSLEnabled, common.SMTPStartTLSEnabled
+	t.Cleanup(func() {
+		common.SMTPServer, common.SMTPPort = previousServer, previousPort
+		common.SMTPFrom, common.SMTPAccount, common.SMTPToken = previousFrom, previousAccount, previousToken
+		common.SMTPSSLEnabled, common.SMTPStartTLSEnabled = previousSSL, previousStartTLS
+	})
+	common.SMTPServer = "127.0.0.1"
+	common.SMTPPort = 1
+	common.SMTPFrom = "sender@example.com"
+	common.SMTPAccount = ""
+	common.SMTPToken = ""
+	common.SMTPSSLEnabled = false
+	common.SMTPStartTLSEnabled = false
+
+	user := &model.User{Id: 42, Username: "invoice-recipient", Email: "login@example.com", Status: common.UserStatusEnabled}
+	require.NoError(t, db.Create(user).Error)
+	application := &model.InvoiceApplication{
+		Id:          1,
+		UserId:      user.Id,
+		Title:       "Example Company",
+		TaxId:       "91350000TEST",
+		GrossAmount: 501 * model.InvoiceAmountScale,
+		NetAmount:   501 * model.InvoiceAmountScale,
+		Status:      model.InvoiceStatusProcessing,
+		CreatedAt:   100,
+		UpdatedAt:   100,
+	}
+	require.NoError(t, db.Create(application).Error)
+
+	var body bytes.Buffer
+	writer := multipart.NewWriter(&body)
+	part, err := writer.CreateFormFile("file", "invoice.pdf")
+	require.NoError(t, err)
+	_, err = part.Write([]byte("%PDF-1.7\n%%EOF"))
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Params = gin.Params{{Key: "id", Value: "1"}}
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/api/invoice/admin/1/file", &body)
+	ctx.Request.Header.Set("Content-Type", writer.FormDataContentType())
+	ctx.Set("id", 9001)
+	ctx.Set("role", common.RoleAdminUser)
+	UploadInvoicePDF(ctx)
+
+	assert.Contains(t, recorder.Body.String(), "invoice issued but email delivery failed")
+	var stored model.InvoiceApplication
+	require.NoError(t, db.First(&stored, application.Id).Error)
+	assert.Equal(t, model.InvoiceStatusIssued, stored.Status)
+	assert.NotEmpty(t, stored.FileKey)
 }
 
 func TestDownloadInvoicePDFAPIServesPrivatePDF(t *testing.T) {

@@ -6719,6 +6719,7 @@
     "Failed to download invoice PDF": "Échec du téléchargement du PDF de la facture",
     "Preview PDF": "Aperçu du PDF",
     "No invoice applications match the current search.": "Aucune demande de facture ne correspond à la recherche actuelle.",
-    "Internal account profit/loss": "Résultat du compte interne"
+    "Internal account profit/loss": "Résultat du compte interne",
+    "Verification email sent. If you don't see it, please check your spam or junk folder.": "E-mail de vérification envoyé. Si vous ne le voyez pas, vérifiez vos courriers indésirables."
   }
 }

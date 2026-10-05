@@ -231,7 +231,8 @@ func SendEmailVerification(c *gin.Context) {
 	subject := fmt.Sprintf("%s邮箱验证邮件", common.SystemName)
 	content := fmt.Sprintf("<p>您好，你正在进行%s邮箱验证。</p>"+
 		"<p>您的验证码为: <strong>%s</strong></p>"+
-		"<p>验证码 %d 分钟内有效，如果不是本人操作，请忽略。</p>", common.SystemName, code, common.VerificationValidMinutes)
+		"<p>验证码 %d 分钟内有效，如果不是本人操作，请忽略。</p>"+
+		"<p>如果暂时没有看到邮件，请检查垃圾邮件、广告邮件或其他分类邮箱。</p>", common.SystemName, code, common.VerificationValidMinutes)
 	err = common.SendEmail(subject, email, content)
 	if err != nil {
 		common.ApiError(c, err)

@@ -6719,6 +6719,7 @@
     "Failed to download invoice PDF": "Failed to download invoice PDF",
     "Preview PDF": "Preview PDF",
     "No invoice applications match the current search.": "No invoice applications match the current search.",
-    "Internal account profit/loss": "Internal account profit/loss"
+    "Internal account profit/loss": "Internal account profit/loss",
+    "Verification email sent. If you don't see it, please check your spam or junk folder.": "Verification email sent. If you don't see it, please check your spam or junk folder."
   }
 }

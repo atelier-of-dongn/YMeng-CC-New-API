@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"mime"
 	"net/http"
 	"strconv"
@@ -254,6 +255,11 @@ func UploadInvoicePDF(c *gin.Context) {
 	if err := model.MarkInvoiceIssued(id, file.Key, file.Name, file.Size, file.Sha256); err != nil {
 		service.RemoveInvoiceFile(file.FullPath)
 		common.ApiError(c, err)
+		return
+	}
+	if err := service.SendIssuedInvoiceEmail(id); err != nil {
+		common.SysError(fmt.Sprintf("failed to send invoice email for application %d: %v", id, err))
+		common.ApiErrorMsg(c, "invoice issued but email delivery failed")
 		return
 	}
 	common.ApiSuccess(c, nil)

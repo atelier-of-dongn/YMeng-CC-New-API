@@ -6719,6 +6719,7 @@
     "Failed to download invoice PDF": "Не удалось скачать PDF счёта",
     "Preview PDF": "Просмотреть PDF",
     "No invoice applications match the current search.": "Нет заявок на счета, соответствующих текущему поиску.",
-    "Internal account profit/loss": "Прибыль/убыток внутреннего аккаунта"
+    "Internal account profit/loss": "Прибыль/убыток внутреннего аккаунта",
+    "Verification email sent. If you don't see it, please check your spam or junk folder.": "Письмо для подтверждения отправлено. Если вы его не видите, проверьте папку со спамом."
   }
 }

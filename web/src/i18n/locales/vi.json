@@ -6719,6 +6719,7 @@
     "Failed to download invoice PDF": "Không thể tải xuống PDF hóa đơn",
     "Preview PDF": "Xem trước PDF",
     "No invoice applications match the current search.": "Không có yêu cầu hóa đơn nào khớp với tìm kiếm hiện tại.",
-    "Internal account profit/loss": "Lãi/lỗ tài khoản nội bộ"
+    "Internal account profit/loss": "Lãi/lỗ tài khoản nội bộ",
+    "Verification email sent. If you don't see it, please check your spam or junk folder.": "Email xác minh đã được gửi. Nếu không thấy, vui lòng kiểm tra thư mục spam hoặc thư rác."
   }
 }

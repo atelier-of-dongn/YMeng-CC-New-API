@@ -6719,6 +6719,7 @@
     "Failed to download invoice PDF": "發票 PDF 下載失敗",
     "Preview PDF": "預覽 PDF",
     "No invoice applications match the current search.": "沒有符合目前搜尋條件的發票申請。",
-    "Internal account profit/loss": "內部帳號損益"
+    "Internal account profit/loss": "內部帳號損益",
+    "Verification email sent. If you don't see it, please check your spam or junk folder.": "驗證郵件已寄出。如果收件匣沒有，請檢查垃圾郵件或垃圾信件匣。"
   }
 }
