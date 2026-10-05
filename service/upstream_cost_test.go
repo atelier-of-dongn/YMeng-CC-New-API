@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
@@ -383,6 +384,98 @@ func TestUpdateUpstreamMonitorRejectsInvalidManualRatio(t *testing.T) {
 	}
 	_, err := UpdateUpstreamMonitor(1, model.UpstreamMonitorModeManual, "", nil)
 	assert.Error(t, err)
+}
+
+func TestAutoMonitorDetectsCompatibleUpstreamAndReadsPublicPricing(t *testing.T) {
+	setupUpstreamCostTables(t)
+	logResponse := "empty"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/status":
+			_, _ = w.Write([]byte(`{"success":true,"data":{"version":"v1","system_name":"Upstream","quota_per_unit":500000,"quota_display_type":"USD"}}`))
+		case "/api/pricing":
+			_, _ = w.Write([]byte(`{"success":true,"group_ratio":{"vip":1.5},"usable_group":{"vip":"VIP"},"data":[{"model_name":"gpt-a","model_ratio":1,"completion_ratio":2}]}`))
+		case "/v1/dashboard/billing/subscription":
+			if r.Header.Get("Authorization") != "Bearer sk-test" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			_, _ = w.Write([]byte(`{"hard_limit_usd":10}`))
+		case "/v1/dashboard/billing/usage":
+			_, _ = w.Write([]byte(`{"total_usage":100}`))
+		case "/api/log/token":
+			if r.Header.Get("Authorization") != "Bearer sk-test" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+			if logResponse == "denied" {
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+			if logResponse == "empty" {
+				_, _ = w.Write([]byte(`{"success":true,"data":[]}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{"success":true,"data":[{"type":2,"group":"vip","created_at":123,"other":"{\"group_ratio\":1.5}"}]}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+	baseURL := server.URL
+	channel := &model.Channel{Id: 42, Type: 1, Key: "sk-test", Status: common.ChannelStatusEnabled, BaseURL: &baseURL, Models: "gpt-a"}
+	require.NoError(t, model.DB.Create(channel).Error)
+	site := &model.UpstreamSite{BaseURL: baseURL, Status: model.UpstreamSiteStatusPending, CostFactor: 1}
+	require.NoError(t, model.DB.Create(site).Error)
+	work := &upstreamSiteWork{
+		site: site, groups: map[string]upstreamGroupState{}, fields: map[string]any{},
+		monitors: []*upstreamMonitorWork{{
+			monitor: &model.UpstreamChannelMonitor{ChannelId: channel.Id, SiteId: site.Id, Mode: model.UpstreamMonitorModeAuto},
+			channel: channel, keys: map[int]upstreamKeyState{},
+		}},
+	}
+	run := &upstreamCostRun{ctx: context.Background(), now: time.Now().Unix(), localPricing: map[string]model.Pricing{}, groupRatios: map[string]float64{}}
+
+	run.probeSites([]*upstreamSiteWork{work})
+	require.Equal(t, model.UpstreamSiteStatusNewAPI, site.Status)
+	run.processSite(work)
+	require.Equal(t, model.UpstreamPricingStatusOK, site.PricingStatus)
+	assert.Equal(t, model.UpstreamCostStatusUnknown, work.monitors[0].monitor.CostStatus)
+	assert.Zero(t, work.monitors[0].monitor.GroupRatio, "a public ratio cannot identify the key's group")
+	assert.True(t, work.groups["vip"].Public)
+
+	logResponse = "denied"
+	run.now += int64((2 * time.Hour) / time.Second)
+	run.processSite(work)
+	assert.Equal(t, model.UpstreamCostStatusUnknown, work.monitors[0].monitor.CostStatus)
+	assert.Zero(t, work.monitors[0].monitor.GroupRatio)
+	assert.Contains(t, work.monitors[0].detail.LastError, "403")
+
+	logResponse = "available"
+	run.now += int64((2 * time.Hour) / time.Second)
+	run.processSite(work)
+	assert.Equal(t, 1.5, work.monitors[0].monitor.GroupRatio)
+	assert.Equal(t, "vip", work.monitors[0].monitor.DetectedGroup)
+	assert.Equal(t, model.UpstreamCostStatusNormal, work.monitors[0].monitor.CostStatus)
+	assert.Empty(t, work.monitors[0].detail.LastError)
+	assert.True(t, work.monitors[0].keys[0].BalanceKnown)
+	assert.InDelta(t, 9, work.monitors[0].keys[0].BalanceUSD, 1e-9)
+}
+
+func TestManualMonitorViewReportsEstimatedCost(t *testing.T) {
+	ratio := 1.25
+	view := buildUpstreamMonitorView(&model.UpstreamChannelMonitor{
+		ChannelId: 1, Mode: model.UpstreamMonitorModeManual, ManualRatio: &ratio,
+		CostStatus: model.UpstreamCostStatusUnknown,
+	}, nil)
+	assert.Equal(t, ratio, view.GroupRatio)
+	assert.Equal(t, "manual", view.RatioSource)
+	assert.Equal(t, model.UpstreamCostStatusEstimated, view.CostStatus)
+
+	off := buildUpstreamMonitorView(&model.UpstreamChannelMonitor{
+		ChannelId: 2, Mode: model.UpstreamMonitorModeOff, ManualRatio: &ratio,
+	}, nil)
+	assert.Equal(t, model.UpstreamCostStatusUnknown, off.CostStatus)
 }
 
 func TestManualMonitorPersistsForUnsupportedChannel(t *testing.T) {

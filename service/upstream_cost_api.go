@@ -146,7 +146,9 @@ func buildUpstreamMonitorView(monitor *model.UpstreamChannelMonitor, site *model
 	if view.KeyGroups == nil {
 		view.KeyGroups = []string{}
 	}
-	if monitor.Mode != model.UpstreamMonitorModeAuto || site == nil || site.Status != model.UpstreamSiteStatusNewAPI || view.CostStatus == "" {
+	if monitor.Mode == model.UpstreamMonitorModeManual && monitor.ManualRatio != nil && *monitor.ManualRatio > 0 {
+		view.CostStatus = model.UpstreamCostStatusEstimated
+	} else if monitor.Mode != model.UpstreamMonitorModeAuto || site == nil || site.Status != model.UpstreamSiteStatusNewAPI || view.CostStatus == "" {
 		view.CostStatus = model.UpstreamCostStatusUnknown
 	}
 	if site == nil {

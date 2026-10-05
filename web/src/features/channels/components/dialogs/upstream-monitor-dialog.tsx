@@ -58,13 +58,17 @@ export function UpstreamMonitorDialog(props: UpstreamMonitorDialogProps) {
     queryFn: async () =>
       requireServerSuccess(await getUpstreamMonitors([channelId])).data ?? [],
     enabled,
+    refetchInterval: 15_000,
     meta: { errorToast: false },
   })
   const monitor = monitorQuery.data?.find(
     (item) => item.channel_id === channelId
   )
   const siteId = monitor?.site_id ?? 0
-  const sitesQuery = useUpstreamSites({ enabled: enabled && siteId > 0 })
+  const sitesQuery = useUpstreamSites({
+    enabled: enabled && siteId > 0,
+    refetchInterval: 15_000,
+  })
   const site = sitesQuery.data?.find((item) => item.id === siteId)
 
   const handleOpenChange = (open: boolean) => {

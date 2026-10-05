@@ -356,6 +356,7 @@ export type UpstreamCostStatus =
   | 'ratio_changed'
   | 'inverted'
   | 'group_offline'
+  | 'estimated'
   | 'unknown'
 
 export type UpstreamRatioSource = 'pricing' | 'log' | ''

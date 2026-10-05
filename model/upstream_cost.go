@@ -34,6 +34,7 @@ const (
 	UpstreamCostStatusInverted     = "inverted"
 	UpstreamCostStatusGroupOffline = "group_offline"
 	UpstreamCostStatusUnknown      = "unknown"
+	UpstreamCostStatusEstimated    = "estimated"
 )
 
 const (

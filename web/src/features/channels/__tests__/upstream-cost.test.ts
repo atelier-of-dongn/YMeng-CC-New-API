@@ -40,6 +40,7 @@ describe('upstream cost status display', () => {
     ['inverted', 'Inverted', 'danger'],
     ['group_offline', 'Group offline', 'danger'],
     ['unknown', 'Unrecognized', 'neutral'],
+    ['estimated', 'Estimated', 'warning'],
   ])(
     'maps the %s status to its label and badge variant',
     (status, label, variant) => {

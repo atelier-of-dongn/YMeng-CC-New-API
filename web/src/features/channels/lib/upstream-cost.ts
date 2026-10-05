@@ -43,6 +43,7 @@ const UPSTREAM_COST_STATUS_DISPLAY: Record<string, UpstreamStatusDisplay> = {
   inverted: { label: 'Inverted', variant: 'danger' },
   group_offline: { label: 'Group offline', variant: 'danger' },
   unknown: { label: 'Unrecognized', variant: 'neutral' },
+  estimated: { label: 'Estimated', variant: 'warning' },
 }
 
 const UPSTREAM_SITE_STATUS_DISPLAY: Record<string, UpstreamStatusDisplay> = {
