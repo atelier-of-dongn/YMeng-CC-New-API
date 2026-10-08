@@ -30,7 +30,7 @@ export function InvoiceStatusDetails(props: {
     <div className='flex max-w-64 flex-col items-start gap-2'>
       <InvoiceStatus status={props.status} />
       {props.status === 'rejected' && props.rejectReason ? (
-        <p className='text-muted-foreground text-xs wrap-break-word whitespace-pre-wrap'>
+        <p className='text-muted-foreground text-xs wrap-anywhere whitespace-pre-wrap'>
           <span className='text-foreground font-medium'>
             {t('Rejection reason')}:
           </span>{' '}

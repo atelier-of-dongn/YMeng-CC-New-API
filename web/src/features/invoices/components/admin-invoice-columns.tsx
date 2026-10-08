@@ -20,6 +20,8 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { TruncatedCell } from '@/components/data-table'
+
 import { formatInvoiceAmount, formatInvoiceTime } from '../lib'
 import type { InvoiceApplication } from '../types'
 import {
@@ -41,9 +43,12 @@ export function useAdminInvoiceColumns(
         meta: { mobileTitle: true },
         cell: ({ row }) => (
           <div className='min-w-0'>
-            <div className='truncate font-medium'>
+            <TruncatedCell
+              className='font-medium sm:max-w-[140px]'
+              tabIndex={0}
+            >
               {row.original.username || '-'}
-            </div>
+            </TruncatedCell>
             <div className='text-muted-foreground text-xs tabular-nums'>
               ID: {row.original.user_id}
             </div>
@@ -55,10 +60,18 @@ export function useAdminInvoiceColumns(
         header: t('Invoice information'),
         cell: ({ row }) => (
           <div className='min-w-0'>
-            <div className='truncate font-medium'>{row.original.title}</div>
-            <div className='text-muted-foreground truncate text-xs'>
+            <TruncatedCell
+              className='font-medium sm:max-w-[220px]'
+              tabIndex={0}
+            >
+              {row.original.title}
+            </TruncatedCell>
+            <TruncatedCell
+              className='text-muted-foreground text-xs sm:max-w-[220px]'
+              tabIndex={0}
+            >
               {row.original.tax_id}
-            </div>
+            </TruncatedCell>
           </div>
         ),
       },
