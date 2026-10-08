@@ -25,9 +25,13 @@ const (
 )
 
 type upstreamUsage struct {
-	PromptTokens     int
-	CompletionTokens int
-	CacheTokens      int
+	PromptTokens          int
+	CompletionTokens      int
+	CacheTokens           int
+	CacheCreationTokens   int
+	CacheCreationTokens5m int
+	CacheCreationTokens1h int
+	ClaudeUsageSemantic   bool
 }
 
 // UpstreamInvertedModel is a model whose upstream cost reaches the lowest local
@@ -68,10 +72,13 @@ func pricingBaseUSD(pricing model.Pricing, quotaPerUnit float64, usage upstreamU
 			return 0, "", false
 		}
 		params := BuildTieredTokenParams(&dto.Usage{
-			PromptTokens:        usage.PromptTokens,
-			CompletionTokens:    usage.CompletionTokens,
-			PromptTokensDetails: dto.InputTokenDetails{CachedTokens: usage.CacheTokens},
-		}, false, billingexpr.UsedVars(expr))
+			PromptTokens:                      usage.PromptTokens,
+			CompletionTokens:                  usage.CompletionTokens,
+			PromptTokensDetails:               dto.InputTokenDetails{CachedTokens: usage.CacheTokens, CachedCreationTokens: usage.CacheCreationTokens},
+			ClaudeCacheCreation5mTokens:       usage.CacheCreationTokens5m,
+			ClaudeCacheCreation1hTokens:       usage.CacheCreationTokens1h,
+			UsageSemantic:                     map[bool]string{true: "anthropic", false: ""}[usage.ClaudeUsageSemantic],
+		}, usage.ClaudeUsageSemantic, billingexpr.UsedVars(expr))
 		output, _, err := billingexpr.RunExpr(expr, params)
 		if err != nil || math.IsNaN(output) || math.IsInf(output, 0) || output < 0 {
 			return 0, "", false
@@ -92,8 +99,19 @@ func pricingBaseUSD(pricing model.Pricing, quotaPerUnit float64, usage upstreamU
 	if pricing.CacheRatio != nil {
 		cacheRatio = *pricing.CacheRatio
 	}
+	createCacheRatio := 1.25
+	if pricing.CreateCacheRatio != nil {
+		createCacheRatio = *pricing.CreateCacheRatio
+	}
 	cacheTokens := float64(min(max(usage.CacheTokens, 0), usage.PromptTokens))
-	tokens := float64(usage.PromptTokens) - cacheTokens + cacheTokens*cacheRatio +
+	cacheCreationTokens := float64(max(usage.CacheCreationTokens, 0))
+	cacheCreationTokens5m := float64(max(usage.CacheCreationTokens5m, 0))
+	cacheCreationTokens1h := float64(max(usage.CacheCreationTokens1h, 0))
+	if cacheCreationTokens5m+cacheCreationTokens1h > cacheCreationTokens {
+		cacheCreationTokens = cacheCreationTokens5m + cacheCreationTokens1h
+	}
+	promptTokens := float64(usage.PromptTokens) - cacheTokens - cacheCreationTokens
+	tokens := max(promptTokens, 0) + cacheTokens*cacheRatio + cacheCreationTokens*createCacheRatio +
 		float64(usage.CompletionTokens)*pricing.CompletionRatio
 	return tokens * pricing.ModelRatio / quotaPerUnit, upstreamBillingPerToken, true
 }

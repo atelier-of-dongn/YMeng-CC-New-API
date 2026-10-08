@@ -41,11 +41,15 @@ type upstreamCostSnapshot struct {
 }
 
 type upstreamCostPending struct {
-	record        *model.UpstreamCostRecord
-	channel       *upstreamCostChannelSnapshot
-	upstreamModel string
-	cacheTokens   int
-	localRatio    float64
+	record              *model.UpstreamCostRecord
+	channel             *upstreamCostChannelSnapshot
+	upstreamModel       string
+	cacheTokens         int
+	cacheWrite          int
+	cacheWrite5m        int
+	cacheWrite1h        int
+	claudeUsageSemantic bool
+	localRatio          float64
 }
 
 var (
@@ -240,6 +244,7 @@ func recordUpstreamCostConsumeLog(c *gin.Context, log *model.Log, other *model.L
 	if channel.site != nil {
 		siteId = channel.site.Id
 	}
+	usageSemantic, _ := values["usage_semantic"].(string)
 	pending := upstreamCostPending{
 		record: &model.UpstreamCostRecord{
 			RequestId:         log.RequestId,
@@ -259,8 +264,13 @@ func recordUpstreamCostConsumeLog(c *gin.Context, log *model.Log, other *model.L
 		},
 		channel:       channel,
 		upstreamModel: upstreamModel,
-		cacheTokens:   int(logOtherNumber(values["cache_tokens"])),
-		localRatio:    logOtherNumber(values["group_ratio"]),
+		cacheTokens:   max(common.QuotaFromFloat(logOtherNumber(values["cache_tokens"])), 0),
+		// Both total keys describe the same writes; never add them together.
+		cacheWrite:          max(common.QuotaFromFloat(logOtherNumber(values["cache_creation_tokens"])), common.QuotaFromFloat(logOtherNumber(values["cache_write_tokens"])), 0),
+		cacheWrite5m:        max(common.QuotaFromFloat(logOtherNumber(values["cache_creation_tokens_5m"])), 0),
+		cacheWrite1h:        max(common.QuotaFromFloat(logOtherNumber(values["cache_creation_tokens_1h"])), 0),
+		claudeUsageSemantic: usageSemantic == "anthropic",
+		localRatio:          logOtherNumber(values["group_ratio"]),
 	}
 	select {
 	case upstreamCostQueue <- pending:
@@ -284,9 +294,13 @@ func buildUpstreamCostRecord(pending upstreamCostPending) *model.UpstreamCostRec
 	record.UpstreamGroup = group
 	record.UpstreamGroupRatio = ratio
 	usage := upstreamUsage{
-		PromptTokens:     record.PromptTokens,
-		CompletionTokens: record.CompletionTokens,
-		CacheTokens:      pending.cacheTokens,
+		PromptTokens:          record.PromptTokens,
+		CompletionTokens:      record.CompletionTokens,
+		CacheTokens:           pending.cacheTokens,
+		CacheCreationTokens:   pending.cacheWrite,
+		CacheCreationTokens5m: pending.cacheWrite5m,
+		CacheCreationTokens1h: pending.cacheWrite1h,
+		ClaudeUsageSemantic:   pending.claudeUsageSemantic,
 	}
 	if cost, ok := estimateUpstreamCostQuota(channel, pending.upstreamModel, usage, record.Quota, pending.localRatio, ratio); ok {
 		record.CostQuota = cost

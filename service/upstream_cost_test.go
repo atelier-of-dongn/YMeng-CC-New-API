@@ -10,6 +10,9 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/setting/config"
+	"github.com/QuantumNous/new-api/setting/upstream_cost_setting"
+	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -337,6 +340,69 @@ func TestBuildUpstreamCostRecordEstimatesWithUpstreamPrices(t *testing.T) {
 			assert.Equal(t, tt.wantCost, record.CostQuota)
 			assert.Equal(t, "vip", record.UpstreamGroup)
 			assert.Equal(t, 1.5, record.UpstreamGroupRatio)
+		})
+	}
+}
+
+func TestRecordUpstreamCostPropagatesCacheWriteMetadata(t *testing.T) {
+	setting, ok := config.GlobalConfig.Get("upstream_cost_setting").(*upstream_cost_setting.UpstreamCostSetting)
+	require.True(t, ok)
+	require.NotNil(t, setting)
+	previousSetting := *setting
+	previousSnapshot := upstreamCostSnapshotPtr.Load()
+	previousQueue := upstreamCostQueue
+	previousQuotaPerUnit := common.QuotaPerUnit
+	t.Cleanup(func() {
+		*setting = previousSetting
+		upstreamCostSnapshotPtr.Store(previousSnapshot)
+		upstreamCostQueue = previousQueue
+		common.QuotaPerUnit = previousQuotaPerUnit
+	})
+	setting.Enabled = true
+	common.QuotaPerUnit = 500000
+	upstreamCostQueue = make(chan upstreamCostPending, 1)
+	upstreamCostSnapshotPtr.Store(&upstreamCostSnapshot{
+		channels: map[int]*upstreamCostChannelSnapshot{1: {
+			site: &model.UpstreamSite{QuotaPerUnit: 500000}, costFactor: 1, ratio: 1,
+			modelPricing: map[string]model.Pricing{"cache-model": {
+				BillingMode: "tiered_expr", BillingExpr: `tier("base", p * 2 + c * 4 + cr + cc * 3 + cc1h * 6)`,
+			}},
+		}},
+	})
+	for _, tc := range []struct {
+		name     string
+		prompt   int
+		metadata map[string]any
+		wantCost int
+	}{
+		{name: "creation total", prompt: 180, metadata: map[string]any{"cache_creation_tokens": 50}, wantCost: 245},
+		{name: "normalized write total", prompt: 180, metadata: map[string]any{"cache_write_tokens": 50}, wantCost: 245},
+		{name: "total aliases are not added", prompt: 180, metadata: map[string]any{"cache_creation_tokens": 40, "cache_write_tokens": 50}, wantCost: 245},
+		{name: "original total is retained", prompt: 180, metadata: map[string]any{"cache_creation_tokens": 50, "cache_write_tokens": 40}, wantCost: 245},
+		{name: "anthropic split writes", prompt: 100, metadata: map[string]any{"usage_semantic": "anthropic", "cache_tokens": 30, "cache_creation_tokens": 50, "cache_creation_tokens_5m": 10, "cache_creation_tokens_1h": 40}, wantCost: 290},
+		{name: "request format does not change token semantics", prompt: 180, metadata: map[string]any{"claude": true, "cache_tokens": 30, "cache_write_tokens": 50, "cache_creation_tokens_5m": 10, "cache_creation_tokens_1h": 40}, wantCost: 230},
+		{name: "floating point metadata", prompt: 180, metadata: map[string]any{"cache_write_tokens": float64(50)}, wantCost: 245},
+		{name: "negative writes are ignored", prompt: 180, metadata: map[string]any{"cache_creation_tokens": -50}, wantCost: 220},
+		{name: "oversized writes saturate safely", prompt: 180, metadata: map[string]any{"cache_write_tokens": math.Inf(1)}, wantCost: common.MaxQuota},
+		{name: "missing metadata", prompt: 180, wantCost: 220},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			other := model.NewLogOther()
+			for key, value := range tc.metadata {
+				other.SetPublic(key, value)
+			}
+			ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+			recordUpstreamCostConsumeLog(ctx, &model.Log{ChannelId: 1, ModelName: "cache-model", PromptTokens: tc.prompt, CompletionTokens: 20}, other)
+			var pending upstreamCostPending
+			select {
+			case pending = <-upstreamCostQueue:
+			default:
+				t.Fatal("consume hook did not enqueue an upstream cost record")
+			}
+			record := buildUpstreamCostRecord(pending)
+			assert.Equal(t, tc.wantCost, record.CostQuota)
+			assert.Equal(t, tc.prompt, record.PromptTokens)
+			assert.Equal(t, model.UpstreamCostRecordEstimated, record.Status)
 		})
 	}
 }
