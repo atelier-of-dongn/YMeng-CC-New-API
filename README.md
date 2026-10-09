@@ -1,16 +1,164 @@
+<div align="center">
+
 # New API IP Policy Proxy
 
 ![new-api](/web/public/logo.png)
 
-## 职责
+**基于 New API 的网页地区可见性与上游成本监控扩展**
 
-- 透明代理 New API 请求，保留流式输出。
-- 仅对中国大陆来源执行分组白名单。
-- 复用 New API 管理员登录态提供设置页。
-- 设置保存在 New API 现有 `options` 表。
-- 不修改或替换现有 `newapi-affiliate` 镜像。
+[本仓库](https://github.com/atelier-of-dongn/newapi-ip-policy) | [上游项目](https://github.com/QuantumNous/new-api) | [简体中文上游介绍](./README.zh_CN.md) | [English](./README.en.md)
 
-## 配置
+[分支说明](#fork-overview) | [分支部署](#fork-deployment) | [使用流程](#fork-usage) | [常见问题](#fork-faq) | [上游参考](#upstream-reference)
+
+</div>
+
+<a id="fork-overview"></a>
+
+## 分支说明
+
+本仓库是 [QuantumNous/new-api](https://github.com/QuantumNous/new-api) 的二次开发版本。下方先介绍本分支的使用方式，再保留上游功能、部署参考与致谢信息。
+
+> [!IMPORTANT]
+> 上游官方镜像 `calciumion/new-api:latest` 不包含本仓库的定制修改。部署前请确认使用的代码分支和镜像来源；下方上游快速开始仅用于部署官方 New API。
+
+### 本分支功能
+
+本分支直接集成在 New API 网关中，沿用其请求转发、流式输出、管理员认证与设置存储，不是独立部署的外置代理。
+
+| 功能 | 说明 |
+| --- | --- |
+| 网页地区可见性 | 根据可信边缘节点传入的国家码，对中国大陆访客过滤网页中的分组与模型展示，并提供地区提示；不限制模型 API 调用 |
+| 上游自动监控 | 识别可兼容的 New API 上游，查看上游分组、倍率、余额与定价状态 |
+| 倍率成本计算 | 根据上游定价与倍率估算请求成本，在条件满足时通过上游请求 ID 匹配消费日志 |
+| 按请求成本计算 | 为渠道配置固定的 `USD/request` 成本，适用于按次采购的上游服务 |
+| 收益分析 | 在管理员使用日志中查看收入、上游成本、利润、毛利率与成本覆盖情况 |
+| 运营告警 | 配置飞书通知，辅助关注倍率变化与成本异常 |
+
+> [!NOTE]
+> “记录每次请求的成本”与“按请求固定单价”是两个概念。倍率模式也记录请求成本；按请求模式则不按 Token 用量计算，而使用管理员填写的固定单价。上游成本监控不替代用户侧计费规则。
+
+现有 `newapi-affiliate` 镜像不会因为克隆本仓库而自动更新；请分别管理已有实例与本分支构建的镜像。
+
+<a id="fork-deployment"></a>
+
+## 分支部署
+
+### 从本仓库构建
+
+需要 Git、Docker 与 Docker Compose v2。镜像构建会同时编译前端和 Go 后端，无需在宿主机单独安装 Bun 或 Go。
+
+```bash
+# 克隆包含按请求成本功能的分支
+git clone --branch feat/upstream-request-cost https://github.com/atelier-of-dongn/newapi-ip-policy.git
+cd newapi-ip-policy
+
+# 记录部署版本；生产环境建议检出经过验证的具体提交或标签
+git rev-parse HEAD
+docker build -t new-api-ip-policy:local .
+```
+
+在仓库的 `docker-compose.yml` 中，将 `new-api` 服务的 `image` 改为本地构建的镜像：
+
+```yaml
+services:
+  new-api:
+    image: new-api-ip-policy:local
+```
+
+以上只展示需要修改的字段，**不是完整 Compose 配置**。保留仓库文件中的其他服务、环境变量、挂载与网络配置。该模板默认使用 PostgreSQL 与 Redis；原有 `calciumion/new-api:latest` 是上游官方镜像，不包含本分支修改。
+
+启动前检查：
+
+- 修改 PostgreSQL 与 Redis 的示例密码，并同步修改 `SQL_DSN`、`REDIS_CONN_STRING` 中的凭据。
+- 保留 `./data:/data`、`./logs:/app/logs` 与数据库持久化卷；升级前备份数据库、数据目录和部署配置。
+- 生产环境通过 HTTPS 反向代理访问，设置随机且稳定的 `SESSION_SECRET`，按下方环境变量说明配置 Secure Cookie 与可信 Origin。
+- 根据实际代理拓扑配置 `TRUSTED_PROXIES`，限制源站直连；地区国家码必须由可信边缘节点提供。
+- 现有部署升级前先在测试实例验证。不要删除数据库卷，也不要在生产数据上直接尝试未经验证的降级。
+
+```bash
+docker compose config --quiet
+docker compose up -d
+docker compose ps
+curl -fsS http://localhost:3000/api/status
+```
+
+访问 `http://localhost:3000` 完成初始化。状态接口应返回 `success: true`；还应登录后台检查分支功能是否存在，避免误用上游镜像。
+
+### 多节点运行
+
+所有节点使用相同版本、主数据库与 `SESSION_SECRET`；共享 Redis 的节点还需使用一致的 `CRYPTO_SECRET`。每个节点记录自己转发请求的成本，上游轮询由主节点执行，部署时需确保有主节点运行。认证与缓存传播的详细说明见下方多机部署参考。
+
+<a id="fork-usage"></a>
+
+## 使用流程
+
+### 网页地区可见性
+
+1. 在管理后台的安全设置中打开“大陆 IP 网页可见性”。
+2. 启用“大陆 IP 网页过滤”，选择允许大陆访客查看的分组并保存。
+3. 通过可信边缘节点分别以大陆与非大陆来源访问，检查网页模型与分组展示。
+
+| 配置项 | 说明 |
+| --- | --- |
+| `IpAccessPolicyEnabled` | 网页过滤开关，默认关闭 |
+| `IpAccessPolicyAllowedGroups` | 允许展示的分组，保存格式为 JSON 字符串数组，例如 `["default", "domestic"]` |
+
+国家码优先读取 `X-Client-Country`，其次读取 `CF-IPCountry`。应用不会自行执行 GeoIP 查询；只有开启过滤且国家码为 `CN` 时生效，国家码缺失或未知时不进行地区过滤。
+
+> [!WARNING]
+> 国家码请求头不是客户端身份凭据。边缘节点应覆盖客户端自行提交的这两个请求头，并限制绕过边缘直接访问源站。`TRUSTED_PROXIES` 不会自动验证国家码头的来源。此功能只控制网页可见性，不能作为 API 授权、防火墙或合规准入机制。
+
+### 上游成本监控
+
+1. 在“运营设置 → 日志维护”开启“记录额度消费”，保证消费日志可用。
+2. 在“运营设置 → 上游成本监控”开启全局监控，按需配置自动发现、轮询周期与飞书通知。
+3. 在渠道的上游监控设置中选择自动、手动或关闭，再选择成本计算方式。
+4. 倍率模式下，自动模式尝试识别兼容的 New API 上游；无法自动获取时，可使用手动倍率。按请求模式下，填写固定的 `USD/request` 单价。
+5. 查看渠道监控详情与管理员使用日志，结合成本状态和覆盖率解读收益数据。
+
+| 成本计算方式 | 数据来源 | 适用场景与限制 |
+| --- | --- | --- |
+| 倍率 | 上游定价、分组倍率或手动倍率；可匹配的上游消费日志 | 自动监控依赖上游接口兼容性和权限；未匹配的记录仍为估算 |
+| 按请求 | 管理员设置的固定美元单价 | 每条消费日志记录一次固定成本，包括任务提交；后续调整和退款不会改变该固定成本，不参与上游日志匹配 |
+
+默认配置：
+
+| 设置 | 默认值 |
+| --- | --- |
+| 全局监控 | 关闭 |
+| 自动发现 | 开启，但需先启用全局监控 |
+| 日志轮询周期 | 60 秒 |
+| 定价刷新周期 | 5 分钟 |
+| 成本记录保留期 | 30 天 |
+| 飞书通知 | 未配置，按需启用 |
+
+> [!IMPORTANT]
+> 成本记录可能处于已匹配、估算或未知状态。固定按请求成本始终属于配置估算；未知或未覆盖的请求不能当作零成本。收益数据应结合覆盖率、筛选范围与记录保留期使用，不应视为上游账单或最终结算凭据。
+
+<a id="fork-faq"></a>
+
+## 常见问题
+
+| 问题 | 检查项 |
+| --- | --- |
+| 部署后看不到分支功能 | 确认检出的分支和提交，检查 Compose 是否仍指向上游官方镜像，重新构建并更新容器 |
+| 大陆网页过滤没有生效 | 确认开关、允许分组，以及源站收到的国家码是否为 `CN` |
+| 模型 API 仍可调用 | 这是预期行为；网页地区可见性不限制 API 调用 |
+| 使用日志没有上游成本 | 检查消费日志开关、全局监控、渠道监控模式与成本参数；新配置不会自动补齐所有历史成本 |
+| 自动模式显示未知 | 检查上游是否兼容、接口是否可访问、密钥权限与主节点运行情况；查看渠道详情中的错误信息 |
+| 毛利统计与账单不一致 | 检查估算状态、覆盖率、时间范围、保留期，以及上游折算配置；按请求成本不会随退款自动调整 |
+
+分支相关问题请在[本仓库 Issues](https://github.com/atelier-of-dongn/newapi-ip-policy/issues)中反馈，附上部署提交、复现步骤与脱敏日志。下方官方文档、发行版和社区链接属于上游 New API，未必涵盖本分支的定制功能。
+
+<a id="upstream-reference"></a>
+
+## 上游参考
+
+以下保留上游 New API 的功能介绍、部署示例、相关项目、许可与致谢。**其中克隆上游仓库、拉取官方镜像或应用商店安装的命令，仅适用于上游版本。部署本分支请使用上面的分支部署流程。**
+
+<div align="center">
+
+## 上游项目入口
 
 <p align="center">
   <a href="https://raw.githubusercontent.com/Calcium-Ion/new-api/main/LICENSE">
@@ -397,7 +545,7 @@ docker run --name new-api -d --restart always \
 2. Search for **New-API** in the application store
 3. One-click installation
 
-📖 [Tutorial with images](./docs/BT.md)
+📖 [Tutorial with images](./docs/installation/BT.md)
 
 </details>
 
