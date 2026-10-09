@@ -47,6 +47,18 @@ export function UpstreamRatioCell(props: { channel: Channel }) {
   const monitor = useUpstreamMonitor(props.channel.id)
 
   if (
+    !isTagAggregateRow(props.channel) &&
+    monitor?.cost_mode === 'request' &&
+    monitor.mode !== 'off'
+  ) {
+    return (
+      <span className='font-mono text-xs'>
+        {monitor.request_price ?? '-'} {t('USD/request')}
+      </span>
+    )
+  }
+
+  if (
     isTagAggregateRow(props.channel) ||
     !monitor ||
     monitor.group_ratio <= 0

@@ -873,7 +873,9 @@ func matchUpstreamCostRecords(site *model.UpstreamSite, logs []upstreamLogEntry)
 	}
 	grouped := make(map[string][]*model.UpstreamCostRecord)
 	for _, record := range records {
-		grouped[record.UpstreamRequestId] = append(grouped[record.UpstreamRequestId], record)
+		if model.NormalizeUpstreamCostMode(record.CostMode) != model.UpstreamCostModeRequest {
+			grouped[record.UpstreamRequestId] = append(grouped[record.UpstreamRequestId], record)
+		}
 	}
 	costFactor := upstreamCostFactor(site)
 	matched := 0
@@ -914,6 +916,22 @@ func matchUpstreamCostRecords(site *model.UpstreamSite, logs []upstreamLogEntry)
 func (run *upstreamCostRun) evaluateMonitor(work *upstreamSiteWork, monitorWork *upstreamMonitorWork) {
 	monitor := monitorWork.monitor
 	channel := monitorWork.channel
+	if model.NormalizeUpstreamCostMode(monitor.CostMode) == model.UpstreamCostModeRequest {
+		monitor.CostStatus = model.UpstreamCostStatusEstimated
+		if _, err := upstreamRequestCostQuota(monitor.RequestPrice); err != nil {
+			monitor.CostStatus = model.UpstreamCostStatusUnknown
+		}
+		monitor.PrevGroupRatio, monitor.RatioChangedAt = 0, 0
+		monitorWork.detail = upstreamStatusDetail{}
+		for _, state := range monitorWork.keys {
+			if state.Error != "" {
+				monitorWork.detail.LastError = state.Error
+				break
+			}
+		}
+		monitorWork.dirty = true
+		return
+	}
 	bestGroup, bestSource, detected, lastError, offlineGroup := "", "", "", "", ""
 	bestRatio := 0.0
 	keyGroups := make([]string, 0)

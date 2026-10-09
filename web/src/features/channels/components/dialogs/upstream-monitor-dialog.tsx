@@ -101,21 +101,29 @@ export function UpstreamMonitorDialog(props: UpstreamMonitorDialogProps) {
     mode: monitor?.mode ?? 'auto',
     manual_group: monitor?.manual_group ?? '',
     manual_ratio: monitor?.manual_ratio ?? null,
+    cost_mode: monitor?.cost_mode ?? 'ratio',
+    request_price: monitor?.request_price ?? null,
   }
   const values = draft ?? savedValues
   const isDirty =
     values.mode !== savedValues.mode ||
     values.manual_group !== savedValues.manual_group ||
-    values.manual_ratio !== savedValues.manual_ratio
+    values.manual_ratio !== savedValues.manual_ratio ||
+    values.cost_mode !== savedValues.cost_mode ||
+    values.request_price !== savedValues.request_price
   // Saving an untouched form still creates the monitor row for a new channel.
   const canSave =
     monitorQuery.isSuccess &&
     !saveMutation.isPending &&
-    (values.mode !== 'manual' ||
-      (values.manual_ratio !== null &&
-        Number.isFinite(values.manual_ratio) &&
-        values.manual_ratio > 0 &&
-        values.manual_ratio <= 100)) &&
+    (values.cost_mode === 'request'
+      ? values.request_price != null &&
+        Number.isFinite(values.request_price) &&
+        values.request_price >= 0
+      : values.mode !== 'manual' ||
+        (values.manual_ratio !== null &&
+          Number.isFinite(values.manual_ratio) &&
+          values.manual_ratio > 0 &&
+          values.manual_ratio <= 100)) &&
     (isDirty || !monitor)
 
   let body: ReactNode

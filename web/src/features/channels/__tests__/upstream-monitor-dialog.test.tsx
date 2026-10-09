@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { useEffect } from 'react'
 import { afterEach, expect, test, vi } from 'vitest'
 
@@ -76,4 +77,61 @@ test('when detection completes while the dialog is open, it displays the upstrea
       ([url]) => url === '/api/channel/upstream_cost/monitors'
     ).length
   ).toBeGreaterThan(1)
+})
+
+test('request mode saves zero without a manual ratio and retains the draft on failure', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({
+    data: {
+      success: true,
+      data: [
+        {
+          channel_id: 7,
+          mode: 'manual',
+          site_id: 0,
+          groups: [],
+          cost_mode: 'request',
+          request_price: 1,
+        },
+      ],
+    },
+  })
+  const put = vi
+    .spyOn(api, 'put')
+    .mockResolvedValue({ data: { success: false, message: 'price rejected' } })
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
+  render(
+    <QueryClientProvider client={queryClient}>
+      <ChannelsProvider>
+        <OpenMonitor />
+      </ChannelsProvider>
+    </QueryClientProvider>
+  )
+  const price = await screen.findByRole('textbox', { name: 'Request price' })
+  expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+  fireEvent.change(price, { target: { value: '' } })
+  expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
+  fireEvent.change(price, { target: { value: '0' } })
+  expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+  await userEvent.click(screen.getByRole('button', { name: 'Save' }))
+  await waitFor(() =>
+    expect(put).toHaveBeenCalledWith(
+      '/api/channel/upstream_cost/monitors/7',
+      {
+        mode: 'manual',
+        manual_group: '',
+        manual_ratio: null,
+        cost_mode: 'request',
+        request_price: 0,
+      },
+      expect.any(Object)
+    )
+  )
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Save' })).toBeEnabled()
+  )
+  expect(screen.getByRole('textbox', { name: 'Request price' })).toHaveValue(
+    '0'
+  )
 })

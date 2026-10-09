@@ -30,6 +30,8 @@ type UpstreamGroupOption struct {
 type UpstreamMonitorView struct {
 	ChannelId        int                     `json:"channel_id"`
 	Mode             string                  `json:"mode"`
+	CostMode         string                  `json:"cost_mode"`
+	RequestPrice     *float64                `json:"request_price"`
 	SiteId           int                     `json:"site_id"`
 	SiteName         string                  `json:"site_name"`
 	SiteBaseURL      string                  `json:"site_base_url"`
@@ -62,6 +64,7 @@ type UpstreamSiteView struct {
 
 type UpstreamCostLogView struct {
 	Status             int     `json:"status"`
+	CostMode           string  `json:"cost_mode"`
 	UpstreamGroup      string  `json:"upstream_group"`
 	UpstreamGroupRatio float64 `json:"upstream_group_ratio"`
 	UpstreamQuota      int     `json:"upstream_quota"`
@@ -101,6 +104,8 @@ func buildUpstreamMonitorView(monitor *model.UpstreamChannelMonitor, site *model
 	view := UpstreamMonitorView{
 		ChannelId:      monitor.ChannelId,
 		Mode:           monitor.Mode,
+		CostMode:       model.NormalizeUpstreamCostMode(monitor.CostMode),
+		RequestPrice:   monitor.RequestPrice,
 		SiteId:         monitor.SiteId,
 		EffectiveGroup: monitor.ManualGroup,
 		DetectedGroup:  monitor.DetectedGroup,
@@ -152,6 +157,17 @@ func buildUpstreamMonitorView(monitor *model.UpstreamChannelMonitor, site *model
 	} else if monitor.Mode != model.UpstreamMonitorModeAuto || site == nil || site.Status != model.UpstreamSiteStatusNewAPI || view.CostStatus == "" {
 		view.CostStatus = model.UpstreamCostStatusUnknown
 	}
+	if view.CostMode == model.UpstreamCostModeRequest {
+		view.GroupMismatch = false
+		view.GroupRatio, view.PrevGroupRatio, view.RatioChangedAt = 0, 0, 0
+		view.RatioSource = ""
+		view.InvertedModels = []UpstreamInvertedModel{}
+		view.UnknownModels, view.MixedModels = []string{}, []string{}
+		view.CostStatus = model.UpstreamCostStatusUnknown
+		if _, err := upstreamRequestCostQuota(monitor.RequestPrice); monitor.Mode != model.UpstreamMonitorModeOff && err == nil {
+			view.CostStatus = model.UpstreamCostStatusEstimated
+		}
+	}
 	if site == nil {
 		return view
 	}
@@ -200,66 +216,96 @@ func GetUpstreamSiteViews() ([]UpstreamSiteView, error) {
 	return views, nil
 }
 
-// UpdateUpstreamMonitor stores the administrator's monitoring choice for a
-// channel, creating the monitor when auto detection has not linked it yet.
-func UpdateUpstreamMonitor(channelId int, mode string, manualGroup string, manualRatio *float64) (*UpstreamMonitorView, error) {
+// UpstreamCostConfig uses pointers so legacy clients preserve saved cost settings.
+type UpstreamCostConfig struct {
+	CostMode     *string
+	RequestPrice *float64
+}
+
+// upstreamRequestCostQuota validates a USD/request price without saturating it.
+func upstreamRequestCostQuota(price *float64) (int, error) {
+	if price == nil || math.IsNaN(*price) || math.IsInf(*price, 0) || *price < 0 {
+		return 0, errors.New("请求单价必须是有限的非负数")
+	}
+	quota := *price * common.QuotaPerUnit
+	if common.QuotaPerUnit <= 0 || math.IsNaN(quota) || math.IsInf(quota, 0) || quota > common.MaxQuota {
+		return 0, errors.New("请求单价超出允许的成本额度")
+	}
+	return common.QuotaFromFloatStrict(quota)
+}
+
+// UpdateUpstreamMonitor preserves omitted cost settings for legacy clients.
+func UpdateUpstreamMonitor(channelId int, mode string, manualGroup string, manualRatio *float64, configs ...UpstreamCostConfig) (*UpstreamMonitorView, error) {
 	if mode != model.UpstreamMonitorModeAuto && mode != model.UpstreamMonitorModeManual && mode != model.UpstreamMonitorModeOff {
 		return nil, errors.New("无效的监控模式")
 	}
 	if manualRatio != nil && (math.IsNaN(*manualRatio) || math.IsInf(*manualRatio, 0) || *manualRatio <= 0 || *manualRatio > 100) {
 		return nil, errors.New("手动倍率必须大于 0 且不超过 100")
 	}
-	if mode == model.UpstreamMonitorModeManual && manualRatio == nil {
-		return nil, errors.New("手动模式需要设置上游倍率")
-	}
 	manualGroup = strings.TrimSpace(manualGroup)
 	if len(manualGroup) > 64 {
 		return nil, errors.New("分组名称过长")
+	}
+	monitor, err := model.GetUpstreamChannelMonitor(channelId)
+	creating := errors.Is(err, gorm.ErrRecordNotFound)
+	if err != nil && !creating {
+		return nil, err
+	}
+	if creating {
+		monitor = &model.UpstreamChannelMonitor{ChannelId: channelId, CostStatus: model.UpstreamCostStatusUnknown}
+	}
+	costMode := model.NormalizeUpstreamCostMode(monitor.CostMode)
+	requestPrice := monitor.RequestPrice
+	if len(configs) > 0 {
+		if configs[0].CostMode != nil {
+			costMode = *configs[0].CostMode
+		}
+		if configs[0].RequestPrice != nil {
+			requestPrice = configs[0].RequestPrice
+		}
+	}
+	if costMode != model.UpstreamCostModeRatio && costMode != model.UpstreamCostModeRequest {
+		return nil, errors.New("无效的成本计算方式")
+	}
+	if requestPrice != nil || costMode == model.UpstreamCostModeRequest {
+		if _, err := upstreamRequestCostQuota(requestPrice); err != nil {
+			return nil, err
+		}
+	}
+	if costMode == model.UpstreamCostModeRatio && mode == model.UpstreamMonitorModeManual && manualRatio == nil {
+		return nil, errors.New("手动模式需要设置上游倍率")
 	}
 	channel, err := model.GetChannelById(channelId, false)
 	if err != nil {
 		return nil, err
 	}
 	baseURL := upstreamCostBaseURL(channel)
-	if mode == model.UpstreamMonitorModeAuto && baseURL == "" {
+	if costMode == model.UpstreamCostModeRatio && mode == model.UpstreamMonitorModeAuto && baseURL == "" {
 		return nil, errors.New("该渠道没有可监控的 new-api 上游地址")
 	}
-	monitor, err := model.GetUpstreamChannelMonitor(channelId)
-	switch {
-	case errors.Is(err, gorm.ErrRecordNotFound):
-		siteId := 0
+	if creating {
 		if baseURL != "" {
 			site, err := model.GetOrCreateUpstreamSite(baseURL)
 			if err != nil {
 				return nil, err
 			}
-			siteId = site.Id
+			monitor.SiteId = site.Id
 		}
-		monitor = &model.UpstreamChannelMonitor{
-			ChannelId:   channelId,
-			SiteId:      siteId,
-			BaseURL:     baseURL,
-			Mode:        mode,
-			ManualGroup: manualGroup,
-			ManualRatio: manualRatio,
-			CostStatus:  model.UpstreamCostStatusUnknown,
-		}
+		monitor.BaseURL, monitor.Mode = baseURL, mode
+		monitor.ManualGroup, monitor.ManualRatio = manualGroup, manualRatio
+		monitor.CostMode, monitor.RequestPrice = costMode, requestPrice
 		if err := model.CreateUpstreamChannelMonitor(monitor); err != nil {
 			return nil, err
 		}
-	case err != nil:
-		return nil, err
-	default:
-		err := model.UpdateUpstreamChannelMonitor(channelId, map[string]any{
-			"mode":         mode,
-			"manual_group": manualGroup,
-			"manual_ratio": manualRatio,
-		})
-		if err != nil {
+	} else {
+		if err := model.UpdateUpstreamChannelMonitor(channelId, map[string]any{
+			"mode": mode, "manual_group": manualGroup, "manual_ratio": manualRatio,
+			"cost_mode": costMode, "request_price": requestPrice,
+		}); err != nil {
 			return nil, err
 		}
 	}
-	// Re-evaluate the site on the next monitor tick.
+	reloadUpstreamCostSnapshot(true)
 	if monitor.SiteId > 0 {
 		if err := model.ResetUpstreamSiteSchedules(monitor.SiteId); err != nil {
 			return nil, err
@@ -354,6 +400,7 @@ func AttachUpstreamCostToLogs(logs []*model.Log) []AdminLogItem {
 		}
 		items[i].UpstreamCost = &UpstreamCostLogView{
 			Status:             record.Status,
+			CostMode:           model.NormalizeUpstreamCostMode(record.CostMode),
 			UpstreamGroup:      record.UpstreamGroup,
 			UpstreamGroupRatio: record.UpstreamGroupRatio,
 			UpstreamQuota:      record.UpstreamQuota,

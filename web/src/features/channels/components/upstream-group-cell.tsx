@@ -51,7 +51,11 @@ export function UpstreamGroupCell(props: { channel: Channel }) {
   const { sensitiveVisible, setCurrentRow, setOpen } = useChannels()
   const monitor = useUpstreamMonitor(props.channel.id)
 
-  if (isTagAggregateRow(props.channel) || !monitor) {
+  if (
+    isTagAggregateRow(props.channel) ||
+    !monitor ||
+    monitor.cost_mode === 'request'
+  ) {
     return <UpstreamEmptyValue />
   }
 
