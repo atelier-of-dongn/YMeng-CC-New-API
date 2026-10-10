@@ -27,7 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { formatTimestampToDate } from '@/lib/format'
 
 import { ManagedUpdateSection } from './managed-update-section'
-import { getSystemReleaseUrl, parseSystemVersion } from './releases'
+import { getForkSystemReleaseUrl, parseSystemVersion } from './releases'
 import {
   getUpdateErrorMessage,
   type useSystemUpdate,
@@ -51,7 +51,7 @@ export function SystemUpdateDialog(props: SystemUpdateDialogProps) {
   const update = props.update
   const release = update.release
   const snapshot = update.snapshot
-  const releaseUrl = release ? getSystemReleaseUrl(release) : null
+  const releaseUrl = release ? getForkSystemReleaseUrl(release) : null
   const isPrerelease =
     release &&
     (release.prerelease ||

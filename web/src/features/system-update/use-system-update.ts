@@ -34,7 +34,7 @@ import { statusQueryOptions } from '@/lib/status-query'
 import { useAuthStore } from '@/stores/auth-store'
 
 import {
-  fetchLatestSystemRelease,
+  fetchLatestForkSystemRelease,
   UpdateCheckError,
   type UpdateCheckErrorCode,
 } from './api'
@@ -74,7 +74,7 @@ export const systemUpdateQueryOptions = queryOptions({
       .catch(() => undefined)
     let snapshot: SystemUpdateSnapshot
     try {
-      const release = await fetchLatestSystemRelease(signal)
+      const release = await fetchLatestForkSystemRelease(signal)
       signal.throwIfAborted()
       const now = Date.now()
       snapshot = {
