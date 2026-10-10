@@ -4,7 +4,13 @@
 
 ![new-api](/web/public/logo.png)
 
-**基于 New API 的渠道路由、发票管理、邀请返佣与上游成本分析扩展**
+<h2><a href="https://ymeng.cc">YMeng API 中转站 · ymeng.cc</a></h2>
+
+<p><strong>访问中转站：<a href="https://ymeng.cc">https://ymeng.cc</a></strong></p>
+
+为 YMeng API 中转服务开发与维护的 New API 二次开发版本
+
+**渠道路由 · 发票管理 · 邀请返佣 · 上游成本分析**
 
 [本仓库](https://github.com/atelier-of-dongn/YMeng-CC-New-API) | [上游项目](https://github.com/QuantumNous/new-api) | [简体中文上游介绍](./README.zh_CN.md) | [English](./README.en.md)
 
