@@ -1,0 +1,81 @@
+name: Managed update image release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/ymeng-cc-new-api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push immutable image
+        id: image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE_NAME }}:${{ github.ref_name }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ github.ref_name }}
+
+      - name: Require compatibility declaration
+        env:
+          COMPATIBILITY: ${{ secrets.UPDATE_COMPATIBILITY_JSON }}
+          PRIVATE_KEY_B64: ${{ secrets.UPDATE_RELEASE_PRIVATE_KEY_B64 }}
+        run: |
+          test -n "$COMPATIBILITY" || { echo 'UPDATE_COMPATIBILITY_JSON is required'; exit 1; }
+          test -n "$PRIVATE_KEY_B64" || { echo 'UPDATE_RELEASE_PRIVATE_KEY_B64 is required'; exit 1; }
+          printf '%s' "$COMPATIBILITY" > compatibility-input.json
+          jq --arg version "${GITHUB_REF_NAME}" \
+             --arg image "${IMAGE_NAME}@${{ steps.image.outputs.digest }}" \
+             '.version=$version | .image=$image' compatibility-input.json > update-manifest.json
+          jq -e --arg version "${GITHUB_REF_NAME}" --arg image "${IMAGE_NAME}@${{ steps.image.outputs.digest }}" \
+             '(.version == $version) and (.image == $image) and (.schema_unchanged == true) and (.shared_state_compatible == true) and (.from_versions|type == "array") and (.databases|type == "array") and (.platforms|type == "array")' \
+             update-manifest.json >/dev/null
+          printf '%s' "$PRIVATE_KEY_B64" | base64 -d > release-key.pem
+          openssl pkeyutl -sign -inkey release-key.pem -rawin -in update-manifest.json -out update-manifest.sig
+          base64 -w 0 update-manifest.sig > update-manifest.sig.b64
+          mv update-manifest.sig.b64 update-manifest.sig
+          rm -f release-key.pem compatibility-input.json
+
+      - name: Wait for the release record
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for attempt in $(seq 1 30); do
+            if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+              break
+            fi
+            if [ "$attempt" -eq 30 ]; then
+              echo 'The release workflow did not create the release record in time.' >&2
+              exit 1
+            fi
+            sleep 10
+          done
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "${GITHUB_REF_NAME}" update-manifest.json update-manifest.sig --clobber

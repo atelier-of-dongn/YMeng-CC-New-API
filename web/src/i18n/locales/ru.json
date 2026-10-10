@@ -6727,6 +6727,12 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Site updates": "Обновления сайта",
+    "Updates from YMeng-CC-New-API": "Обновления от YMeng-CC-New-API",
+    "Unable to contact the update service.": "Не удалось связаться со службой обновлений.",
+    "Update state: {{state}}": "Состояние обновления: {{state}}",
+    "Install update": "Установить обновление",
+    "Prepare the new version while existing requests finish on the current version.": "Подготовить новую версию, пока текущая версия завершает существующие запросы."
   }
 }

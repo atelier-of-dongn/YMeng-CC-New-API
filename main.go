@@ -198,6 +198,7 @@ func main() {
 	}))
 	// This will cause SSE not to work!!!
 	//server.Use(gzip.Gzip(gzip.DefaultCompression))
+	server.Use(middleware.UpdateLifecycleTracker())
 	server.Use(middleware.RequestId())
 	server.Use(middleware.Version())
 	server.Use(middleware.I18n())
@@ -219,6 +220,8 @@ func main() {
 		Addr:    ":" + port,
 		Handler: server,
 	}
+	updateControlServer := startUpdateControlServer()
+	common.SetUpdateReady(true)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -235,12 +238,21 @@ func main() {
 	sig := <-quit
 	common.SysLog(fmt.Sprintf("received signal: %v, shutting down...", sig))
 
+	// Stop accepting new business requests before graceful shutdown. Existing
+	// streams and upgraded connections remain counted until their handlers return.
+	common.BeginUpdateDrain()
+	common.SetUpdateReady(false)
 	// SSE streams may run for minutes; give them time to finish before forced exit
 	shutdownTimeout := time.Duration(common.GetEnvOrDefault("SHUTDOWN_TIMEOUT_SECONDS", 120)) * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		common.SysError(fmt.Sprintf("server forced to shutdown: %v", err))
+	}
+	if updateControlServer != nil {
+		if err := updateControlServer.Shutdown(context.Background()); err != nil {
+			common.SysError(fmt.Sprintf("update control server shutdown failed: %v", err))
+		}
 	}
 	// 内存中的看板数据保存入库，避免重启丢失未落库数据 (issue #5679)
 	if common.DataExportEnabled {

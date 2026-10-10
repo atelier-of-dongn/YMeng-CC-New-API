@@ -6727,6 +6727,12 @@
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
     "Zhipu V4": "Zhipu V4",
-    "Zoom": "Zoom"
+    "Zoom": "Zoom",
+    "Site updates": "Cập nhật trang web",
+    "Updates from YMeng-CC-New-API": "Bản cập nhật từ YMeng-CC-New-API",
+    "Unable to contact the update service.": "Không thể kết nối dịch vụ cập nhật.",
+    "Update state: {{state}}": "Trạng thái cập nhật: {{state}}",
+    "Install update": "Cài đặt bản cập nhật",
+    "Prepare the new version while existing requests finish on the current version.": "Chuẩn bị phiên bản mới trong khi các yêu cầu hiện tại hoàn tất trên phiên bản hiện tại."
   }
 }

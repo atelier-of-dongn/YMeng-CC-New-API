@@ -106,6 +106,8 @@ func (s *BillingSession) Refund(c *gin.Context) {
 	funding := s.funding
 
 	gopool.Go(func() {
+		common.BeginUpdateWrite()
+		defer common.EndUpdateWrite()
 		// 1) 退还资金来源
 		if err := funding.Refund(); err != nil {
 			common.SysLog("error refunding billing source: " + err.Error())

@@ -110,6 +110,19 @@ curl -fsS http://localhost:3000/api/status
 
 所有节点使用相同版本、主数据库与 `SESSION_SECRET`；共享 Redis 的节点还需使用一致的 `CRYPTO_SECRET`。每个节点记录自己转发请求的成本，上游轮询由主节点执行，部署时需确保有主节点运行。认证与缓存传播的详细说明见下方多机部署参考。
 
+### 托管在线更新（可选）
+
+需要在已有 Nginx/宝塔反向代理后接入双实例模式时，使用 `docker-compose.managed.yml`。该模板让代理先把新请求送到已通过健康检查的新实例，再让旧实例继续完成已建立的 HTTP/SSE/WebSocket 连接；不使用 `docker compose down`，也不会删除数据卷、数据库或 Redis。
+
+启用前必须完成以下条件：
+
+- `NEW_API_IMAGE` 使用已验证的不可变 digest；两实例共享主数据库、日志数据库、Redis、`SESSION_SECRET`、`CRYPTO_SECRET` 和 `update_assets` 卷。
+- 设置随机且仅用于内部网络的 `UPDATE_CONTROL_TOKEN`，以及与发布清单匹配的 `UPDATE_RELEASE_PUBLIC_KEY`；控制器是唯一允许挂载 Docker socket 的服务。
+- 先让 Nginx/宝塔指向代理的 `3000` 端口，再从后台更新入口执行检查。没有签名兼容清单、数据库/schema/缓存兼容性证据或候选实例 readiness 时，安装按钮会保持禁用。
+- 旧实例不会因固定超时被强制关闭；长连接或计费写入未完成时会保留旧实例并显示排空状态。更新失败时继续使用旧实例。
+
+首次把直接访问 `new-api:3000` 的站点迁移到代理入口，必须先在独立端口验证并通过 Nginx graceful reload；不能保证改入口本身不影响已有连接。SQLite、破坏性 schema 迁移和未验证的后台任务交接不支持在线安装。必须先在测试环境验证，再处理生产入口。
+
 <a id="fork-usage"></a>
 
 ## 使用流程

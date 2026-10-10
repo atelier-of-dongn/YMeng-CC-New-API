@@ -6727,6 +6727,12 @@
     "Zhipu": "智谱",
     "Zhipu GLM": "智谱GLM",
     "Zhipu V4": "智谱 V4",
-    "Zoom": "缩放"
+    "Zoom": "缩放",
+    "Site updates": "站点更新",
+    "Updates from YMeng-CC-New-API": "来自 YMeng-CC-New-API 的更新",
+    "Unable to contact the update service.": "无法连接更新服务。",
+    "Update state: {{state}}": "更新状态：{{state}}",
+    "Install update": "安装更新",
+    "Prepare the new version while existing requests finish on the current version.": "在现有请求继续由当前版本处理时准备新版本。"
   }
 }
