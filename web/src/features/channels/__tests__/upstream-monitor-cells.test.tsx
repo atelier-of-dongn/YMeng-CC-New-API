@@ -25,6 +25,7 @@ import { api } from '@/lib/api'
 
 import { ChannelsProvider, useChannels } from '../components/channels-provider'
 import { UpstreamGroupCell } from '../components/upstream-group-cell'
+import { UpstreamRatioCell } from '../components/upstream-monitor-cells'
 import { UpstreamMonitorProvider } from '../components/upstream-monitor-provider'
 import type { Channel, UpstreamMonitorView } from '../types'
 
@@ -143,4 +144,32 @@ test('marks the effective group as manual when a manual group is set', async () 
   const cell = screen.getByTestId('channel-3')
   expect(await within(cell).findByText('vip')).toBeVisible()
   expect(within(cell).getByText('Manual')).toBeVisible()
+})
+
+test('request cost channel displays a zero unit price instead of a multiplier', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({
+    data: {
+      success: true,
+      data: [
+        monitor({
+          channel_id: 3,
+          cost_mode: 'request',
+          request_price: 0,
+          group_ratio: 10,
+        }),
+      ],
+    },
+  })
+  const queryClient = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  render(
+    <QueryClientProvider client={queryClient}>
+      <UpstreamMonitorProvider channelIds={[3]}>
+        <UpstreamRatioCell channel={{ id: 3 } as Channel} />
+      </UpstreamMonitorProvider>
+    </QueryClientProvider>
+  )
+  expect(await screen.findByText('0 USD/request')).toBeVisible()
+  expect(screen.queryByText('×10')).not.toBeInTheDocument()
 })

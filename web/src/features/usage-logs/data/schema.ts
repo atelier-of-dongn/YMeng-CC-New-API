@@ -27,6 +27,7 @@ import { z } from 'zod'
 // site cost factor; `upstream_quota` is in upstream units (display only).
 export const upstreamCostSchema = z.object({
   status: z.number(),
+  cost_mode: z.enum(['ratio', 'request']).optional(),
   upstream_group: z.string().default(''),
   upstream_group_ratio: z.number().default(0),
   upstream_quota: z.number().default(0),

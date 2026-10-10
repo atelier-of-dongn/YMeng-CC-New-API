@@ -392,7 +392,7 @@ func TestRecordUpstreamCostPropagatesCacheWriteMetadata(t *testing.T) {
 				other.SetPublic(key, value)
 			}
 			ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
-			recordUpstreamCostConsumeLog(ctx, &model.Log{ChannelId: 1, ModelName: "cache-model", PromptTokens: tc.prompt, CompletionTokens: 20}, other)
+			recordUpstreamCostConsumeLog(ctx, &model.Log{Type: model.LogTypeConsume, ChannelId: 1, ModelName: "cache-model", PromptTokens: tc.prompt, CompletionTokens: 20}, other)
 			var pending upstreamCostPending
 			select {
 			case pending = <-upstreamCostQueue:
@@ -741,4 +741,128 @@ func TestFormatUpstreamCostAlertListsSiteGroupRatiosAndChannels(t *testing.T) {
 
 	assert.Equal(t, "【成本倒挂】Up", title)
 	assert.Equal(t, "#12 A：gpt-a → up-a（输入）上游 $0.003/1K tokens ≥ 本站 $0.002/1K tokens", lines[len(lines)-1])
+}
+
+func TestRequestUpstreamCostSnapshotAndQueuedPrice(t *testing.T) {
+	previousQPU := common.QuotaPerUnit
+	previousSnapshot, previousQueue := upstreamCostSnapshotPtr.Load(), upstreamCostQueue
+	setting, ok := config.GlobalConfig.Get("upstream_cost_setting").(*upstream_cost_setting.UpstreamCostSetting)
+	require.True(t, ok)
+	previousSetting := *setting
+	t.Cleanup(func() {
+		common.QuotaPerUnit = previousQPU
+		upstreamCostSnapshotPtr.Store(previousSnapshot)
+		upstreamCostQueue = previousQueue
+		*setting = previousSetting
+	})
+	common.QuotaPerUnit = 500000
+	setting.Enabled = true
+	price := 0.002
+	monitors := []*model.UpstreamChannelMonitor{
+		{ChannelId: 1, Mode: model.UpstreamMonitorModeAuto, CostMode: model.UpstreamCostModeRequest, RequestPrice: &price},
+		{ChannelId: 2, Mode: model.UpstreamMonitorModeManual, CostMode: model.UpstreamCostModeRequest, RequestPrice: floatPtr(0)},
+		{ChannelId: 3, Mode: model.UpstreamMonitorModeOff, CostMode: model.UpstreamCostModeRequest, RequestPrice: &price},
+		{ChannelId: 4, SiteId: 9, Mode: model.UpstreamMonitorModeAuto, CostMode: model.UpstreamCostModeRequest, RequestPrice: &price, GroupRatio: 99},
+	}
+	snapshot := buildUpstreamCostSnapshot("v", []*model.UpstreamSite{{Id: 9, Status: model.UpstreamSiteStatusNewAPI, CostFactor: 99, QuotaPerUnit: 1, ModelPricing: `{"missing":{"model_ratio":99}}`}}, monitors)
+	require.Len(t, snapshot.channels, 3)
+	for _, tc := range []struct{ channel, want int }{{1, 1000}, {2, 0}, {4, 1000}} {
+		record := buildUpstreamCostRecord(upstreamCostPending{
+			record:  &model.UpstreamCostRecord{Quota: 0, PromptTokens: 99999, CompletionTokens: 100},
+			channel: snapshot.channels[tc.channel], upstreamModel: "missing", localRatio: 100,
+			cacheTokens: 10000, cacheWrite: 20000,
+		})
+		assert.Equal(t, tc.want, record.CostQuota)
+		assert.Equal(t, model.UpstreamCostRecordEstimated, record.Status)
+		assert.Equal(t, model.UpstreamCostModeRequest, record.CostMode)
+		assert.Zero(t, record.UpstreamGroupRatio)
+	}
+	upstreamCostSnapshotPtr.Store(snapshot)
+	upstreamCostQueue = make(chan upstreamCostPending, 2)
+	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+	log := &model.Log{Type: model.LogTypeConsume, ChannelId: 1}
+	recordUpstreamCostConsumeLog(ctx, log, model.NewLogOther())
+	price = 0.01
+	monitors[0].CostMode = model.UpstreamCostModeRatio
+	upstreamCostSnapshotPtr.Store(buildUpstreamCostSnapshot("v", nil, monitors))
+	pending := <-upstreamCostQueue
+	assert.Equal(t, 1000, buildUpstreamCostRecord(pending).CostQuota, "queued request keeps original price and mode")
+	upstreamCostSnapshotPtr.Store(snapshot)
+	penalty := model.NewLogOther()
+	penalty.SetPublic("violation_fee", true)
+	recordUpstreamCostConsumeLog(ctx, log, penalty)
+	log.Type = model.LogTypeError
+	recordUpstreamCostConsumeLog(ctx, log, model.NewLogOther())
+	assert.Empty(t, upstreamCostQueue)
+}
+
+func TestRequestUpstreamCostValidationAndLegacySave(t *testing.T) {
+	setupUpstreamCostTables(t)
+	previousQPU := common.QuotaPerUnit
+	previousSnapshot := upstreamCostSnapshotPtr.Load()
+	t.Cleanup(func() { common.QuotaPerUnit = previousQPU; upstreamCostSnapshotPtr.Store(previousSnapshot) })
+	common.QuotaPerUnit = 500000
+	for _, price := range []*float64{nil, floatPtr(-1), floatPtr(math.NaN()), floatPtr(math.Inf(1)), floatPtr(float64(common.MaxQuota)/common.QuotaPerUnit + 1)} {
+		_, err := upstreamRequestCostQuota(price)
+		assert.Error(t, err)
+	}
+	quota, err := upstreamRequestCostQuota(floatPtr(float64(common.MaxQuota) / common.QuotaPerUnit))
+	require.NoError(t, err)
+	assert.Equal(t, common.MaxQuota, quota)
+	channel := &model.Channel{Type: 2, Name: "fixed-cost", Key: "key"}
+	require.NoError(t, model.DB.Create(channel).Error)
+	mode := model.UpstreamCostModeRequest
+	view, err := UpdateUpstreamMonitor(channel.Id, model.UpstreamMonitorModeAuto, "", nil, UpstreamCostConfig{CostMode: &mode, RequestPrice: floatPtr(0)})
+	require.NoError(t, err)
+	assert.Equal(t, model.UpstreamCostModeRequest, view.CostMode)
+	assert.Equal(t, model.UpstreamCostStatusEstimated, view.CostStatus)
+	require.Contains(t, upstreamCostSnapshotPtr.Load().channels, channel.Id)
+	view, err = UpdateUpstreamMonitor(channel.Id, model.UpstreamMonitorModeManual, "", nil)
+	require.NoError(t, err)
+	assert.Equal(t, model.UpstreamCostModeRequest, view.CostMode)
+	require.NotNil(t, view.RequestPrice)
+	assert.Zero(t, *view.RequestPrice)
+	_, err = UpdateUpstreamMonitor(channel.Id, model.UpstreamMonitorModeOff, "", nil)
+	require.NoError(t, err)
+	assert.NotContains(t, upstreamCostSnapshotPtr.Load().channels, channel.Id)
+	mode = "invalid"
+	_, err = UpdateUpstreamMonitor(channel.Id, model.UpstreamMonitorModeAuto, "", nil, UpstreamCostConfig{CostMode: &mode})
+	assert.Error(t, err)
+}
+
+func TestRequestUpstreamCostHistoryExcludedFromBills(t *testing.T) {
+	setupUpstreamCostTables(t)
+	records := []*model.UpstreamCostRecord{
+		{SiteId: 1, ChannelId: 1, KeyIndex: 0, UpstreamRequestId: "shared", Quota: 300, CostMode: model.UpstreamCostModeRatio, Status: model.UpstreamCostRecordEstimated},
+		{SiteId: 1, ChannelId: 2, KeyIndex: 1, UpstreamRequestId: "shared", Quota: 100, Status: model.UpstreamCostRecordEstimated},
+		{SiteId: 1, ChannelId: 3, KeyIndex: 2, UpstreamRequestId: "shared", Quota: 900, CostMode: model.UpstreamCostModeRequest, CostQuota: 55, Status: model.UpstreamCostRecordEstimated},
+	}
+	require.NoError(t, model.InsertUpstreamCostRecords(records))
+	require.NoError(t, model.DB.Model(records[1]).Update("cost_mode", nil).Error)
+	keys, err := model.GetUpstreamCostPendingKeys(1, 0)
+	require.NoError(t, err)
+	assert.Len(t, keys, 2)
+	matched, err := matchUpstreamCostRecords(&model.UpstreamSite{Id: 1, QuotaPerUnit: common.QuotaPerUnit, CostFactor: 1}, []upstreamLogEntry{{Type: model.LogTypeConsume, RequestId: "shared", Quota: 800}})
+	require.NoError(t, err)
+	assert.Equal(t, 2, matched)
+	var saved []*model.UpstreamCostRecord
+	require.NoError(t, model.DB.Order("id asc").Find(&saved).Error)
+	assert.Equal(t, 600, saved[0].CostQuota)
+	assert.Equal(t, 200, saved[1].CostQuota)
+	assert.Equal(t, 55, saved[2].CostQuota)
+	assert.Equal(t, model.UpstreamCostRecordEstimated, saved[2].Status)
+}
+
+func TestRequestUpstreamMonitorSkipsRatioAlerts(t *testing.T) {
+	monitor := &model.UpstreamChannelMonitor{CostMode: model.UpstreamCostModeRequest, RequestPrice: floatPtr(0), GroupRatio: 1, RatioChangedAt: 1}
+	work := &upstreamMonitorWork{
+		monitor: monitor, channel: &model.Channel{Status: common.ChannelStatusEnabled},
+		keys: map[int]upstreamKeyState{0: {Group: "vip", GroupOffline: true, Error: "unreachable"}},
+	}
+	(&upstreamCostRun{now: 100}).evaluateMonitor(&upstreamSiteWork{groups: map[string]upstreamGroupState{"vip": {Ratio: 100, Offline: true}}}, work)
+	assert.Equal(t, model.UpstreamCostStatusEstimated, monitor.CostStatus)
+	assert.Empty(t, work.events)
+	assert.Empty(t, work.detail.InvertedModels)
+	assert.Equal(t, "unreachable", work.detail.LastError)
+	assert.Zero(t, monitor.RatioChangedAt)
 }

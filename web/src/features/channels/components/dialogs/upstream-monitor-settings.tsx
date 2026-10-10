@@ -27,6 +27,11 @@ import {
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupText,
+} from '@/components/ui/input-group'
+import {
   Select,
   SelectContent,
   SelectGroup,
@@ -34,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { PricingAmountInput } from '@/features/model-pricing/pricing-amount-input'
 
 import { formatUpstreamRatio } from '../../lib/upstream-cost'
 import type {
@@ -92,39 +98,104 @@ export function UpstreamMonitorSettings(props: UpstreamMonitorSettingsProps) {
         </FieldDescription>
       </Field>
 
-      {props.values.mode === 'manual' && (
-        <Field>
-          <FieldLabel htmlFor='upstream-manual-ratio'>
-            {t('Manual upstream multiplier')}
-          </FieldLabel>
-          <Input
-            id='upstream-manual-ratio'
-            type='number'
-            min='0.000001'
-            max='100'
-            step='any'
-            value={props.values.manual_ratio ?? ''}
-            disabled={props.disabled}
-            aria-invalid={
-              props.values.manual_ratio !== null &&
-              (props.values.manual_ratio <= 0 ||
-                props.values.manual_ratio > 100)
+      <Field>
+        <FieldLabel htmlFor='upstream-cost-mode'>
+          {t('Cost calculation')}
+        </FieldLabel>
+        <Select
+          items={[
+            { value: 'ratio', label: t('Multiplier') },
+            { value: 'request', label: t('Per request') },
+          ]}
+          value={props.values.cost_mode ?? 'ratio'}
+          disabled={props.disabled}
+          onValueChange={(value) => {
+            if (value === 'ratio' || value === 'request') {
+              props.onChange({ ...props.values, cost_mode: value })
             }
-            onChange={(event) => {
-              const value = event.target.value
-              props.onChange({
-                ...props.values,
-                manual_ratio: value === '' ? null : Number(value),
-              })
-            }}
-          />
+          }}
+        >
+          <SelectTrigger id='upstream-cost-mode' className='w-full'>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value='ratio'>{t('Multiplier')}</SelectItem>
+            <SelectItem value='request'>{t('Per request')}</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+      {props.values.cost_mode === 'request' && (
+        <Field>
+          <FieldLabel htmlFor='upstream-request-price'>
+            {t('Request price')}
+          </FieldLabel>
+          <InputGroup>
+            <PricingAmountInput
+              id='upstream-request-price'
+              grouped
+              value={
+                props.values.request_price == null
+                  ? ''
+                  : String(props.values.request_price)
+              }
+              disabled={props.disabled}
+              aria-invalid={
+                props.values.request_price != null &&
+                (!Number.isFinite(props.values.request_price) ||
+                  props.values.request_price < 0)
+              }
+              onChange={(value) =>
+                props.onChange({
+                  ...props.values,
+                  request_price: value === '' ? null : Number(value),
+                })
+              }
+            />
+            <InputGroupAddon align='inline-end'>
+              <InputGroupText>{t('USD/request')}</InputGroupText>
+            </InputGroupAddon>
+          </InputGroup>
           <FieldDescription>
-            {t('Enter a multiplier greater than 0 and at most 100.')}
+            {t(
+              'A fixed cost is recorded for each consume log, including task submissions. Later adjustments and refunds do not change this cost.'
+            )}
           </FieldDescription>
         </Field>
       )}
+      {props.values.cost_mode !== 'request' &&
+        props.values.mode === 'manual' && (
+          <Field>
+            <FieldLabel htmlFor='upstream-manual-ratio'>
+              {t('Manual upstream multiplier')}
+            </FieldLabel>
+            <Input
+              id='upstream-manual-ratio'
+              type='number'
+              min='0.000001'
+              max='100'
+              step='any'
+              value={props.values.manual_ratio ?? ''}
+              disabled={props.disabled}
+              aria-invalid={
+                props.values.manual_ratio !== null &&
+                (props.values.manual_ratio <= 0 ||
+                  props.values.manual_ratio > 100)
+              }
+              onChange={(event) => {
+                const value = event.target.value
+                props.onChange({
+                  ...props.values,
+                  manual_ratio: value === '' ? null : Number(value),
+                })
+              }}
+            />
+            <FieldDescription>
+              {t('Enter a multiplier greater than 0 and at most 100.')}
+            </FieldDescription>
+          </Field>
+        )}
 
-      {props.values.mode === 'auto' && (
+      {props.values.cost_mode !== 'request' && props.values.mode === 'auto' && (
         <Field>
           <FieldLabel htmlFor='upstream-monitor-group'>
             {t('Upstream Group')}

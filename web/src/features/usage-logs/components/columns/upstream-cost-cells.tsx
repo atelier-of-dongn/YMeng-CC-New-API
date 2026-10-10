@@ -48,9 +48,14 @@ function EmptyUpstreamCostCell() {
 
 /** Upstream group and ratio the request was billed at, e.g. `vip ×1.5`. */
 export function UpstreamRatioLogCell(props: { log: UsageLog }) {
+  const { t } = useTranslation()
   const { sensitiveVisible } = useUsageLogsContext()
   const group = props.log.upstream_cost?.upstream_group ?? ''
   const ratio = props.log.upstream_cost?.upstream_group_ratio ?? 0
+
+  if (props.log.upstream_cost?.cost_mode === 'request') {
+    return <span className='text-xs'>{t('Per request cost')}</span>
+  }
 
   if (!group && ratio <= 0) {
     return <EmptyUpstreamCostCell />
@@ -106,9 +111,11 @@ export function UpstreamAmountLogCell(props: { log: UsageLog }) {
           )}
         </TooltipTrigger>
         <TooltipContent side='top'>
-          {t('Upstream quota: {{quota}}', {
-            quota: cost.upstream_quota.toLocaleString(),
-          })}
+          {cost.cost_mode === 'request'
+            ? t('Per request cost')
+            : t('Upstream quota: {{quota}}', {
+                quota: cost.upstream_quota.toLocaleString(),
+              })}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

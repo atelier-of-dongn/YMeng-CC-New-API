@@ -29,6 +29,19 @@ const (
 )
 
 const (
+	UpstreamCostModeRatio   = "ratio"
+	UpstreamCostModeRequest = "request"
+)
+
+// NormalizeUpstreamCostMode keeps legacy empty/NULL records in ratio mode.
+func NormalizeUpstreamCostMode(mode string) string {
+	if mode == "" {
+		return UpstreamCostModeRatio
+	}
+	return mode
+}
+
+const (
 	UpstreamCostStatusNormal       = "normal"
 	UpstreamCostStatusRatioChanged = "ratio_changed"
 	UpstreamCostStatusInverted     = "inverted"
@@ -84,6 +97,8 @@ type UpstreamChannelMonitor struct {
 	Mode           string   `json:"mode" gorm:"type:varchar(8)"`
 	ManualGroup    string   `json:"manual_group" gorm:"type:varchar(64)"`
 	ManualRatio    *float64 `json:"manual_ratio"`
+	CostMode       string   `json:"cost_mode" gorm:"type:varchar(8)"`
+	RequestPrice   *float64 `json:"request_price"`
 	DetectedGroup  string   `json:"detected_group" gorm:"type:varchar(64)"`
 	GroupRatio     float64  `json:"group_ratio"`
 	PrevGroupRatio float64  `json:"prev_group_ratio"`
@@ -119,6 +134,7 @@ type UpstreamCostRecord struct {
 	UpstreamGroupRatio float64 `json:"upstream_group_ratio"`
 	UpstreamQuota      int     `json:"upstream_quota"`
 	CostQuota          int     `json:"cost_quota"`
+	CostMode           string  `json:"cost_mode" gorm:"type:varchar(8)"`
 	Status             int     `json:"status" gorm:"index:idx_upstream_cost_site_status,priority:2"`
 }
 
@@ -275,6 +291,7 @@ func GetUnmatchedUpstreamCostRecords(siteId int, upstreamRequestIds []string) ([
 	for chunk := range slices.Chunk(upstreamRequestIds, 500) {
 		var part []*UpstreamCostRecord
 		err := DB.Where("site_id = ? AND status <> ? AND upstream_request_id IN ?", siteId, UpstreamCostRecordMatched, chunk).
+			Where("cost_mode IS NULL OR cost_mode <> ?", UpstreamCostModeRequest).
 			Find(&part).Error
 		if err != nil {
 			return nil, err
@@ -295,6 +312,7 @@ func GetUpstreamCostPendingKeys(siteId int, since int64) ([]UpstreamCostPendingK
 	err := DB.Model(&UpstreamCostRecord{}).
 		Select("channel_id, key_index").
 		Where("site_id = ? AND status <> ? AND upstream_request_id <> ? AND created_at >= ?", siteId, UpstreamCostRecordMatched, "", since).
+		Where("cost_mode IS NULL OR cost_mode <> ?", UpstreamCostModeRequest).
 		Group("channel_id, key_index").
 		Scan(&keys).Error
 	return keys, err

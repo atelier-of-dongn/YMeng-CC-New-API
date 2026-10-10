@@ -81,89 +81,108 @@ export function UpstreamMonitorDetails(props: UpstreamMonitorDetailsProps) {
         />
       </DetailSection>
 
-      <DetailSection
-        icon={<Layers />}
-        iconTone='chart-1'
-        label={t('Group & Ratio')}
-      >
-        <DetailRow
-          label={t('Effective group')}
-          value={
-            monitor.effective_group ? (
-              <span className='flex flex-wrap items-center gap-1'>
-                <GroupBadge group={monitor.effective_group} size='sm' />
-                {monitor.manual_group && (
-                  <StatusBadge
-                    label={t('Manual')}
-                    variant='blue'
-                    size='sm'
-                    copyable={false}
-                  />
-                )}
-              </span>
-            ) : (
-              t('Unknown')
-            )
-          }
-        />
-        <DetailRow
-          label={t('Detected group')}
-          value={monitor.detected_group || EMPTY_VALUE}
-        />
-        {keyGroups.length > 1 && (
-          <DetailRow label={t('Key groups')} value={keyGroups.join(', ')} />
-        )}
-        <DetailRow
-          label={t('Ratio')}
-          value={
-            monitor.group_ratio > 0 ? (
-              <span className='flex flex-wrap items-center gap-2'>
-                <GroupMultiplierBadge
-                  ratio={monitor.group_ratio}
-                  label={formatUpstreamRatio(monitor.group_ratio)}
-                />
-                {sourceLabel && (
-                  <span className='text-muted-foreground'>
-                    {t('Source: {{source}}', { source: t(sourceLabel) })}
-                  </span>
-                )}
-              </span>
-            ) : (
-              t('Unknown')
-            )
-          }
-        />
-        {monitor.prev_group_ratio > 0 && (
+      {monitor.cost_mode === 'request' ? (
+        <DetailSection icon={<Layers />} label={t('Per request cost')}>
           <DetailRow
-            label={t('Previous ratio')}
+            label={t('Request price')}
             value={
-              <span className='flex flex-wrap items-center gap-2'>
-                <span className='font-mono'>
-                  {formatUpstreamRatio(monitor.prev_group_ratio)} →{' '}
-                  {formatUpstreamRatio(monitor.group_ratio)}
+              monitor.request_price == null
+                ? t('Unknown')
+                : `${monitor.request_price} ${t('USD/request')}`
+            }
+            mono
+          />
+        </DetailSection>
+      ) : (
+        <DetailSection
+          icon={<Layers />}
+          iconTone='chart-1'
+          label={t('Group & Ratio')}
+        >
+          <DetailRow
+            label={t('Effective group')}
+            value={
+              monitor.effective_group ? (
+                <span className='flex flex-wrap items-center gap-1'>
+                  <GroupBadge group={monitor.effective_group} size='sm' />
+                  {monitor.manual_group && (
+                    <StatusBadge
+                      label={t('Manual')}
+                      variant='blue'
+                      size='sm'
+                      copyable={false}
+                    />
+                  )}
                 </span>
-                {monitor.ratio_changed_at > 0 && (
-                  <span className='text-muted-foreground'>
-                    {t('Changed at {{time}}', {
-                      time: formatTimestampToDate(monitor.ratio_changed_at),
-                    })}
-                  </span>
-                )}
-              </span>
+              ) : (
+                t('Unknown')
+              )
             }
           />
-        )}
-        {monitor.group_mismatch && (
-          <p className='text-warning flex items-center gap-1.5 pt-1 text-xs'>
-            <AlertTriangle className='size-3.5 shrink-0' aria-hidden='true' />
-            {t('The manual group differs from the detected group: {{group}}', {
-              group: monitor.detected_group || EMPTY_VALUE,
-            })}
-          </p>
-        )}
-      </DetailSection>
+          <DetailRow
+            label={t('Detected group')}
+            value={monitor.detected_group || EMPTY_VALUE}
+          />
+          {keyGroups.length > 1 && (
+            <DetailRow label={t('Key groups')} value={keyGroups.join(', ')} />
+          )}
+          <DetailRow
+            label={t('Ratio')}
+            value={
+              monitor.group_ratio > 0 ? (
+                <span className='flex flex-wrap items-center gap-2'>
+                  <GroupMultiplierBadge
+                    ratio={monitor.group_ratio}
+                    label={formatUpstreamRatio(monitor.group_ratio)}
+                  />
+                  {sourceLabel && (
+                    <span className='text-muted-foreground'>
+                      {t('Source: {{source}}', { source: t(sourceLabel) })}
+                    </span>
+                  )}
+                </span>
+              ) : (
+                t('Unknown')
+              )
+            }
+          />
+          {monitor.prev_group_ratio > 0 && (
+            <DetailRow
+              label={t('Previous ratio')}
+              value={
+                <span className='flex flex-wrap items-center gap-2'>
+                  <span className='font-mono'>
+                    {formatUpstreamRatio(monitor.prev_group_ratio)} →{' '}
+                    {formatUpstreamRatio(monitor.group_ratio)}
+                  </span>
+                  {monitor.ratio_changed_at > 0 && (
+                    <span className='text-muted-foreground'>
+                      {t('Changed at {{time}}', {
+                        time: formatTimestampToDate(monitor.ratio_changed_at),
+                      })}
+                    </span>
+                  )}
+                </span>
+              }
+            />
+          )}
+          {monitor.group_mismatch && (
+            <p className='text-warning flex items-center gap-1.5 pt-1 text-xs'>
+              <AlertTriangle className='size-3.5 shrink-0' aria-hidden='true' />
+              {t(
+                'The manual group differs from the detected group: {{group}}',
+                {
+                  group: monitor.detected_group || EMPTY_VALUE,
+                }
+              )}
+            </p>
+          )}
+        </DetailSection>
+      )}
 
-      <UpstreamMonitorCostDetails monitor={monitor} />
+      {monitor.cost_mode !== 'request' && (
+        <UpstreamMonitorCostDetails monitor={monitor} />
+      )}
 
       {monitor.last_error && (
         <DetailSection

@@ -27,6 +27,8 @@ const (
 // hook and the batch writer use to attribute and estimate upstream cost.
 type upstreamCostChannelSnapshot struct {
 	mode         string
+	costMode     string
+	requestQuota int
 	site         *model.UpstreamSite
 	costFactor   float64
 	keys         map[int]upstreamKeyState
@@ -89,7 +91,7 @@ func runUpstreamCostSnapshotLoop() {
 	defer ticker.Stop()
 	for {
 		if upstream_cost_setting.GetSetting().Enabled {
-			reloadUpstreamCostSnapshot(false)
+			reloadUpstreamCostSnapshot(true)
 		}
 		<-ticker.C
 	}
@@ -179,6 +181,22 @@ func buildUpstreamCostSnapshot(version string, sites []*model.UpstreamSite, moni
 		if monitor.Mode == model.UpstreamMonitorModeOff {
 			continue
 		}
+		costMode := model.NormalizeUpstreamCostMode(monitor.CostMode)
+		if costMode == model.UpstreamCostModeRequest {
+			quota, err := upstreamRequestCostQuota(monitor.RequestPrice)
+			if err != nil {
+				continue
+			}
+			channel := &upstreamCostChannelSnapshot{mode: monitor.Mode, costMode: costMode, requestQuota: quota}
+			if site, ok := siteById[monitor.SiteId]; ok {
+				channel.site = site.site
+			}
+			snapshot.channels[monitor.ChannelId] = channel
+			continue
+		}
+		if costMode != model.UpstreamCostModeRatio {
+			continue
+		}
 		site, ok := siteById[monitor.SiteId]
 		if monitor.Mode == model.UpstreamMonitorModeAuto && !ok {
 			continue
@@ -196,6 +214,7 @@ func buildUpstreamCostSnapshot(version string, sites []*model.UpstreamSite, moni
 		}
 		channel := &upstreamCostChannelSnapshot{
 			mode:       monitor.Mode,
+			costMode:   costMode,
 			costFactor: 1,
 			group:      group,
 			ratio:      ratio,
@@ -216,7 +235,7 @@ func buildUpstreamCostSnapshot(version string, sites []*model.UpstreamSite, moni
 // recordUpstreamCostConsumeLog runs on the request goroutine right after a
 // consume log is stored. It only copies request data and never blocks.
 func recordUpstreamCostConsumeLog(c *gin.Context, log *model.Log, other *model.LogOther) {
-	if !upstream_cost_setting.GetSetting().Enabled {
+	if !upstream_cost_setting.GetSetting().Enabled || log.Type != model.LogTypeConsume {
 		return
 	}
 	snapshot := upstreamCostSnapshotPtr.Load()
@@ -285,6 +304,12 @@ func recordUpstreamCostConsumeLog(c *gin.Context, log *model.Log, other *model.L
 func buildUpstreamCostRecord(pending upstreamCostPending) *model.UpstreamCostRecord {
 	record := pending.record
 	channel := pending.channel
+	record.CostMode = model.NormalizeUpstreamCostMode(channel.costMode)
+	if record.CostMode == model.UpstreamCostModeRequest {
+		record.CostQuota = channel.requestQuota
+		record.Status = model.UpstreamCostRecordEstimated
+		return record
+	}
 	group, ratio := channel.group, channel.ratio
 	if channel.mode != model.UpstreamMonitorModeManual {
 		if key, ok := channel.keys[record.KeyIndex]; ok && key.EffectiveGroup != "" && key.EffectiveRatio > 0 {

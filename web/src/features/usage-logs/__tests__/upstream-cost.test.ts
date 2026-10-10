@@ -187,3 +187,17 @@ describe('upstream cost summary', () => {
     expect(summarizeUpstreamCost(stats({}), 1000).recordCount).toBe(0)
   })
 })
+
+test('request cost logs retain their own strategy and fixed amount for profit', () => {
+  const log = usageLogSchema.parse({
+    id: 1,
+    user_id: 2,
+    created_at: 1,
+    type: 2,
+    content: '',
+    quota: 2000,
+    upstream_cost: { status: 1, cost_mode: 'request', cost_quota: 500 },
+  })
+  expect(log.upstream_cost?.cost_mode).toBe('request')
+  expect(getLogProfit(log.quota, log.upstream_cost)).toBe(1500)
+})
