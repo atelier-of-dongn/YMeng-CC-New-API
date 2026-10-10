@@ -1,12 +1,12 @@
 <div align="center">
 
-# New API IP Policy Proxy
+# YMeng CC New API
 
 ![new-api](/web/public/logo.png)
 
 **基于 New API 的渠道路由、发票管理、邀请返佣与上游成本分析扩展**
 
-[本仓库](https://github.com/atelier-of-dongn/newapi-ip-policy) | [上游项目](https://github.com/QuantumNous/new-api) | [简体中文上游介绍](./README.zh_CN.md) | [English](./README.en.md)
+[本仓库](https://github.com/atelier-of-dongn/YMeng-CC-New-API) | [上游项目](https://github.com/QuantumNous/new-api) | [简体中文上游介绍](./README.zh_CN.md) | [English](./README.en.md)
 
 [分支说明](#fork-overview) | [分支部署](#fork-deployment) | [使用流程](#fork-usage) | [常见问题](#fork-faq) | [上游参考](#upstream-reference)
 
@@ -68,7 +68,7 @@
 
 ```bash
 # 克隆默认分支
-git clone --branch ip-policy https://github.com/atelier-of-dongn/newapi-ip-policy.git
+git clone --branch ip-policy https://github.com/atelier-of-dongn/YMeng-CC-New-API.git
 cd newapi-ip-policy
 
 # 记录部署版本；生产环境建议检出经过验证的具体提交或标签
@@ -240,7 +240,7 @@ curl -fsS http://localhost:3000/api/status
 | 自动模式显示未知 | 检查上游是否兼容、接口是否可访问、密钥权限与主节点运行情况；查看渠道详情中的错误信息 |
 | 毛利统计与账单不一致 | 检查估算状态、覆盖率、时间范围、保留期，以及上游折算配置；按请求成本不会随退款自动调整 |
 
-分支相关问题请在[本仓库 Issues](https://github.com/atelier-of-dongn/newapi-ip-policy/issues)中反馈，附上部署提交、复现步骤与脱敏日志。下方官方文档、发行版和社区链接属于上游 New API，未必涵盖本分支的定制功能。
+分支相关问题请在[本仓库 Issues](https://github.com/atelier-of-dongn/YMeng-CC-New-API/issues)中反馈，附上部署提交、复现步骤与脱敏日志。下方官方文档、发行版和社区链接属于上游 New API，未必涵盖本分支的定制功能。
 
 <a id="upstream-reference"></a>
 
