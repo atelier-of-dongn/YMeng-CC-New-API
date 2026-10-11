@@ -22,17 +22,18 @@ function getCurrentOrigin(): string {
   return window.location.origin
 }
 
-export function normalizeEndpoint(sourceUrl?: string): string {
-  const fallback = `${getCurrentOrigin()}/v1/chat/completions`
+export function normalizeApiBaseUrl(sourceUrl?: string): string {
+  const fallback = `${getCurrentOrigin()}/v1`
   const trimmed = sourceUrl?.trim()
   if (!trimmed) return fallback
 
   const withoutTrailingSlash = trimmed.replace(/\/+$/, '')
-  if (withoutTrailingSlash.endsWith('/v1/chat/completions')) {
-    return withoutTrailingSlash
-  }
-  if (withoutTrailingSlash.endsWith('/v1')) {
-    return `${withoutTrailingSlash}/chat/completions`
-  }
-  return `${withoutTrailingSlash}/v1/chat/completions`
+  const v1Match = withoutTrailingSlash.match(/^(.*\/v1)(?:\/|$)/)
+  if (v1Match) return v1Match[1]
+
+  return `${withoutTrailingSlash}/v1`
+}
+
+export function normalizeEndpoint(sourceUrl?: string): string {
+  return `${normalizeApiBaseUrl(sourceUrl)}/chat/completions`
 }

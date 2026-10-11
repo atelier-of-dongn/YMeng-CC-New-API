@@ -18,7 +18,43 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { describe, expect, it } from 'vitest'
 
-import { normalizeEndpoint } from '../api-endpoint'
+import { normalizeApiBaseUrl, normalizeEndpoint } from '../api-endpoint'
+
+describe('normalizeApiBaseUrl', () => {
+  it('falls back to the current origin with the v1 path', () => {
+    expect(normalizeApiBaseUrl()).toBe(`${window.location.origin}/v1`)
+  })
+
+  it('adds the v1 path to a configured host', () => {
+    expect(normalizeApiBaseUrl('https://api.example.com')).toBe(
+      'https://api.example.com/v1'
+    )
+  })
+
+  it('keeps only the v1 path from a complete request URL', () => {
+    expect(
+      normalizeApiBaseUrl('https://api.example.com/v1/chat/completions')
+    ).toBe('https://api.example.com/v1')
+  })
+
+  it('removes trailing slashes from an existing v1 URL', () => {
+    expect(normalizeApiBaseUrl('https://api.example.com/v1///')).toBe(
+      'https://api.example.com/v1'
+    )
+  })
+
+  it('supports deployment prefixes and removes suffixes after v1', () => {
+    expect(normalizeApiBaseUrl('https://api.example.com/proxy/v1/models')).toBe(
+      'https://api.example.com/proxy/v1'
+    )
+  })
+
+  it('does not treat another version such as v10 as v1', () => {
+    expect(normalizeApiBaseUrl('https://api.example.com/v10')).toBe(
+      'https://api.example.com/v10/v1'
+    )
+  })
+})
 
 describe('normalizeEndpoint', () => {
   it('falls back to the current origin when no API URL is configured', () => {

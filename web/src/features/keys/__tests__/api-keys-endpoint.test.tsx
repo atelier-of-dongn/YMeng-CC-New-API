@@ -68,7 +68,7 @@ describe('ApiKeysEndpoint', () => {
           api_info_enabled: true,
           api_info: [
             {
-              url: 'https://api.example.com/v1',
+              url: 'https://api.example.com/v1/chat/completions',
               route: 'OpenAI-compatible',
               description: '',
               color: 'blue',
@@ -81,8 +81,11 @@ describe('ApiKeysEndpoint', () => {
     renderEndpoint()
 
     expect(
-      await screen.findByText('https://api.example.com/v1/chat/completions')
+      await screen.findByText('https://api.example.com/v1')
     ).toBeInTheDocument()
+    expect(
+      screen.queryByText('https://api.example.com/v1/chat/completions')
+    ).not.toBeInTheDocument()
   })
 
   it('falls back to the current origin when overview API info is unavailable', async () => {
@@ -99,7 +102,7 @@ describe('ApiKeysEndpoint', () => {
     renderEndpoint()
 
     expect(
-      await screen.findByText(`${window.location.origin}/v1/chat/completions`)
+      await screen.findByText(`${window.location.origin}/v1`)
     ).toBeInTheDocument()
   })
 })
