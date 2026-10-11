@@ -1,6 +1,11 @@
 {
   "translation": {
+    "360": "360",
+    "1000": "1000",
+    "10000": "10000",
     "Import to BaoCode": "匯入至 BaoCode",
+    "The full API key is included in the import link": "匯入連結中包含完整 API 金鑰",
+    "It travels in the URL fragment, which stays in your browser and is never sent in the server request.": "金鑰位於 URL 片段中，只保留在你的瀏覽器內，不會出現在伺服器請求中。",
     "Choose a protocol before sending this API key to BaoCode. The full key will be included in the import link.": "選擇協定後將此 API 金鑰傳送至 BaoCode。完整金鑰將包含在匯入連結中。",
     "Anthropic Messages": "Anthropic Messages",
     "OpenAI Responses": "OpenAI Responses",
@@ -8,9 +13,6 @@
     "Import": "匯入",
     "Unable to open BaoCode in a new tab.": "無法在新分頁中開啟 BaoCode。",
     "Unable to import the API key to BaoCode.": "無法將 API 金鑰匯入 BaoCode。",
-    "360": "360",
-    "1000": "1000",
-    "10000": "10000",
     "_copy": "_複製",
     "，": "，",
     ", and": "，和",

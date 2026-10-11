@@ -466,11 +466,19 @@ it('imports a selected protocol to BaoCode only after explicit confirmation', as
   const importButton = screen.getByRole('button', { name: 'Import to BaoCode' })
   expect(screen.getByRole('button', { name: 'Open menu' })).toBeInTheDocument()
   await user.click(importButton)
-  expect(screen.getByRole('dialog')).toBeInTheDocument()
+  const dialog = screen.getByRole('dialog')
+  expect(dialog).toBeInTheDocument()
   expect(post).not.toHaveBeenCalled()
 
-  await user.click(screen.getByRole('combobox'))
-  await user.click(screen.getByRole('option', { name: 'OpenAI Responses' }))
+  const radios = within(dialog).getAllByRole('radio')
+  expect(radios).toHaveLength(3)
+  expect(
+    screen.getByRole('radio', { name: /OpenAI Chat Completions/ })
+  ).toBeChecked()
+  await user.click(screen.getByRole('radio', { name: /OpenAI Responses/ }))
+  expect(screen.getByRole('radio', { name: /OpenAI Responses/ })).toBeChecked()
+  expect(post).not.toHaveBeenCalled()
+
   post.mockResolvedValue({
     data: { success: true, data: { key: 'real-key' } },
   })
@@ -485,6 +493,34 @@ it('imports a selected protocol to BaoCode only after explicit confirmation', as
   expect(params.get('protocol')).toBe('openai-responses')
   expect(params.get('url')).toBe(`${window.location.origin}/v1`)
   expect(params.get('key')).toBe('sk-real-key')
+})
+
+it('reuses the last protocol and never requests the key on cancel', async () => {
+  const user = userEvent.setup()
+  const { post } = await renderKeysPage()
+  vi.spyOn(window, 'open').mockReturnValue({
+    close: vi.fn(),
+    location: { href: '' },
+  } as unknown as Window)
+
+  const openDialog = async () => {
+    await user.click(screen.getByRole('button', { name: 'Import to BaoCode' }))
+    return screen.getByRole('dialog')
+  }
+
+  let dialog = await openDialog()
+  await user.click(screen.getByRole('radio', { name: /Anthropic Messages/ }))
+  await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  )
+  expect(post).not.toHaveBeenCalled()
+
+  dialog = await openDialog()
+  expect(
+    within(dialog).getByRole('radio', { name: /Anthropic Messages/ })
+  ).toBeChecked()
+  expect(post).not.toHaveBeenCalled()
 })
 
 it('keeps full mobile information without group or quota section headings', async () => {

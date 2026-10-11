@@ -1,6 +1,11 @@
 {
   "translation": {
+    "360": "360",
+    "1000": "1000",
+    "10000": "10000",
     "Import to BaoCode": "Import to BaoCode",
+    "The full API key is included in the import link": "The full API key is included in the import link",
+    "It travels in the URL fragment, which stays in your browser and is never sent in the server request.": "It travels in the URL fragment, which stays in your browser and is never sent in the server request.",
     "Choose a protocol before sending this API key to BaoCode. The full key will be included in the import link.": "Choose a protocol before sending this API key to BaoCode. The full key will be included in the import link.",
     "Anthropic Messages": "Anthropic Messages",
     "OpenAI Responses": "OpenAI Responses",
@@ -8,9 +13,6 @@
     "Import": "Import",
     "Unable to open BaoCode in a new tab.": "Unable to open BaoCode in a new tab.",
     "Unable to import the API key to BaoCode.": "Unable to import the API key to BaoCode.",
-    "360": "360",
-    "1000": "1000",
-    "10000": "10000",
     "_copy": "_copy",
     "，": ", ",
     ", and": ", and",
