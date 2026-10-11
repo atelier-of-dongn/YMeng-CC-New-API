@@ -1,5 +1,13 @@
 {
   "translation": {
+    "Import to BaoCode": "Import to BaoCode",
+    "Choose a protocol before sending this API key to BaoCode. The full key will be included in the import link.": "Choose a protocol before sending this API key to BaoCode. The full key will be included in the import link.",
+    "Anthropic Messages": "Anthropic Messages",
+    "OpenAI Responses": "OpenAI Responses",
+    "Protocol": "Protocol",
+    "Import": "Import",
+    "Unable to open BaoCode in a new tab.": "Unable to open BaoCode in a new tab.",
+    "Unable to import the API key to BaoCode.": "Unable to import the API key to BaoCode.",
     "360": "360",
     "1000": "1000",
     "10000": "10000",

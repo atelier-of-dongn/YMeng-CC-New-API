@@ -1,5 +1,13 @@
 {
   "translation": {
+    "Import to BaoCode": "匯入至 BaoCode",
+    "Choose a protocol before sending this API key to BaoCode. The full key will be included in the import link.": "選擇協定後將此 API 金鑰傳送至 BaoCode。完整金鑰將包含在匯入連結中。",
+    "Anthropic Messages": "Anthropic Messages",
+    "OpenAI Responses": "OpenAI Responses",
+    "Protocol": "協定",
+    "Import": "匯入",
+    "Unable to open BaoCode in a new tab.": "無法在新分頁中開啟 BaoCode。",
+    "Unable to import the API key to BaoCode.": "無法將 API 金鑰匯入 BaoCode。",
     "360": "360",
     "1000": "1000",
     "10000": "10000",

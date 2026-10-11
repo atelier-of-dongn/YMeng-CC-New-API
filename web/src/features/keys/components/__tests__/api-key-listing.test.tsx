@@ -446,6 +446,47 @@ it.each([true, false])(
   }
 )
 
+it('imports a selected protocol to BaoCode only after explicit confirmation', async () => {
+  const user = userEvent.setup()
+  const { post } = await renderKeysPage()
+  let destination = ''
+  const importWindow = {
+    close: vi.fn(),
+    location: {
+      get href() {
+        return destination
+      },
+      set href(value: string) {
+        destination = value
+      },
+    },
+  } as unknown as Window
+  vi.spyOn(window, 'open').mockReturnValue(importWindow)
+
+  const importButton = screen.getByRole('button', { name: 'Import to BaoCode' })
+  expect(screen.getByRole('button', { name: 'Open menu' })).toBeInTheDocument()
+  await user.click(importButton)
+  expect(screen.getByRole('dialog')).toBeInTheDocument()
+  expect(post).not.toHaveBeenCalled()
+
+  await user.click(screen.getByRole('combobox'))
+  await user.click(screen.getByRole('option', { name: 'OpenAI Responses' }))
+  post.mockResolvedValue({
+    data: { success: true, data: { key: 'real-key' } },
+  })
+  await user.click(screen.getByRole('button', { name: 'Import' }))
+
+  await waitFor(() => expect(post).toHaveBeenCalledWith('/api/token/7/key'))
+  const parsed = new URL(destination)
+  const params = new URLSearchParams(parsed.hash.slice(1))
+  expect(parsed.search).toBe('')
+  expect(params.get('v')).toBe('1')
+  expect(params.get('name')).toBe('production')
+  expect(params.get('protocol')).toBe('openai-responses')
+  expect(params.get('url')).toBe(`${window.location.origin}/v1`)
+  expect(params.get('key')).toBe('sk-real-key')
+})
+
 it('keeps full mobile information without group or quota section headings', async () => {
   const matchMedia = window.matchMedia
   vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({
