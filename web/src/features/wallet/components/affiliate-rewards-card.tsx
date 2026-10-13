@@ -16,7 +16,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { useQuery } from '@tanstack/react-query'
 import { Link } from '@tanstack/react-router'
 import { ArrowRight, Share2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
@@ -28,13 +27,15 @@ import { Card, CardContent } from '@/components/ui/card'
 import { IconBadge } from '@/components/ui/icon-badge'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { getAffiliateSummary } from '@/features/affiliate/api'
+import type { AffiliateSummary } from '@/features/affiliate/api'
 import { formatQuota } from '@/lib/format'
 
 import type { UserWalletData } from '../types'
 
 interface AffiliateRewardsCardProps {
   user: UserWalletData | null
+  summary?: AffiliateSummary
+  availableQuota: number
   affiliateLink: string
   onTransfer: () => void
   complianceConfirmed?: boolean
@@ -43,19 +44,14 @@ interface AffiliateRewardsCardProps {
 
 export function AffiliateRewardsCard({
   user,
+  summary,
+  availableQuota,
   affiliateLink,
   onTransfer,
   complianceConfirmed = true,
   loading,
 }: AffiliateRewardsCardProps) {
   const { t } = useTranslation()
-
-  // 邀请数与累计佣金以推广总览为准：users.aff_count 历史数据为 0，
-  // 只有新邀请才自增，直接展示会让老用户看到 0。
-  const { data: summary } = useQuery({
-    queryKey: ['affiliate', 'summary'],
-    queryFn: getAffiliateSummary,
-  })
 
   if (loading) {
     return (
@@ -72,9 +68,6 @@ export function AffiliateRewardsCard({
     )
   }
 
-  // 推广可用余额存放在 invite_quota，aff_quota 是后端保留的兼容别名。
-  const availableQuota =
-    summary?.available_quota ?? user?.invite_quota ?? user?.aff_quota ?? 0
   const totalEarned = summary?.total_quota ?? user?.aff_history_quota ?? 0
   const inviteeCount = summary?.invitee_count ?? user?.aff_count ?? 0
   const hasRewards = availableQuota > 0
