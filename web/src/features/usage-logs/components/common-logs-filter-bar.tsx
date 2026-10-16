@@ -52,6 +52,7 @@ import { getDefaultTimeRange } from '../lib/utils'
 import type { CommonLogFilters } from '../types'
 import { CommonLogsStats } from './common-logs-stats'
 import { CompactDateTimeRangePicker } from './compact-date-time-range-picker'
+import { ExportLogsDialog } from './dialogs/export-logs-dialog'
 import {
   LogsFilterField,
   LogsFilterInput,
@@ -378,6 +379,7 @@ export function CommonLogsFilterBar<TData>(
         emptyText={t('No group found.')}
         placeholder={t('Group')}
         className='h-8 min-w-0 text-sm leading-5'
+        popupClassName={sensitiveInputClass}
         value={filters.group || ''}
         onValueChange={(value) => handleChange('group', value ?? '')}
         onKeyDown={handleKeyDown}
@@ -519,6 +521,7 @@ export function CommonLogsFilterBar<TData>(
           {sensitiveToggle}
         </>
       }
+      actionEnd={<ExportLogsDialog />}
       primaryFilters={
         <>
           {dateRangeFilter}

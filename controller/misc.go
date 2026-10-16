@@ -1,7 +1,6 @@
 package controller
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -25,10 +24,7 @@ import (
 func TestStatus(c *gin.Context) {
 	err := model.PingDB()
 	if err != nil {
-		c.JSON(http.StatusServiceUnavailable, gin.H{
-			"success": false,
-			"message": "数据库连接失败",
-		})
+		writeAccountStatusError(c, http.StatusServiceUnavailable, "Database connection failed")
 		return
 	}
 	// 获取HTTP统计信息
@@ -126,6 +122,8 @@ func GetStatus(c *gin.Context) {
 		"user_agreement_enabled":      legalSetting.UserAgreement != "",
 		"privacy_policy_enabled":      legalSetting.PrivacyPolicy != "",
 		"checkin_enabled":             operation_setting.GetCheckinSetting().Enabled,
+		"log_export_enabled":          operation_setting.GetLogSetting().UserExportEnabled,
+		"log_max_range_days":          operation_setting.GetLogSetting().MaxRangeDays,
 	}
 
 	// 根据启用状态注入可选内容
@@ -223,16 +221,21 @@ func SendEmailVerification(c *gin.Context) {
 	}
 
 	if model.IsEmailAlreadyTaken(email) {
-		common.ApiErrorI18n(c, i18n.MsgUserEmailAlreadyTaken)
+		common.ApiErrorT(c, "Email address is already in use")
 		return
 	}
 	code := common.GenerateVerificationCode(6)
 	common.RegisterVerificationCodeWithKey(email, code, common.EmailVerificationPurpose)
-	subject := fmt.Sprintf("%s email verification", common.SystemName)
-	content := fmt.Sprintf("<p>You are verifying your email address for %s.</p>"+
-		"<p>Your verification code is: <strong>%s</strong></p>"+
-		"<p>This code expires in %d minutes. If you did not request it, you can ignore this email.</p>"+
-		"<p>If you do not see this email, check your spam, junk, or other filtered folders.</p>", common.SystemName, code, common.VerificationValidMinutes)
+	// The address may not belong to an account yet, so the mail follows the
+	// request language.
+	systemName := map[string]any{"SystemName": common.SystemName}
+	subject := i18n.T(c, i18n.MsgEmailVerificationSubject, systemName)
+	content := fmt.Sprintf("<p>%s</p>"+
+		"<p>%s</p>"+
+		"<p>%s</p>",
+		i18n.T(c, i18n.MsgEmailVerificationGreeting, systemName),
+		i18n.T(c, i18n.MsgEmailVerificationCode, map[string]any{"Code": code}),
+		i18n.T(c, i18n.MsgEmailVerificationValidity, map[string]any{"Minutes": common.VerificationValidMinutes}))
 	err = common.SendEmail(subject, email, content)
 	if err != nil {
 		common.ApiError(c, err)
@@ -248,24 +251,34 @@ func SendEmailVerification(c *gin.Context) {
 func SendPasswordResetEmail(c *gin.Context) {
 	email := model.NormalizeEmail(c.Query("email"))
 	if err := common.Validate.Var(email, "required,email"); err != nil {
-		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		common.ApiErrorT(c, "Invalid parameters")
 		return
 	}
-	if _, err := model.GetUniqueUserByEmail(email); err == nil {
+	if user, err := model.GetUniqueUserByEmail(email); err == nil {
 		code := common.GenerateVerificationCode(0)
 		common.RegisterVerificationCodeWithKey(email, code, common.PasswordResetPurpose)
 		link := fmt.Sprintf("%s/user/reset?email=%s&token=%s", system_setting.ServerAddress, email, code)
-		subject := fmt.Sprintf("%s password reset", common.SystemName)
-		content := fmt.Sprintf("<p>You requested a password reset for %s.</p>"+
-			"<p>Click <a href='%s'>here</a> to reset your password.</p>"+
-			"<p>If the link does not work, open this address in your browser:<br> %s </p>"+
-			"<p>This link expires in %d minutes. If you did not request it, you can ignore this email.</p>", common.SystemName, link, link, common.VerificationValidMinutes)
+		lang := user.GetSetting().Language
+		if lang == "" {
+			lang = i18n.StatedLang(c)
+		}
+		systemName := map[string]any{"SystemName": common.SystemName}
+		linkParams := map[string]any{"Link": link}
+		subject := i18n.Translate(lang, i18n.MsgEmailPasswordResetSubject, systemName)
+		content := fmt.Sprintf("<p>%s</p>"+
+			"<p>%s</p>"+
+			"<p>%s </p>"+
+			"<p>%s</p>",
+			i18n.Translate(lang, i18n.MsgEmailPasswordResetGreeting, systemName),
+			i18n.Translate(lang, i18n.MsgEmailPasswordResetLink, linkParams),
+			i18n.Translate(lang, i18n.MsgEmailPasswordResetLinkFallback, linkParams),
+			i18n.Translate(lang, i18n.MsgEmailPasswordResetValidity, map[string]any{"Minutes": common.VerificationValidMinutes}))
 		err := common.SendEmail(subject, email, content)
 		if err != nil {
-			logger.LogError(c.Request.Context(), fmt.Sprintf("failed to send password reset email to %s: %s", email, err.Error()))
+			logger.LogError(c.Request.Context(), common.LogText("failed to send password reset email to %s: %s", email, err.Error()))
 		}
 	} else if err != nil && !errors.Is(err, model.ErrEmailNotFound) {
-		logger.LogWarn(c.Request.Context(), fmt.Sprintf("skip password reset email for %s: %s", email, err.Error()))
+		logger.LogWarn(c.Request.Context(), common.LogText("skip password reset email for %s: %s", email, err.Error()))
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
@@ -280,25 +293,25 @@ type PasswordResetRequest struct {
 
 func ResetPassword(c *gin.Context) {
 	var req PasswordResetRequest
-	err := json.NewDecoder(c.Request.Body).Decode(&req)
+	err := common.DecodeJson(c.Request.Body, &req)
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
 	req.Email = model.NormalizeEmail(req.Email)
 	if req.Email == "" || req.Token == "" {
-		common.ApiErrorI18n(c, i18n.MsgInvalidParams)
+		common.ApiErrorT(c, "Invalid parameters")
 		return
 	}
 	if !common.VerifyCodeWithKey(req.Email, req.Token, common.PasswordResetPurpose) {
-		common.ApiErrorI18n(c, i18n.MsgUserPasswordResetLinkInvalid)
+		common.ApiErrorT(c, "Password reset link is invalid or has expired")
 		return
 	}
 	password := common.GenerateVerificationCode(12)
 	err = model.ResetUserPasswordByEmail(req.Email, password)
 	if err != nil {
 		if errors.Is(err, model.ErrEmailNotFound) || errors.Is(err, model.ErrEmailAmbiguous) {
-			common.ApiErrorI18n(c, i18n.MsgUserPasswordResetLinkInvalid)
+			common.ApiErrorT(c, "Password reset link is invalid or has expired")
 			return
 		}
 		common.ApiError(c, err)

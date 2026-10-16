@@ -131,6 +131,7 @@ it('keeps the internal accounting switch off by default and persists it for admi
     name: 'Internal account profit/loss',
   })
   expect(toggle).toHaveAttribute('data-unchecked')
+  expect(screen.getByRole('button', { name: 'Export' })).toBeVisible()
 
   await userEvent.click(toggle)
   expect(toggle).toHaveAttribute('data-checked')
@@ -248,7 +249,7 @@ it('keeps the compact input and masks the dropdown together with other sensitive
   const option = await screen.findByRole('option', { name: 'premium' })
   const maskedField = input.closest('.\\[-webkit-text-security\\:disc\\]')
   expect(maskedField).not.toBeNull()
-  expect(maskedField).toContainElement(option)
+  expect(option.closest('.\\[-webkit-text-security\\:disc\\]')).not.toBeNull()
   await userEvent.keyboard('{Escape}')
   expect(input).toHaveAttribute('aria-expanded', 'false')
   await userEvent.tab()

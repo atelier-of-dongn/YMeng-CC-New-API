@@ -16,8 +16,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { api, type ApiRequestConfig } from '@/lib/api'
+import { api, getFreshAuthHeaders, type ApiRequestConfig } from '@/lib/api'
+import { createServerError } from '@/lib/server-error-message'
 
+import type { UsageLog } from './data/schema'
 import { buildQueryParams } from './lib/query-params'
 import { parseTaskArtifactsResponse } from './lib/task-artifacts'
 import type {
@@ -32,9 +34,10 @@ import type {
   UserInfo,
 } from './types'
 
-// ============================================================================
+// =====================================================================}
+
 // Generic API Helpers
-// ============================================================================
+// =====================================================================}
 
 function buildApiPath(endpoint: string, isAdmin: boolean): string {
   return isAdmin ? endpoint : `${endpoint}/self`
@@ -69,9 +72,10 @@ async function fetchLogStats<T>(
   return res.data
 }
 
-// ============================================================================
+// =====================================================================}
+
 // Common Log APIs
-// ============================================================================
+// =====================================================================}
 
 export const getAllLogs = (params: GetLogsParams = {}) =>
   fetchLogs('/api/log', params, true)
@@ -98,6 +102,60 @@ export async function getUpstreamCostStats(
   return res.data
 }
 
+/**
+ * Stream the logs matching params, newest first. The server sends one JSON
+ * log per line and ends with an API response object; a stream that ends
+ * without a successful one is a failed export. Resolves with the log count.
+ */
+export async function exportLogs(
+  params: GetLogsParams,
+  isAdmin: boolean,
+  options: { signal: AbortSignal; onLog: (log: UsageLog) => void }
+): Promise<number> {
+  const queryParams = buildQueryParams(
+    params as unknown as Record<string, unknown>
+  )
+  const response = await fetch(
+    `${buildApiPath('/api/log', isAdmin)}/export?${queryParams}`,
+    {
+      credentials: 'include',
+      headers: await getFreshAuthHeaders(),
+      signal: options.signal,
+    }
+  )
+  if (!response.ok || !response.body) {
+    const body: unknown = await response.json().catch(() => null)
+    throw createServerError(body ?? { status: response.status })
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let result: { success?: unknown; data?: { count?: number } } | null = null
+  for (;;) {
+    const { done, value } = await reader.read()
+    buffer += done ? decoder.decode() : decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = done ? '' : (lines.pop() ?? '')
+    for (const line of lines) {
+      if (!line.trim()) continue
+      let parsed
+      try {
+        parsed = JSON.parse(line)
+      } catch {
+        throw createServerError(null)
+      }
+      if (typeof parsed.success === 'boolean') result = parsed
+      else options.onLog(parsed as UsageLog)
+    }
+    if (done) break
+  }
+  if (result?.success !== true) {
+    throw createServerError(result)
+  }
+  return result.data?.count ?? 0
+}
+
 export async function getUserInfo(
   userId: number
 ): Promise<{ success: boolean; message?: string; data?: UserInfo }> {
@@ -105,9 +163,10 @@ export async function getUserInfo(
   return res.data
 }
 
-// ============================================================================
+// =====================================================================}
+
 // MjProxy (Drawing) Logs API
-// ============================================================================
+// =====================================================================}
 
 export const getAllMidjourneyLogs = (params: GetMidjourneyLogsParams) =>
   fetchLogs('/api/mj', params, true)
@@ -115,9 +174,10 @@ export const getAllMidjourneyLogs = (params: GetMidjourneyLogsParams) =>
 export const getUserMidjourneyLogs = (params: GetMidjourneyLogsParams) =>
   fetchLogs('/api/mj', params, false)
 
-// ============================================================================
+// =====================================================================}
+
 // Task Logs API
-// ============================================================================
+// =====================================================================}
 
 export const getAllTaskLogs = (params: GetTaskLogsParams) =>
   fetchLogs('/api/task', params, true)

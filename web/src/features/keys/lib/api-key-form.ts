@@ -42,6 +42,7 @@ export function getApiKeyFormSchema(t: TFunction, maxAutoGroups = 5) {
       allow_ips: z.string().optional(),
       routing_mode: z.enum(['single', 'multi']).optional(),
       groups: z.array(z.string()).optional(),
+      allow_user_quota_query: z.boolean(),
       group: z.string().optional(),
       auto_groups_mode: z.enum(['inherit', 'custom']),
       auto_groups: z.array(z.string()),
@@ -50,10 +51,18 @@ export function getApiKeyFormSchema(t: TFunction, maxAutoGroups = 5) {
     })
     .superRefine((data, ctx) => {
       if (data.routing_mode === 'multi' && (data.groups?.length ?? 0) < 2) {
-        ctx.addIssue({ code: 'custom', path: ['groups'], message: t('Select at least two groups') })
+        ctx.addIssue({
+          code: 'custom',
+          path: ['groups'],
+          message: t('Select at least two groups'),
+        })
       }
       if (data.routing_mode === 'single' && !data.group) {
-        ctx.addIssue({ code: 'custom', path: ['group'], message: t('Select a group') })
+        ctx.addIssue({
+          code: 'custom',
+          path: ['group'],
+          message: t('Select a group'),
+        })
       }
       if (data.group === 'auto' && data.routing_mode !== 'multi') {
         if (
@@ -120,6 +129,7 @@ export const API_KEY_FORM_DEFAULT_VALUES: ApiKeyFormValues = {
   allow_ips: '',
   routing_mode: 'single',
   groups: [],
+  allow_user_quota_query: true,
   group: DEFAULT_GROUP,
   auto_groups_mode: 'inherit',
   auto_groups: [],
@@ -127,7 +137,9 @@ export const API_KEY_FORM_DEFAULT_VALUES: ApiKeyFormValues = {
   tokenCount: 1,
 }
 
-export function getApiKeyFormDefaultValues(defaultUseAutoGroup = false): ApiKeyFormValues {
+export function getApiKeyFormDefaultValues(
+  defaultUseAutoGroup = false
+): ApiKeyFormValues {
   return {
     ...API_KEY_FORM_DEFAULT_VALUES,
     group: defaultUseAutoGroup ? 'auto' : DEFAULT_GROUP,
@@ -163,12 +175,14 @@ export function transformFormDataToPayload(
     model_limits: data.model_limits.join(','),
     allow_ips: data.allow_ips || '',
     group: group || '',
-    groups: isMulti ? data.groups ?? [] : [],
+    groups: isMulti ? (data.groups ?? []) : [],
+    allow_user_quota_query: data.allow_user_quota_query,
     auto_groups:
-      data.group === 'auto' && data.auto_groups_mode === 'custom'
+      !isMulti && data.group === 'auto' && data.auto_groups_mode === 'custom'
         ? data.auto_groups
         : [],
-    cross_group_retry: isMulti || (data.group === 'auto' && !!data.cross_group_retry),
+    cross_group_retry:
+      isMulti || (data.group === 'auto' && !!data.cross_group_retry),
   }
 }
 
@@ -210,6 +224,7 @@ export function transformApiKeyToFormDefaults(
       (storedGroups[0] || apiKey.group || DEFAULT_GROUP) === 'auto'
         ? ''
         : storedGroups[0] || apiKey.group || DEFAULT_GROUP,
+    allow_user_quota_query: !!apiKey.allow_user_quota_query,
     auto_groups_mode: autoGroupsMode,
     auto_groups: autoGroups,
     cross_group_retry: !!apiKey.cross_group_retry,
