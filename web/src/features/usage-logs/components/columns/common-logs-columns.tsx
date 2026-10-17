@@ -79,6 +79,7 @@ import { ModelBadge } from '../model-badge'
 import { TimingMetricsCell, StreamTpsCell } from '../timing-metrics-cell'
 import { useUsageLogsContext } from '../usage-logs-provider'
 import {
+  AffiliateCostLogCell,
   ProfitLogCell,
   UpstreamAmountLogCell,
   UpstreamRatioLogCell,
@@ -806,6 +807,14 @@ export function useCommonLogsColumns(
           cell: ({ row }) =>
             isDisplayableLogType(row.original.type) ? (
               <UpstreamAmountLogCell log={row.original} />
+            ) : null,
+        },
+        {
+          id: 'affiliate_cost',
+          header: t('Affiliate Rebate'),
+          cell: ({ row }) =>
+            isDisplayableLogType(row.original.type) ? (
+              <AffiliateCostLogCell log={row.original} />
             ) : null,
         },
         {

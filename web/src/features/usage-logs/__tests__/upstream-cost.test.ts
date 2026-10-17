@@ -45,6 +45,7 @@ function stats(
   return {
     revenue: 0,
     cost: 0,
+    affiliate_cost: 0,
     covered_quota: 0,
     internal_cost: 0,
     internal_estimated_cost: 0,
@@ -107,10 +108,10 @@ describe('log profit', () => {
 
   test('subtracts the upstream cost from the charged quota when the cost is known', () => {
     expect(
-      getLogProfit(1000, upstreamCost(UPSTREAM_COST_STATUS.MATCHED, 800))
+      getLogProfit(1000, upstreamCost(UPSTREAM_COST_STATUS.MATCHED, 800), 0)
     ).toBe(200)
     expect(
-      getLogProfit(1000, upstreamCost(UPSTREAM_COST_STATUS.ESTIMATED, 1250))
+      getLogProfit(1000, upstreamCost(UPSTREAM_COST_STATUS.ESTIMATED, 1250), 0)
     ).toBe(-250)
   })
 
@@ -120,15 +121,15 @@ describe('log profit', () => {
       internal_use: true,
     }
 
-    expect(getLogProfit(1000, cost, true)).toBe(-800)
-    expect(getLogProfit(1000, cost, false)).toBe(200)
+    expect(getLogProfit(1000, cost, 25, true)).toBe(-825)
+    expect(getLogProfit(1000, cost, 25, false)).toBe(175)
   })
 
   test('returns no profit while the upstream cost is unknown or absent', () => {
     expect(
-      getLogProfit(1000, upstreamCost(UPSTREAM_COST_STATUS.UNKNOWN, 0))
+      getLogProfit(1000, upstreamCost(UPSTREAM_COST_STATUS.UNKNOWN, 0), 0)
     ).toBeNull()
-    expect(getLogProfit(1000, undefined)).toBeNull()
+    expect(getLogProfit(1000, undefined, 0)).toBeNull()
   })
 
   test('colors gains as success, losses as destructive, and break-even neutrally', () => {
@@ -199,5 +200,43 @@ test('request cost logs retain their own strategy and fixed amount for profit', 
     upstream_cost: { status: 1, cost_mode: 'request', cost_quota: 500 },
   })
   expect(log.upstream_cost?.cost_mode).toBe('request')
-  expect(getLogProfit(log.quota, log.upstream_cost)).toBe(1500)
+  expect(getLogProfit(log.quota, log.upstream_cost, 0)).toBe(1500)
+})
+
+test.each([0, 100, 200, 250.123456])(
+  'deducts a known rebate of %s without rounding',
+  (rebate) => {
+    expect(getLogProfit(1000, upstreamCost(2, 800), rebate)).toBe(200 - rebate)
+  }
+)
+
+test.each([null, undefined])(
+  'keeps profit unknown for an unknown rebate %s',
+  (rebate) => {
+    expect(getLogProfit(1000, upstreamCost(2, 800), rebate)).toBeNull()
+  }
+)
+
+test.each([0, 0.123456, null, undefined])(
+  'preserves nullable optional rebate %s in the log schema',
+  (rebate) => {
+    const log = usageLogSchema.parse({
+      id: 1,
+      user_id: 1,
+      created_at: 1,
+      type: 2,
+      content: '',
+      affiliate_cost: rebate,
+    })
+    expect(log.affiliate_cost).toBe(rebate)
+  }
+)
+
+test('deducts rebates from summary profit and margin without changing coverage', () => {
+  expect(
+    summarizeUpstreamCost(
+      stats({ revenue: 800, cost: 600, affiliate_cost: 240, matched: 1 }),
+      1000
+    )
+  ).toEqual({ profit: -40, grossMargin: -0.05, coverage: 0.8, recordCount: 1 })
 })

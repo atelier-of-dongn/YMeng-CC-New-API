@@ -496,6 +496,7 @@ export interface GetLogStatsResponse {
 export interface UpstreamCostStatistics {
   revenue: number
   cost: number
+  affiliate_cost: number
   covered_quota: number
   internal_cost: number
   internal_estimated_cost: number

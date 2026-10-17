@@ -1,5 +1,8 @@
 {
   "translation": {
+    "Affiliate cost attribution is ambiguous for duplicate consumption records": "Affiliate cost attribution is ambiguous for duplicate consumption records",
+    "Affiliate Rebate": "Affiliate Rebate",
+    "Profit deducts upstream cost and affiliate rebates for usage with a known upstream cost only": "Profit deducts upstream cost and affiliate rebates for usage with a known upstream cost only",
     "360": "360",
     "1000": "1000",
     "10000": "10000",
@@ -2099,7 +2102,7 @@
     "Enter a new name": "Enter a new name",
     "Enter a positive integer": "Enter a positive integer",
     "Enter a positive or negative amount to adjust the quota": "Enter a positive or negative amount to adjust the quota",
-    "Enter a react-icons component name. Invalid names show no icon.": "Enter a react-icons component name. Invalid names show no icon.",
+    "Enter a react-icons component name or an https image URL. Invalid values show no icon.": "Enter a react-icons component name or an https image URL. Invalid values show no icon.",
     "Enter a user ID": "Enter a user ID",
     "Enter a valid condition value.": "Enter a valid condition value.",
     "Enter a valid date": "Enter a valid date",

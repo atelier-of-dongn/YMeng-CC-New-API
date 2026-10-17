@@ -50,7 +50,7 @@ export function UpstreamCostStats(props: UpstreamCostStatsProps) {
   const { sensitiveVisible, internalAccounting } = useUsageLogsContext()
 
   // The key must start with 'usage-logs-stats' so the filter bar refreshes it.
-  const { data: stats } = useQuery({
+  const { data: stats, isError } = useQuery({
     queryKey: [
       'usage-logs-stats',
       'upstream-cost',
@@ -77,7 +77,7 @@ export function UpstreamCostStats(props: UpstreamCostStatsProps) {
     meta: { errorToast: false },
   })
 
-  if (!stats) {
+  if (!stats || isError) {
     return null
   }
   const summary = summarizeUpstreamCost(stats, props.totalQuota)
@@ -101,6 +101,11 @@ export function UpstreamCostStats(props: UpstreamCostStatsProps) {
         label={t('Upstream Cost')}
         value={formatMoney(stats.cost)}
         accent='bg-warning/70'
+      />
+      <StatBadge
+        label={t('Affiliate Rebate')}
+        value={formatMoney(stats.affiliate_cost)}
+        accent='bg-muted-foreground/70'
       />
       <StatBadge
         label={t('Profit')}
@@ -130,6 +135,11 @@ export function UpstreamCostStats(props: UpstreamCostStatsProps) {
         <TooltipContent>
           <div className='space-y-1'>
             <p>{t('Share of total usage with a known upstream cost')}</p>
+            <p>
+              {t(
+                'Profit deducts upstream cost and affiliate rebates for usage with a known upstream cost only'
+              )}
+            </p>
             <p>{t('Matched: {{count}}', { count: stats.matched })}</p>
             <p>{t('Estimated: {{count}}', { count: stats.estimated })}</p>
             <p>{t('Unknown cost: {{count}}', { count: stats.unknown })}</p>

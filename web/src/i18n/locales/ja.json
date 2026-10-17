@@ -1,5 +1,8 @@
 {
   "translation": {
+    "Affiliate cost attribution is ambiguous for duplicate consumption records": "重複する消費記録のため紹介報酬の帰属を特定できません",
+    "Affiliate Rebate": "紹介報酬",
+    "Profit deducts upstream cost and affiliate rebates for usage with a known upstream cost only": "損益は上流コストが判明している利用のみを対象とし、上流コストと紹介報酬を差し引きます",
     "360": "360",
     "1000": "1000",
     "10000": "10000",
@@ -2099,7 +2102,7 @@
     "Enter a new name": "新しい名前を入力してください",
     "Enter a positive integer": "正の整数を入力してください",
     "Enter a positive or negative amount to adjust the quota": "クォータを調整するために正または負の値を入力してください",
-    "Enter a react-icons component name. Invalid names show no icon.": "react-icons のコンポーネント名を入力してください。無効な名前はアイコンを表示しません。",
+    "Enter a react-icons component name or an https image URL. Invalid values show no icon.": "react-icons のコンポーネント名または https 画像 URL を入力してください。無効な値はアイコンを表示しません。",
     "Enter a user ID": "ユーザー ID を入力",
     "Enter a valid condition value.": "有効な条件値を入力してください。",
     "Enter a valid date": "有効な日付を入力してください",

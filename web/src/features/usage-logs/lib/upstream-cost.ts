@@ -35,17 +35,18 @@ export function hasKnownUpstreamCost(
   )
 }
 
-/** Our charge minus the upstream cost; null while the cost is unknown. */
+/** Our charge minus upstream cost and affiliate rebate; null while required costs are unknown. */
 export function getLogProfit(
   quota: number,
   cost: UpstreamCostInfo | null | undefined,
+  affiliateCost: number | null | undefined,
   internalAccounting = false
 ): number | null {
-  if (!hasKnownUpstreamCost(cost)) return null
+  if (!hasKnownUpstreamCost(cost) || affiliateCost == null) return null
   if (internalAccounting && cost.internal_use) {
-    return -cost.cost_quota
+    return -cost.cost_quota - affiliateCost
   }
-  return quota - cost.cost_quota
+  return quota - cost.cost_quota - affiliateCost
 }
 
 /** Text color of a profit value; break-even stays neutral. */
@@ -73,7 +74,7 @@ export function summarizeUpstreamCost(
   stats: UpstreamCostStatistics,
   totalQuota: number
 ): UpstreamCostSummary {
-  const profit = stats.revenue - stats.cost
+  const profit = stats.revenue - stats.cost - stats.affiliate_cost
   return {
     profit,
     grossMargin: stats.revenue > 0 ? profit / stats.revenue : null,

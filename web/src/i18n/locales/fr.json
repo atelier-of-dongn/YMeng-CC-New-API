@@ -1,5 +1,8 @@
 {
   "translation": {
+    "Affiliate cost attribution is ambiguous for duplicate consumption records": "L’attribution des commissions de parrainage est ambiguë pour les enregistrements de consommation en double",
+    "Affiliate Rebate": "Commission de parrainage",
+    "Profit deducts upstream cost and affiliate rebates for usage with a known upstream cost only": "Le bénéfice déduit le coût amont et les commissions de parrainage uniquement pour les consommations dont le coût amont est connu",
     "360": "360",
     "1000": "1000",
     "10000": "10000",
@@ -2099,7 +2102,7 @@
     "Enter a new name": "Entrez un nouveau nom",
     "Enter a positive integer": "Saisissez un entier positif",
     "Enter a positive or negative amount to adjust the quota": "Saisir un montant positif ou négatif pour ajuster le quota",
-    "Enter a react-icons component name. Invalid names show no icon.": "Saisissez le nom d’un composant react-icons. Les noms invalides n’affichent aucune icône.",
+    "Enter a react-icons component name or an https image URL. Invalid values show no icon.": "Saisissez le nom d’un composant react-icons ou une URL d’image https. Les valeurs invalides n’affichent aucune icône.",
     "Enter a user ID": "Saisissez un ID utilisateur",
     "Enter a valid condition value.": "Saisissez une valeur de condition valide.",
     "Enter a valid date": "Saisissez une date valide",

@@ -1,5 +1,8 @@
 {
   "translation": {
+    "Affiliate cost attribution is ambiguous for duplicate consumption records": "Невозможно однозначно отнести реферальные затраты к дублирующимся записям потребления",
+    "Affiliate Rebate": "Реферальное вознаграждение",
+    "Profit deducts upstream cost and affiliate rebates for usage with a known upstream cost only": "Прибыль учитывает вычет затрат поставщика и реферальных вознаграждений только для потребления с известными затратами поставщика",
     "360": "360",
     "1000": "1000",
     "10000": "10000",
@@ -2099,7 +2102,7 @@
     "Enter a new name": "Введите новое имя",
     "Enter a positive integer": "Введите положительное целое число",
     "Enter a positive or negative amount to adjust the quota": "Введите положительную или отрицательную сумму для корректировки квоты",
-    "Enter a react-icons component name. Invalid names show no icon.": "Введите имя компонента react-icons. Недопустимые имена не отображают значок.",
+    "Enter a react-icons component name or an https image URL. Invalid values show no icon.": "Введите имя компонента react-icons или URL изображения https. Недопустимые значения не отображают значок.",
     "Enter a user ID": "Введите ID пользователя",
     "Enter a valid condition value.": "Введите допустимое значение условия.",
     "Enter a valid date": "Введите корректную дату",

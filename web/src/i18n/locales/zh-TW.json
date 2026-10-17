@@ -1,5 +1,8 @@
 {
   "translation": {
+    "Affiliate cost attribution is ambiguous for duplicate consumption records": "重複消費記錄導致推廣返利歸屬不明確",
+    "Affiliate Rebate": "推廣返利",
+    "Profit deducts upstream cost and affiliate rebates for usage with a known upstream cost only": "盈虧已扣除上游成本和推廣返利，僅統計上游成本已知的消費",
     "360": "360",
     "1000": "1000",
     "10000": "10000",
@@ -2099,7 +2102,7 @@
     "Enter a new name": "輸入新名稱",
     "Enter a positive integer": "請輸入正整數",
     "Enter a positive or negative amount to adjust the quota": "輸入正數或負數以調整配額",
-    "Enter a react-icons component name. Invalid names show no icon.": "輸入 react-icons 組件名。無法解析的名稱不會顯示圖標。",
+    "Enter a react-icons component name or an https image URL. Invalid values show no icon.": "輸入 react-icons 組件名或 https 圖片地址。無法解析的值不會顯示圖標。",
     "Enter a user ID": "請輸入使用者 ID",
     "Enter a valid condition value.": "請輸入有效的條件值。",
     "Enter a valid date": "請輸入有效的日期",

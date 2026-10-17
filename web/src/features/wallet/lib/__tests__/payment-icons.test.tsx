@@ -48,3 +48,24 @@ test('an admin-configured Simple Icon still resolves through the lazy icon loade
   const title = await screen.findByTitle('Configured Alipay')
   expect(title.closest('svg')).toHaveClass('h-4', 'w-4')
 })
+
+test('an admin-configured https icon URL renders as an image', () => {
+  render(
+    getPaymentIcon(
+      'usdc',
+      'h-4 w-4',
+      'https://example.com/usdc.svg',
+      'USDC'
+    )
+  )
+  const image = screen.getByRole('img', { name: 'USDC' })
+  expect(image).toHaveAttribute('src', 'https://example.com/usdc.svg')
+  expect(image).toHaveClass('h-4', 'w-4')
+})
+
+test('an admin-configured http icon URL renders no image', () => {
+  render(
+    getPaymentIcon('usdc', 'h-4 w-4', 'http://example.com/usdc.svg', 'USDC')
+  )
+  expect(screen.queryByRole('img', { name: 'USDC' })).not.toBeInTheDocument()
+})

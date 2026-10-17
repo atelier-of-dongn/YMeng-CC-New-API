@@ -76,7 +76,8 @@ type UpstreamCostLogView struct {
 // changing the logs table.
 type AdminLogItem struct {
 	*model.Log
-	UpstreamCost *UpstreamCostLogView `json:"upstream_cost,omitempty"`
+	UpstreamCost  *UpstreamCostLogView `json:"upstream_cost,omitempty"`
+	AffiliateCost *float64             `json:"affiliate_cost"`
 }
 
 func GetUpstreamMonitorViews(channelIds []int) ([]UpstreamMonitorView, error) {
@@ -372,31 +373,44 @@ func AttachUpstreamCostToLogs(logs []*model.Log) []AdminLogItem {
 	if len(requestIds) == 0 {
 		return items
 	}
-	records, err := model.GetUpstreamCostRecordsByRequestIds(requestIds)
-	if err != nil {
-		common.SysError("failed to load upstream cost records: " + err.Error())
-		return items
+	records, recordErr := model.GetUpstreamCostRecordsByRequestIds(requestIds)
+	if recordErr != nil {
+		common.SysError("failed to load upstream cost records: " + recordErr.Error())
 	}
-	byRequest := make(map[string][]*model.UpstreamCostRecord)
+	// Read independently so a ledger failure never hides known upstream cost.
+	affiliateCosts, affiliateErr := model.GetAffiliateCostsByRequestIds(requestIds)
+	if affiliateErr != nil {
+		common.SysError("failed to load affiliate cost records: " + affiliateErr.Error())
+	}
+	byCharge := make(map[model.AffiliateCostKey][]*model.UpstreamCostRecord)
 	for _, record := range records {
-		byRequest[record.RequestId] = append(byRequest[record.RequestId], record)
+		key := model.AffiliateCostKey{RequestId: record.RequestId, UserId: record.UserId, ModelName: record.ModelName, Quota: record.Quota}
+		byCharge[key] = append(byCharge[key], record)
 	}
 	for i, log := range logs {
-		candidates := byRequest[log.RequestId]
-		if log.Type != model.LogTypeConsume || len(candidates) == 0 {
+		if log.Type != model.LogTypeConsume || log.RequestId == "" {
 			continue
 		}
-		record := candidates[0]
-		// Several consume logs can share one request id; align on the fields
-		// both rows copy from the same charge.
-		if len(candidates) > 1 {
-			index := slices.IndexFunc(candidates, func(candidate *model.UpstreamCostRecord) bool {
-				return candidate.ChannelId == log.ChannelId && candidate.Quota == log.Quota && candidate.ModelName == log.ModelName
-			})
-			if index < 0 {
+		key := model.AffiliateCostKey{RequestId: log.RequestId, UserId: log.UserId, ModelName: log.ModelName, Quota: log.Quota}
+		candidates := byCharge[key]
+		cost, hasReward := affiliateCosts[key]
+		// No completed reward confirms zero; paid tuples need a global uniqueness check.
+		if affiliateErr == nil && (!hasReward || (recordErr == nil && len(candidates) <= 1)) {
+			items[i].AffiliateCost = &cost
+		}
+		var record *model.UpstreamCostRecord
+		for _, candidate := range candidates {
+			if candidate.ChannelId != log.ChannelId || candidate.CreatedAt != log.CreatedAt {
 				continue
 			}
-			record = candidates[index]
+			if record != nil {
+				record = nil
+				break
+			}
+			record = candidate
+		}
+		if record == nil {
+			continue
 		}
 		items[i].UpstreamCost = &UpstreamCostLogView{
 			Status:             record.Status,

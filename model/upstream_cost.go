@@ -6,6 +6,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/QuantumNous/new-api/common"
+
 	"gorm.io/gorm"
 )
 
@@ -146,15 +148,16 @@ type UpstreamCostPendingKey struct {
 // UpstreamCostStat contains the cost-monitoring totals for the filtered logs.
 // Revenue keeps the legacy all-users total unless internalAccounting is true.
 type UpstreamCostStat struct {
-	Revenue               int64 `json:"revenue"`
-	Cost                  int64 `json:"cost"`
-	CoveredQuota          int64 `json:"covered_quota"`
-	InternalCost          int64 `json:"internal_cost"`
-	InternalEstimatedCost int64 `json:"internal_estimated_cost"`
-	Matched               int64 `json:"matched"`
-	Estimated             int64 `json:"estimated"`
-	Unknown               int64 `json:"unknown"`
-	InternalUnknown       int64 `json:"internal_unknown"`
+	AffiliateCost         float64 `json:"affiliate_cost"`
+	Revenue               int64   `json:"revenue"`
+	Cost                  int64   `json:"cost"`
+	CoveredQuota          int64   `json:"covered_quota"`
+	InternalCost          int64   `json:"internal_cost"`
+	InternalEstimatedCost int64   `json:"internal_estimated_cost"`
+	Matched               int64   `json:"matched"`
+	Estimated             int64   `json:"estimated"`
+	Unknown               int64   `json:"unknown"`
+	InternalUnknown       int64   `json:"internal_unknown"`
 }
 
 func GetUpstreamSites() ([]*UpstreamSite, error) {
@@ -323,8 +326,54 @@ func GetUpstreamCostRecordsByRequestIds(requestIds []string) ([]*UpstreamCostRec
 	if len(requestIds) == 0 {
 		return records, nil
 	}
-	err := DB.Where("request_id IN ?", requestIds).Find(&records).Error
-	return records, err
+	requestIds = slices.Clone(requestIds)
+	slices.Sort(requestIds)
+	requestIds = slices.Compact(requestIds)
+	for chunk := range slices.Chunk(requestIds, 500) {
+		var part []*UpstreamCostRecord
+		if err := DB.Where("request_id IN ?", chunk).Find(&part).Error; err != nil {
+			return nil, err
+		}
+		records = append(records, part...)
+	}
+	return records, nil
+}
+
+// AffiliateCostKey identifies the charge fields preserved by both the ledger
+// and consume logs. Channel and timestamp are not present in the ledger.
+type AffiliateCostKey struct {
+	RequestId string
+	UserId    int
+	ModelName string
+	Quota     int
+}
+
+// GetAffiliateCostsByRequestIds returns completed historical rewards, not the
+// integer wallet credits (which can include a previous charge's remainder).
+func GetAffiliateCostsByRequestIds(requestIds []string) (map[AffiliateCostKey]float64, error) {
+	costs := make(map[AffiliateCostKey]float64)
+	requestIds = slices.Clone(requestIds)
+	slices.Sort(requestIds)
+	requestIds = slices.Compact(requestIds)
+	for chunk := range slices.Chunk(requestIds, 500) {
+		var rows []struct {
+			SourceKey     string
+			InviteeId     int
+			ModelName     string
+			ConsumedQuota int
+			RewardAmount  float64
+		}
+		if err := DB.Model(&AffiliateCommission{}).
+			Select("source_key, invitee_id, model_name, consumed_quota, SUM(reward_amount) AS reward_amount").
+			Where("status = ? AND source_key IN ?", AffiliateCommissionStatusCompleted, chunk).
+			Group("source_key, invitee_id, model_name, consumed_quota").Scan(&rows).Error; err != nil {
+			return nil, err
+		}
+		for _, row := range rows {
+			costs[AffiliateCostKey{row.SourceKey, row.InviteeId, row.ModelName, row.ConsumedQuota}] = row.RewardAmount
+		}
+	}
+	return costs, nil
 }
 
 // SumUpstreamCost aggregates records with the same filters as SumUsedQuota.
@@ -332,8 +381,7 @@ func GetUpstreamCostRecordsByRequestIds(requestIds []string) ([]*UpstreamCostRec
 // internal accounting view, user 1 contributes cost but not revenue.
 func SumUpstreamCost(startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, channel int, group string, internalAccounting bool) (UpstreamCostStat, error) {
 	stat := UpstreamCostStat{}
-	tx := DB.Model(&UpstreamCostRecord{}).
-		Select("status, user_id, COUNT(*) AS record_count, COALESCE(SUM(quota), 0) AS quota_sum, COALESCE(SUM(cost_quota), 0) AS cost_sum")
+	tx := DB.Model(&UpstreamCostRecord{})
 	var err error
 	if tx, err = applyUpstreamCostTextFilter(tx, "username", username); err != nil {
 		return stat, err
@@ -356,6 +404,7 @@ func SumUpstreamCost(startTimestamp int64, endTimestamp int64, modelName string,
 	if group != "" {
 		tx = tx.Where("using_group = ?", group)
 	}
+	filtered := tx.Session(&gorm.Session{})
 	var rows []struct {
 		Status      int
 		UserId      int
@@ -363,7 +412,7 @@ func SumUpstreamCost(startTimestamp int64, endTimestamp int64, modelName string,
 		QuotaSum    int64
 		CostSum     int64
 	}
-	if err := tx.Group("status, user_id").Scan(&rows).Error; err != nil {
+	if err := filtered.Select("status, user_id, COUNT(*) AS record_count, COALESCE(SUM(quota), 0) AS quota_sum, COALESCE(SUM(cost_quota), 0) AS cost_sum").Group("status, user_id").Scan(&rows).Error; err != nil {
 		return stat, err
 	}
 	for _, row := range rows {
@@ -391,6 +440,31 @@ func SumUpstreamCost(startTimestamp int64, endTimestamp int64, modelName string,
 		if !internalAccounting || !internal {
 			stat.Revenue += row.QuotaSum
 		}
+	}
+	// Check all mirrors, including candidates hidden by filters or with unknown
+	// upstream cost. The ledger cannot distinguish identical charge tuples.
+	known := filtered.Where("status IN ?", []int{UpstreamCostRecordMatched, UpstreamCostRecordEstimated}).Session(&gorm.Session{})
+	duplicates := DB.Table("upstream_cost_records AS other_cost").Select("1").
+		Where("other_cost.request_id = upstream_cost_records.request_id AND other_cost.user_id = upstream_cost_records.user_id AND other_cost.model_name = upstream_cost_records.model_name AND other_cost.quota = upstream_cost_records.quota AND other_cost.id <> upstream_cost_records.id")
+	completed := DB.Model(&AffiliateCommission{}).Select("1").
+		Where("status = ?", AffiliateCommissionStatusCompleted).
+		Where("affiliate_commissions.source_key = upstream_cost_records.request_id AND affiliate_commissions.invitee_id = upstream_cost_records.user_id AND affiliate_commissions.model_name = upstream_cost_records.model_name AND affiliate_commissions.consumed_quota = upstream_cost_records.quota")
+	var ambiguous int64
+	if err := known.Where("request_id <> ?", "").Where("EXISTS (?)", duplicates).Where("EXISTS (?)", completed).Count(&ambiguous).Error; err != nil {
+		return stat, err
+	}
+	if ambiguous > 0 {
+		return stat, common.NewMessage("Affiliate cost attribution is ambiguous for duplicate consumption records")
+	}
+	// EXISTS prevents mirror rows from multiplying commission amounts. All
+	// filters apply to consumption, never to the later commission settlement.
+	eligible := known.Select("1").Where("request_id <> ?", "").
+		Where("upstream_cost_records.request_id = affiliate_commissions.source_key AND upstream_cost_records.user_id = affiliate_commissions.invitee_id AND upstream_cost_records.model_name = affiliate_commissions.model_name AND upstream_cost_records.quota = affiliate_commissions.consumed_quota")
+	if err := DB.Model(&AffiliateCommission{}).
+		Where("status = ?", AffiliateCommissionStatusCompleted).
+		Where("EXISTS (?)", eligible).
+		Select("COALESCE(SUM(reward_amount), 0)").Scan(&stat.AffiliateCost).Error; err != nil {
+		return stat, err
 	}
 	return stat, nil
 }

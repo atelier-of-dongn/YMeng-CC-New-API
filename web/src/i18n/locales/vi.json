@@ -1,5 +1,8 @@
 {
   "translation": {
+    "Affiliate cost attribution is ambiguous for duplicate consumption records": "Không thể xác định rõ chi phí hoa hồng giới thiệu cho các bản ghi tiêu thụ trùng lặp",
+    "Affiliate Rebate": "Hoa hồng giới thiệu",
+    "Profit deducts upstream cost and affiliate rebates for usage with a known upstream cost only": "Lợi nhuận trừ chi phí thượng nguồn và hoa hồng giới thiệu chỉ cho các lượt sử dụng có chi phí thượng nguồn đã biết",
     "360": "360",
     "1000": "1000",
     "10000": "10000",
@@ -2099,7 +2102,7 @@
     "Enter a new name": "Nhập tên mới",
     "Enter a positive integer": "Nhập một số nguyên dương",
     "Enter a positive or negative amount to adjust the quota": "Nhập một giá trị dương hoặc âm để điều chỉnh hạn ngạch",
-    "Enter a react-icons component name. Invalid names show no icon.": "Nhập tên component react-icons. Tên không hợp lệ sẽ không hiển thị biểu tượng.",
+    "Enter a react-icons component name or an https image URL. Invalid values show no icon.": "Nhập tên component react-icons hoặc URL hình ảnh https. Giá trị không hợp lệ sẽ không hiển thị biểu tượng.",
     "Enter a user ID": "Nhập ID người dùng",
     "Enter a valid condition value.": "Nhập giá trị điều kiện hợp lệ.",
     "Enter a valid date": "Nhập ngày hợp lệ",

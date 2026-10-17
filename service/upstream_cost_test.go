@@ -5,6 +5,7 @@ import (
 	"math"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
@@ -13,14 +14,19 @@ import (
 	"github.com/QuantumNous/new-api/setting/config"
 	"github.com/QuantumNous/new-api/setting/upstream_cost_setting"
 	"github.com/gin-gonic/gin"
+	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 func setupUpstreamCostTables(t *testing.T) {
 	t.Helper()
-	require.NoError(t, model.DB.AutoMigrate(&model.UpstreamSite{}, &model.UpstreamChannelMonitor{}, &model.UpstreamCostRecord{}))
+	require.NoError(t, model.DB.AutoMigrate(&model.UpstreamSite{}, &model.UpstreamChannelMonitor{}, &model.UpstreamCostRecord{}, &model.AffiliateCommission{}))
 	resetTables := func() {
+		model.DB.Exec("DELETE FROM affiliate_commissions")
 		model.DB.Exec("DELETE FROM upstream_cost_records")
 		model.DB.Exec("DELETE FROM upstream_channel_monitors")
 		model.DB.Exec("DELETE FROM upstream_sites")
@@ -32,6 +38,170 @@ func setupUpstreamCostTables(t *testing.T) {
 
 func floatPtr(value float64) *float64 {
 	return &value
+}
+
+func TestAffiliateUpstreamCostDatabaseMatrix(t *testing.T) {
+	for _, dialect := range []struct {
+		name common.DatabaseType
+		env  string
+	}{
+		{common.DatabaseTypeSQLite, ""},
+		{common.DatabaseTypeMySQL, "TEST_FIXED_MYSQL_DSN"},
+		{common.DatabaseTypePostgreSQL, "TEST_FIXED_POSTGRES_DSN"},
+	} {
+		t.Run(string(dialect.name), func(t *testing.T) {
+			var driver gorm.Dialector = sqlite.Open(":memory:")
+			if dialect.env != "" {
+				dsn := os.Getenv(dialect.env)
+				if dsn == "" {
+					t.Skip(dialect.env + " is not configured; use isolated test databases")
+				}
+				if dialect.name == common.DatabaseTypeMySQL {
+					driver = mysql.Open(dsn)
+				} else {
+					driver = postgres.New(postgres.Config{DSN: dsn, PreferSimpleProtocol: true})
+				}
+			}
+			db, err := gorm.Open(driver, &gorm.Config{})
+			require.NoError(t, err)
+			sqlDB, err := db.DB()
+			require.NoError(t, err)
+			sqlDB.SetMaxOpenConns(1)
+			t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
+			// A separate log DB has neither ledger nor mirror tables.
+			logDB, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+			require.NoError(t, err)
+			logSQL, err := logDB.DB()
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, logSQL.Close()) })
+			oldDB, oldLogDB := model.DB, model.LOG_DB
+			oldMain, oldLog := common.MainDatabaseType(), common.LogDatabaseType()
+			model.DB, model.LOG_DB = db, logDB
+			common.SetDatabaseTypes(dialect.name, common.DatabaseTypeSQLite)
+			t.Cleanup(func() {
+				model.DB, model.LOG_DB = oldDB, oldLogDB
+				common.SetDatabaseTypes(oldMain, oldLog)
+			})
+			require.NoError(t, db.AutoMigrate(&model.UpstreamCostRecord{}, &model.AffiliateCommission{}))
+			versionQuery := "SELECT version()"
+			if dialect.name == common.DatabaseTypeSQLite {
+				versionQuery = "SELECT sqlite_version()"
+			}
+			var version string
+			require.NoError(t, db.Raw(versionQuery).Scan(&version).Error)
+			t.Logf("database: %s", version)
+			t.Run("attribution", testAffiliateCostAttribution)
+			t.Run("ambiguity", testAffiliateCostAmbiguity)
+			t.Run("failures", testAffiliateCostReadFailures)
+		})
+	}
+}
+
+func testAffiliateCostAttribution(t *testing.T) {
+	t.Cleanup(func() {
+		model.DB.Exec("DELETE FROM affiliate_commissions")
+		model.DB.Exec("DELETE FROM upstream_cost_records")
+	})
+	records := []*model.UpstreamCostRecord{
+		{RequestId: "shared", UserId: 2, ModelName: "a", Quota: 100, CreatedAt: 100, Username: "alice", TokenName: "token", ChannelId: 1, UsingGroup: "vip", CostQuota: 30, Status: model.UpstreamCostRecordMatched},
+		{RequestId: "shared", UserId: 3, ModelName: "a", Quota: 100, ChannelId: 2, CostQuota: 20, Status: model.UpstreamCostRecordEstimated},
+		{RequestId: "shared", UserId: 2, ModelName: "b", Quota: 100, Status: model.UpstreamCostRecordUnknown},
+		{RequestId: "shared", UserId: 2, ModelName: "a", Quota: 50, CreatedAt: 200, ChannelId: 1, CostQuota: 10, Status: model.UpstreamCostRecordMatched},
+		{RequestId: "internal", UserId: 1, ModelName: "a", Quota: 80, CostQuota: 40, Status: model.UpstreamCostRecordEstimated},
+	}
+	require.NoError(t, model.InsertUpstreamCostRecords(records))
+	logs := make([]*model.Log, 0, len(records)+3)
+	for i, r := range records {
+		require.NoError(t, model.DB.Create(&model.AffiliateCommission{InviterId: int64(10 + i), SourceKey: r.RequestId, InviteeId: int64(r.UserId), ModelName: r.ModelName, ConsumedQuota: int64(r.Quota), RewardAmount: float64(i) + 0.123456, CreditedQuota: 99, Status: model.AffiliateCommissionStatusCompleted, CreatedAt: 90000}).Error)
+		logs = append(logs, &model.Log{Type: model.LogTypeConsume, RequestId: r.RequestId, UserId: r.UserId, ModelName: r.ModelName, Quota: r.Quota, ChannelId: r.ChannelId, CreatedAt: r.CreatedAt})
+	}
+	for i, status := range []string{model.AffiliateCommissionStatusPending, model.AffiliateCommissionStatusFailed} {
+		require.NoError(t, model.DB.Create(&model.AffiliateCommission{InviterId: int64(20 + i), SourceKey: "shared", InviteeId: 2, ModelName: "a", ConsumedQuota: 100, RewardAmount: 99, Status: status}).Error)
+	}
+	require.NoError(t, model.DB.Create(&model.AffiliateCommission{InviterId: 10, SourceKey: "unmonitored", InviteeId: 2, ModelName: "a", ConsumedQuota: 20, RewardAmount: 6, Status: model.AffiliateCommissionStatusCompleted}).Error)
+	logs = append(logs,
+		&model.Log{Type: model.LogTypeConsume, RequestId: "unmonitored", UserId: 2, ModelName: "a", Quota: 20},
+		&model.Log{Type: model.LogTypeConsume, RequestId: "no-reward"},
+		&model.Log{Type: model.LogTypeError, RequestId: "shared"},
+		&model.Log{Type: model.LogTypeConsume, RequestId: "internal", UserId: 99, ModelName: "a", Quota: 80})
+	items := AttachUpstreamCostToLogs(logs)
+	for i := range records {
+		require.NotNil(t, items[i].AffiliateCost)
+		assert.InDelta(t, float64(i)+0.123456, *items[i].AffiliateCost, 1e-9)
+	}
+	require.NotNil(t, items[5].AffiliateCost)
+	assert.Equal(t, float64(6), *items[5].AffiliateCost)
+	assert.Nil(t, items[5].UpstreamCost)
+	require.NotNil(t, items[6].AffiliateCost)
+	assert.Zero(t, *items[6].AffiliateCost)
+	assert.Nil(t, items[7].AffiliateCost)
+	assert.Nil(t, items[8].UpstreamCost, "single candidate still requires user matching")
+	encoded, err := common.Marshal(items[7])
+	require.NoError(t, err)
+	assert.Contains(t, string(encoded), `"affiliate_cost":null`)
+	stat, err := model.SumUpstreamCost(90, 110, "a", "al%", "token", 1, "vip", false)
+	require.NoError(t, err)
+	assert.InDelta(t, 0.123456, stat.AffiliateCost, 1e-9, "use consumption date, not settlement date")
+	assert.Equal(t, int64(100), stat.Revenue)
+	stat, err = model.SumUpstreamCost(0, 0, "", "", "", 0, "", true)
+	require.NoError(t, err)
+	assert.InDelta(t, 8.493824, stat.AffiliateCost, 1e-9, "exclude unknown upstream costs and unmonitored consumption")
+	assert.Equal(t, int64(250), stat.Revenue)
+	assert.Equal(t, int64(100), stat.Cost)
+	stat, err = model.SumUpstreamCost(150, 250, "a", "", "", 1, "", false)
+	require.NoError(t, err)
+	assert.InDelta(t, 3.123456, stat.AffiliateCost, 1e-9)
+}
+
+func testAffiliateCostAmbiguity(t *testing.T) {
+	t.Cleanup(func() {
+		model.DB.Exec("DELETE FROM affiliate_commissions")
+		model.DB.Exec("DELETE FROM upstream_cost_records")
+	})
+	require.NoError(t, model.InsertUpstreamCostRecords([]*model.UpstreamCostRecord{
+		{RequestId: "duplicate", UserId: 2, ModelName: "a", Quota: 100, ChannelId: 1, CreatedAt: 100, Status: model.UpstreamCostRecordMatched},
+		{RequestId: "duplicate", UserId: 2, ModelName: "a", Quota: 100, ChannelId: 2, CreatedAt: 200, Status: model.UpstreamCostRecordUnknown},
+	}))
+	log := &model.Log{Type: model.LogTypeConsume, RequestId: "duplicate", UserId: 2, ModelName: "a", Quota: 100, ChannelId: 1, CreatedAt: 100}
+	for _, status := range []string{"", model.AffiliateCommissionStatusPending, model.AffiliateCommissionStatusCompleted} {
+		require.NoError(t, model.DB.Exec("DELETE FROM affiliate_commissions").Error)
+		if status != "" {
+			require.NoError(t, model.DB.Create(&model.AffiliateCommission{InviterId: 10, InviteeId: 2, SourceKey: "duplicate", ModelName: "a", ConsumedQuota: 100, RewardAmount: 2, Status: status}).Error)
+		}
+		items := AttachUpstreamCostToLogs([]*model.Log{log})
+		stat, err := model.SumUpstreamCost(90, 110, "a", "", "", 1, "", false)
+		if status == model.AffiliateCommissionStatusCompleted {
+			assert.Nil(t, items[0].AffiliateCost, "off-page unknown-cost mirror makes paid tuple ambiguous")
+			require.ErrorContains(t, err, "Affiliate cost attribution is ambiguous")
+		} else {
+			require.NoError(t, err)
+			assert.Zero(t, stat.AffiliateCost)
+			require.NotNil(t, items[0].AffiliateCost)
+			assert.Zero(t, *items[0].AffiliateCost)
+		}
+	}
+}
+
+func testAffiliateCostReadFailures(t *testing.T) {
+	require.NoError(t, model.DB.Create(&model.UpstreamCostRecord{RequestId: "failure", UserId: 2, ModelName: "a", Quota: 100, CreatedAt: 100, Status: model.UpstreamCostRecordMatched}).Error)
+	require.NoError(t, model.DB.Create(&model.AffiliateCommission{InviterId: 10, InviteeId: 2, SourceKey: "failure", ModelName: "a", ConsumedQuota: 100, RewardAmount: 1, Status: model.AffiliateCommissionStatusCompleted}).Error)
+	logs := []*model.Log{
+		{Type: model.LogTypeConsume, RequestId: "failure", UserId: 2, ModelName: "a", Quota: 100, CreatedAt: 100},
+		{Type: model.LogTypeConsume, RequestId: "no-reward"},
+	}
+	require.NoError(t, model.DB.Migrator().DropTable(&model.UpstreamCostRecord{}))
+	items := AttachUpstreamCostToLogs(logs)
+	assert.Nil(t, items[0].AffiliateCost)
+	require.NotNil(t, items[1].AffiliateCost)
+	assert.Zero(t, *items[1].AffiliateCost)
+	require.NoError(t, model.DB.AutoMigrate(&model.UpstreamCostRecord{}))
+	require.NoError(t, model.DB.Create(&model.UpstreamCostRecord{RequestId: "failure", UserId: 2, ModelName: "a", Quota: 100, CreatedAt: 100, Status: model.UpstreamCostRecordMatched}).Error)
+	require.NoError(t, model.DB.Migrator().DropTable(&model.AffiliateCommission{}))
+	items = AttachUpstreamCostToLogs(logs)
+	assert.Nil(t, items[0].AffiliateCost)
+	require.NotNil(t, items[0].UpstreamCost, "ledger failure must not hide known upstream costs")
+	_, err := model.SumUpstreamCost(0, 0, "", "", "", 0, "", false)
+	assert.Error(t, err)
 }
 
 func TestPricingBaseUSDCoversBillingModes(t *testing.T) {
@@ -612,11 +782,11 @@ func TestSumUpstreamCostOnlyCountsKnownCosts(t *testing.T) {
 func TestAttachUpstreamCostToLogsAlignsSharedRequestIds(t *testing.T) {
 	setupUpstreamCostTables(t)
 	require.NoError(t, model.InsertUpstreamCostRecords([]*model.UpstreamCostRecord{
-		{RequestId: "req-1", ChannelId: 1, ModelName: "gpt-a", Quota: 100, CostQuota: 70, Status: model.UpstreamCostRecordMatched},
-		{RequestId: "req-1", ChannelId: 1, ModelName: "gpt-a", Quota: 40, CostQuota: 30, Status: model.UpstreamCostRecordEstimated},
+		{RequestId: "req-1", CreatedAt: 100, ChannelId: 1, ModelName: "gpt-a", Quota: 100, CostQuota: 70, Status: model.UpstreamCostRecordMatched},
+		{RequestId: "req-1", CreatedAt: 100, ChannelId: 1, ModelName: "gpt-a", Quota: 40, CostQuota: 30, Status: model.UpstreamCostRecordEstimated},
 	}))
 	logs := []*model.Log{
-		{Type: model.LogTypeConsume, RequestId: "req-1", ChannelId: 1, ModelName: "gpt-a", Quota: 40},
+		{Type: model.LogTypeConsume, RequestId: "req-1", CreatedAt: 100, ChannelId: 1, ModelName: "gpt-a", Quota: 40},
 		{Type: model.LogTypeConsume, RequestId: "req-2", ChannelId: 1, ModelName: "gpt-a", Quota: 5},
 	}
 
@@ -865,4 +1035,47 @@ func TestRequestUpstreamMonitorSkipsRatioAlerts(t *testing.T) {
 	assert.Empty(t, work.detail.InvertedModels)
 	assert.Equal(t, "unreachable", work.detail.LastError)
 	assert.Zero(t, monitor.RatioChangedAt)
+}
+
+func TestAffiliateCostAttributionAndFilters(t *testing.T) {
+	setupUpstreamCostTables(t)
+	records := []*model.UpstreamCostRecord{
+		{RequestId: "shared", UserId: 2, ModelName: "a", Quota: 100, CreatedAt: 100, Username: "alice", TokenName: "token", ChannelId: 1, UsingGroup: "vip", CostQuota: 30, Status: model.UpstreamCostRecordMatched},
+		{RequestId: "shared", UserId: 3, ModelName: "a", Quota: 100, ChannelId: 2, CostQuota: 20, Status: model.UpstreamCostRecordEstimated},
+		{RequestId: "shared", UserId: 2, ModelName: "b", Quota: 100, Status: model.UpstreamCostRecordUnknown},
+		{RequestId: "shared", UserId: 2, ModelName: "a", Quota: 50, CostQuota: 10, Status: model.UpstreamCostRecordMatched},
+		{RequestId: "internal", UserId: 1, ModelName: "a", Quota: 80, CostQuota: 40, Status: model.UpstreamCostRecordEstimated},
+	}
+	require.NoError(t, model.InsertUpstreamCostRecords(records))
+	for i, r := range records {
+		require.NoError(t, model.DB.Create(&model.AffiliateCommission{InviterId: int64(10 + i), SourceKey: r.RequestId, InviteeId: int64(r.UserId), ModelName: r.ModelName, ConsumedQuota: int64(r.Quota), RewardAmount: float64(i) + 0.123456, CreditedQuota: 99, Status: model.AffiliateCommissionStatusCompleted, CreatedAt: 90000}).Error)
+	}
+	for i, status := range []string{model.AffiliateCommissionStatusPending, model.AffiliateCommissionStatusFailed} {
+		require.NoError(t, model.DB.Create(&model.AffiliateCommission{InviterId: int64(20 + i), SourceKey: "shared", InviteeId: 2, ModelName: "a", ConsumedQuota: 100, RewardAmount: 99, Status: status}).Error)
+	}
+	logs := make([]*model.Log, 0, len(records)+2)
+	for _, r := range records {
+		logs = append(logs, &model.Log{Type: model.LogTypeConsume, RequestId: r.RequestId, UserId: r.UserId, ModelName: r.ModelName, Quota: r.Quota, ChannelId: r.ChannelId, CreatedAt: r.CreatedAt})
+	}
+	logs = append(logs, &model.Log{Type: model.LogTypeConsume, RequestId: "no-reward"}, &model.Log{Type: model.LogTypeError, RequestId: "shared"})
+	items := AttachUpstreamCostToLogs(logs)
+	for i := range records {
+		require.NotNil(t, items[i].AffiliateCost)
+		assert.InDelta(t, float64(i)+0.123456, *items[i].AffiliateCost, 1e-9)
+	}
+	require.NotNil(t, items[5].AffiliateCost)
+	assert.Zero(t, *items[5].AffiliateCost)
+	assert.Nil(t, items[6].AffiliateCost)
+	encoded, err := common.Marshal(items[6])
+	require.NoError(t, err)
+	assert.Contains(t, string(encoded), `"affiliate_cost":null`)
+	stat, err := model.SumUpstreamCost(90, 110, "a", "al%", "token", 1, "vip", false)
+	require.NoError(t, err)
+	assert.InDelta(t, 0.123456, stat.AffiliateCost, 1e-9)
+	assert.Equal(t, int64(100), stat.Revenue)
+	stat, err = model.SumUpstreamCost(0, 0, "", "", "", 0, "", true)
+	require.NoError(t, err)
+	assert.InDelta(t, 8.493824, stat.AffiliateCost, 1e-9)
+	assert.Equal(t, int64(250), stat.Revenue)
+	assert.Equal(t, int64(100), stat.Cost)
 }

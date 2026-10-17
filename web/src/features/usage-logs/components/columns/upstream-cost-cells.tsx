@@ -122,12 +122,29 @@ export function UpstreamAmountLogCell(props: { log: UsageLog }) {
   )
 }
 
-/** Our charge minus the upstream cost, colored by sign. */
+/** Affiliate rebate in local quota units. */
+export function AffiliateCostLogCell(props: { log: UsageLog }) {
+  const { sensitiveVisible } = useUsageLogsContext()
+  if (props.log.affiliate_cost == null) {
+    return <EmptyUpstreamCostCell />
+  }
+
+  return (
+    <span className='font-mono text-xs font-medium tabular-nums'>
+      {sensitiveVisible
+        ? formatLogQuota(props.log.affiliate_cost)
+        : SENSITIVE_MASK}
+    </span>
+  )
+}
+
+/** Our charge minus upstream cost and affiliate rebate, colored by sign. */
 export function ProfitLogCell(props: { log: UsageLog }) {
   const { internalAccounting } = useUsageLogsContext()
   const profit = getLogProfit(
     props.log.quota,
     props.log.upstream_cost,
+    props.log.affiliate_cost,
     internalAccounting
   )
 

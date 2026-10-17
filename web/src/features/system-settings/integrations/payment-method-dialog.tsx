@@ -23,7 +23,6 @@ import { useTranslation } from 'react-i18next'
 import * as z from 'zod'
 
 import { Dialog } from '@/components/dialog'
-import { ReactIconByName } from '@/components/react-icon-by-name'
 import { Button } from '@/components/ui/button'
 import { Combobox } from '@/components/ui/combobox'
 import {
@@ -38,6 +37,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { getPaymentIcon } from '@/features/wallet/lib/ui'
 import { isHttpsUrl } from '@/lib/content-format'
 
 const createPaymentMethodDialogSchema = (t: (key: string) => string) =>
@@ -315,18 +315,18 @@ export function PaymentMethodDialog({
                       {...field}
                       className='flex-1'
                     />
-                    {iconValue && (
-                      <ReactIconByName
-                        name={iconValue}
-                        className='text-muted-foreground size-5 shrink-0'
-                        title={iconValue}
-                      />
-                    )}
+                    {iconValue?.trim() &&
+                      getPaymentIcon(
+                        form.watch('type'),
+                        'text-muted-foreground size-5 shrink-0',
+                        iconValue,
+                        form.watch('name')
+                      )}
                   </div>
                 </FormControl>
                 <FormDescription>
                   {t(
-                    'Enter a react-icons component name. Invalid names show no icon.'
+                    'Enter a react-icons component name or an https image URL. Invalid values show no icon.'
                   )}
                 </FormDescription>
                 <FormMessage />

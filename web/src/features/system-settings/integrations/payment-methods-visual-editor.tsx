@@ -22,7 +22,6 @@ import { useTranslation } from 'react-i18next'
 
 import { StaticDataTable } from '@/components/data-table/static/static-data-table'
 import { StaticRowActions } from '@/components/data-table/static/static-row-actions'
-import { ReactIconByName } from '@/components/react-icon-by-name'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -30,6 +29,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import { getPaymentIcon } from '@/features/wallet/lib/ui'
 
 import { safeJsonParseWithValidation } from '../utils/json-parser'
 import { isArray } from '../utils/json-validators'
@@ -341,11 +341,12 @@ export function PaymentMethodsVisualEditor({
 
                   return iconName ? (
                     <div className='flex items-center gap-2'>
-                      <ReactIconByName
-                        name={iconName}
-                        className='text-muted-foreground size-5 shrink-0'
-                        title={iconName}
-                      />
+                      {getPaymentIcon(
+                        method.type,
+                        'text-muted-foreground size-5 shrink-0',
+                        iconName,
+                        method.name
+                      )}
                       <span className='text-muted-foreground truncate font-mono text-sm'>
                         {iconName}
                       </span>
@@ -446,11 +447,12 @@ export function PaymentMethodsVisualEditor({
                       </span>
                       {iconName ? (
                         <div className='flex min-w-0 items-center gap-2'>
-                          <ReactIconByName
-                            name={iconName}
-                            className='text-muted-foreground size-5 shrink-0'
-                            title={iconName}
-                          />
+                          {getPaymentIcon(
+                            method.type,
+                            'text-muted-foreground size-5 shrink-0',
+                            iconName,
+                            method.name
+                          )}
                           <span className='text-muted-foreground truncate font-mono text-xs'>
                             {iconName}
                           </span>
