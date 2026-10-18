@@ -50,8 +50,6 @@ export function Pricing() {
     endpointMap,
     autoGroups,
     isLoading,
-    priceRate,
-    usdExchangeRate,
   } = usePricingData()
 
   const {
@@ -64,7 +62,6 @@ export function Pricing() {
     tagFilter,
     tokenUnit,
     viewMode,
-    showRechargePrice,
     setSearchInput,
     setSortBy,
     setVendorFilter,
@@ -74,7 +71,6 @@ export function Pricing() {
     setTagFilter,
     setTokenUnit,
     setViewMode,
-    setShowRechargePrice,
     filteredModels,
     hasActiveFilters,
     activeFilterCount,
@@ -126,10 +122,7 @@ export function Pricing() {
         <ModelCardGrid
           models={filteredModels}
           onModelClick={handleModelClick}
-          priceRate={priceRate}
-          usdExchangeRate={usdExchangeRate}
           tokenUnit={tokenUnit}
-          showRechargePrice={showRechargePrice}
           selectedGroup={groupFilter}
         />
       )
@@ -138,10 +131,7 @@ export function Pricing() {
     return (
       <PricingTable
         models={filteredModels}
-        priceRate={priceRate}
-        usdExchangeRate={usdExchangeRate}
         tokenUnit={tokenUnit}
-        showRechargePrice={showRechargePrice}
         selectedGroup={groupFilter}
         onModelClick={handleModelClick}
       />
@@ -232,8 +222,6 @@ export function Pricing() {
                 onSortChange={setSortBy}
                 tokenUnit={tokenUnit}
                 onTokenUnitChange={setTokenUnit}
-                showRechargePrice={showRechargePrice}
-                onRechargePriceChange={setShowRechargePrice}
                 viewMode={viewMode}
                 onViewModeChange={setViewMode}
                 quotaTypeFilter={quotaTypeFilter}
@@ -276,10 +264,7 @@ export function Pricing() {
                 >) || {}
               }
               autoGroups={autoGroups || []}
-              priceRate={priceRate ?? 1}
-              usdExchangeRate={usdExchangeRate ?? 1}
               tokenUnit={tokenUnit}
-              showRechargePrice={showRechargePrice}
             />
           )}
         </PageTransition>

@@ -114,7 +114,22 @@ export interface ToolSurchargeItem {
   price: number
 }
 
+export type RequestParameterValue =
+  | null
+  | boolean
+  | number
+  | string
+  | RequestParameterValue[]
+  | { [key: string]: RequestParameterValue }
+
+export interface LogRequestParameters {
+  parameters: RequestParameterValue
+  truncated?: boolean
+  omitted?: boolean
+}
+
 export interface LogOtherData {
+  request_parameters?: LogRequestParameters
   admin_info?: {
     request_policy?: PolicyEvent[]
     is_multi_key?: boolean
@@ -178,6 +193,8 @@ export interface LogOtherData {
   login_method?: string
   user_agent?: string
   request_path?: string
+  // Two-letter country code of the request origin, forwarded by the CDN
+  region?: string
   request_conversion?: string[]
   ws?: boolean
   audio?: boolean
@@ -323,6 +340,7 @@ export interface TaskLog {
   id: number
   user_id: number
   username?: string
+  request_parameters?: LogRequestParameters
   platform: string // suno, kling, runway, etc.
   task_id: string
   action: string // MUSIC, LYRICS, GENERATE, TEXT_GENERATE, etc.
@@ -461,12 +479,37 @@ export interface GetLogStatsParams {
   group?: string
   request_id?: string
   upstream_request_id?: string
+  internal_accounting?: boolean
 }
 
 export interface GetLogStatsResponse {
   success: boolean
   message?: string
   data?: LogStatistics
+}
+
+/**
+ * Upstream cost totals for the filtered consume logs (admin only).
+ * `revenue` and `cost` are quota units; `revenue` only covers records whose
+ * upstream cost is known (matched or estimated).
+ */
+export interface UpstreamCostStatistics {
+  revenue: number
+  cost: number
+  affiliate_cost: number
+  covered_quota: number
+  internal_cost: number
+  internal_estimated_cost: number
+  matched: number
+  estimated: number
+  unknown: number
+  internal_unknown: number
+}
+
+export interface GetUpstreamCostStatsResponse {
+  success: boolean
+  message?: string
+  data?: UpstreamCostStatistics
 }
 
 // ============================================================================

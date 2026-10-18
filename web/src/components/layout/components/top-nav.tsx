@@ -17,8 +17,9 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link } from '@tanstack/react-router'
-import { Menu } from 'lucide-react'
+import { ChevronDown, Menu } from 'lucide-react'
 import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -27,20 +28,46 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { splitHeaderNavLinks } from '@/lib/nav-modules'
 import { cn } from '@/lib/utils'
 
-import { type TopNavLink } from '../types'
+import type { TopNavLink } from '../types'
 
 type TopNavProps = React.HTMLAttributes<HTMLElement> & {
   links: TopNavLink[]
 }
 
-/**
- * 顶部导航栏组件
- * 在大屏幕显示水平导航，在小屏幕显示下拉菜单
- */
+function TopNavMenuItem(props: { link: TopNavLink }) {
+  const className = props.link.isActive ? '' : 'text-muted-foreground'
+  return (
+    <DropdownMenuItem
+      disabled={props.link.disabled}
+      render={
+        props.link.external ? (
+          <a
+            href={props.link.href}
+            target='_blank'
+            rel='noopener noreferrer'
+            className={className}
+          >
+            {props.link.title}
+          </a>
+        ) : (
+          <Link
+            to={props.link.href}
+            className={className}
+            disabled={props.link.disabled}
+          >
+            {props.link.title}
+          </Link>
+        )
+      }
+    />
+  )
+}
+
 export function TopNav({ className, links, ...props }: TopNavProps) {
-  // 规范化链接，确保所有可选属性都有默认值
+  const { t } = useTranslation()
   const normalizedLinks = useMemo(
     () =>
       links.map((link) => ({
@@ -51,50 +78,26 @@ export function TopNav({ className, links, ...props }: TopNavProps) {
       })),
     [links]
   )
+  const desktopLinks = splitHeaderNavLinks(normalizedLinks)
 
   return (
     <>
-      {/* 移动端下拉菜单 */}
       <div className='lg:hidden'>
         <DropdownMenu modal={false}>
           <DropdownMenuTrigger
             render={<Button size='icon' variant='outline' className='size-7' />}
           >
-            <Menu />
+            <Menu aria-hidden='true' />
+            <span className='sr-only'>{t('Open navigation menu')}</span>
           </DropdownMenuTrigger>
           <DropdownMenuContent side='bottom' align='start'>
-            {normalizedLinks.map(
-              ({ title, href, isActive, disabled, external }) => (
-                <DropdownMenuItem
-                  key={`${title}-${href}`}
-                  render={
-                    external ? (
-                      <a
-                        href={href}
-                        target='_blank'
-                        rel='noopener noreferrer'
-                        className={!isActive ? 'text-muted-foreground' : ''}
-                      >
-                        {title}
-                      </a>
-                    ) : (
-                      <Link
-                        to={href}
-                        className={!isActive ? 'text-muted-foreground' : ''}
-                        disabled={disabled}
-                      >
-                        {title}
-                      </Link>
-                    )
-                  }
-                ></DropdownMenuItem>
-              )
-            )}
+            {normalizedLinks.map((link) => (
+              <TopNavMenuItem key={`${link.title}-${link.href}`} link={link} />
+            ))}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
 
-      {/* 桌面端水平导航 */}
       <nav
         className={cn(
           'hidden items-center space-x-4 lg:flex lg:space-x-4 xl:space-x-6',
@@ -102,28 +105,52 @@ export function TopNav({ className, links, ...props }: TopNavProps) {
         )}
         {...props}
       >
-        {normalizedLinks.map(({ title, href, isActive, disabled, external }) =>
-          external ? (
+        {desktopLinks.visible.map((link) =>
+          link.external ? (
             <a
-              key={`${title}-${href}`}
-              href={href}
+              key={`${link.title}-${link.href}`}
+              href={link.href}
               target='_blank'
               rel='noopener noreferrer'
-              className={`hover:text-primary text-sm font-medium transition-colors ${isActive ? '' : 'text-muted-foreground'}`}
+              className={cn(
+                'hover:text-primary text-sm font-medium transition-colors',
+                !link.isActive && 'text-muted-foreground',
+                link.disabled && 'pointer-events-none opacity-50'
+              )}
             >
-              {title}
+              {link.title}
             </a>
           ) : (
             <Link
-              key={`${title}-${href}`}
-              to={href}
-              disabled={disabled}
-              className={`hover:text-primary text-sm font-medium transition-colors ${isActive ? '' : 'text-muted-foreground'}`}
+              key={`${link.title}-${link.href}`}
+              to={link.href}
+              disabled={link.disabled}
+              className={cn(
+                'hover:text-primary text-sm font-medium transition-colors',
+                !link.isActive && 'text-muted-foreground'
+              )}
             >
-              {title}
+              {link.title}
             </Link>
           )
         )}
+
+        {desktopLinks.overflow.length > 0 ? (
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger className='text-muted-foreground hover:text-primary flex items-center gap-1 text-sm font-medium transition-colors'>
+              {t('More')}
+              <ChevronDown className='size-3.5' aria-hidden='true' />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align='end'>
+              {desktopLinks.overflow.map((link) => (
+                <TopNavMenuItem
+                  key={`${link.title}-${link.href}`}
+                  link={link}
+                />
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
       </nav>
     </>
   )

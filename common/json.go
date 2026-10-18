@@ -63,6 +63,12 @@ func DecodeJsonWithValidation(reader io.Reader, v any) error {
 	return binding.Validator.ValidateStruct(v)
 }
 
+func DecodeJsonNumber(reader io.Reader, v any) error {
+	decoder := json.NewDecoder(reader)
+	decoder.UseNumber()
+	return decoder.Decode(v)
+}
+
 func Marshal(v any) ([]byte, error) {
 	return kitutil.Marshal(v)
 }

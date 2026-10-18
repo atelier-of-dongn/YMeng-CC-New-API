@@ -78,6 +78,12 @@ import { LogCostDisplay } from '../log-cost-display'
 import { ModelBadge } from '../model-badge'
 import { TimingMetricsCell, StreamTpsCell } from '../timing-metrics-cell'
 import { useUsageLogsContext } from '../usage-logs-provider'
+import {
+  AffiliateCostLogCell,
+  ProfitLogCell,
+  UpstreamAmountLogCell,
+  UpstreamRatioLogCell,
+} from './upstream-cost-cells'
 
 interface DetailSegment {
   text: string
@@ -780,8 +786,49 @@ export function useCommonLogsColumns(
             />
           )
         },
-      },
+      }
+    )
 
+    // Upstream cost monitoring (admin only): the backend attaches
+    // `upstream_cost` to admin log items only.
+    if (isAdmin) {
+      columns.push(
+        {
+          id: 'upstream_ratio',
+          header: t('Upstream Ratio'),
+          cell: ({ row }) =>
+            isDisplayableLogType(row.original.type) ? (
+              <UpstreamRatioLogCell log={row.original} />
+            ) : null,
+        },
+        {
+          id: 'upstream_amount',
+          header: t('Upstream Amount'),
+          cell: ({ row }) =>
+            isDisplayableLogType(row.original.type) ? (
+              <UpstreamAmountLogCell log={row.original} />
+            ) : null,
+        },
+        {
+          id: 'affiliate_cost',
+          header: t('Affiliate Rebate'),
+          cell: ({ row }) =>
+            isDisplayableLogType(row.original.type) ? (
+              <AffiliateCostLogCell log={row.original} />
+            ) : null,
+        },
+        {
+          id: 'upstream_profit',
+          header: t('Profit/Loss'),
+          cell: ({ row }) =>
+            isDisplayableLogType(row.original.type) ? (
+              <ProfitLogCell log={row.original} />
+            ) : null,
+        }
+      )
+    }
+
+    columns.push(
       {
         accessorKey: 'use_time',
         header: t('Timing'),

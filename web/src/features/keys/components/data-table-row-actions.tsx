@@ -50,14 +50,21 @@ import {
 import { useChatPresets } from '@/features/chat/hooks/use-chat-presets'
 import { resolveChatUrl, type ChatPreset } from '@/features/chat/lib/chat-links'
 import { sendToFluent } from '@/features/chat/lib/send-to-fluent'
+import { useApiInfo } from '@/features/dashboard/hooks/use-status-data'
+import { normalizeApiBaseUrl } from '@/features/dashboard/lib/api-endpoint'
 import { encodeChannelConnectionInfo } from '@/lib/channel-connection-info'
 import { copyToClipboard } from '@/lib/copy-to-clipboard'
 import { handleServerError } from '@/lib/handle-server-error'
 
 import { updateApiKeyStatus } from '../api'
 import { API_KEY_STATUS, ERROR_MESSAGES, SUCCESS_MESSAGES } from '../constants'
+import {
+  buildBaoCodeImportUrl,
+  type BaoCodeProtocol,
+} from '../lib/baocode-import'
 import { apiKeySchema } from '../types'
 import { useApiKeys } from './api-keys-provider'
+import { BaoCodeImportDialog } from './baocode-import-dialog'
 
 function getServerAddress(): string {
   try {
@@ -81,6 +88,8 @@ export function DataTableRowActions<TData>({
 }: DataTableRowActionsProps<TData>) {
   const { t } = useTranslation()
   const apiKey = apiKeySchema.parse(row.original)
+  const { items } = useApiInfo()
+  const endpoint = normalizeApiBaseUrl(items[0]?.url)
   const {
     setOpen,
     setCurrentRow,
@@ -92,6 +101,8 @@ export function DataTableRowActions<TData>({
   const isEnabled = apiKey.status === API_KEY_STATUS.ENABLED
   const { chatPresets, serverAddress } = useChatPresets()
   const [isTogglingStatus, setIsTogglingStatus] = useState(false)
+  const [isBaoCodeDialogOpen, setIsBaoCodeDialogOpen] = useState(false)
+  const [isBaoCodeImporting, setIsBaoCodeImporting] = useState(false)
   const isRealKeyLoading = Boolean(loadingKeys[apiKey.id])
 
   const hasChatPresets = chatPresets.length > 0
@@ -136,6 +147,43 @@ export function DataTableRowActions<TData>({
       }
     },
     [resolveRealKey, apiKey.id, serverAddress, t]
+  )
+
+  const handleBaoCodeImport = useCallback(
+    async (protocol: BaoCodeProtocol): Promise<boolean> => {
+      if (typeof window === 'undefined') return false
+
+      const importWindow = window.open('', '_blank')
+      if (!importWindow) {
+        toast.error(t('Unable to open BaoCode in a new tab.'))
+        return false
+      }
+      importWindow.opener = null
+
+      setIsBaoCodeImporting(true)
+      try {
+        const realKey = await resolveRealKey(apiKey.id)
+        if (!realKey) {
+          importWindow.close()
+          return false
+        }
+
+        importWindow.location.href = buildBaoCodeImportUrl({
+          name: apiKey.name,
+          protocol,
+          url: endpoint,
+          key: realKey,
+        })
+        return true
+      } catch {
+        importWindow.close()
+        toast.error(t('Unable to import the API key to BaoCode.'))
+        return false
+      } finally {
+        setIsBaoCodeImporting(false)
+      }
+    },
+    [apiKey.id, apiKey.name, endpoint, resolveRealKey, t]
   )
 
   const handleToggleStatus = async (
@@ -213,6 +261,31 @@ export function DataTableRowActions<TData>({
           <Edit />
         </TooltipTrigger>
         <TooltipContent>{t('Edit')}</TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              variant='ghost'
+              size='icon-sm'
+              onClick={(event) => {
+                event.stopPropagation()
+                setIsBaoCodeDialogOpen(true)
+              }}
+              disabled={isRealKeyLoading || isBaoCodeImporting}
+              aria-label={t('Import to BaoCode')}
+            />
+          }
+        >
+          <img
+            src='https://baocode.dev/brand/baocode-icon-48.png'
+            alt=''
+            aria-hidden='true'
+            className='size-4 rounded-sm object-contain'
+          />
+        </TooltipTrigger>
+        <TooltipContent>{t('Import to BaoCode')}</TooltipContent>
       </Tooltip>
 
       <DataTableRowActionMenu
@@ -301,6 +374,14 @@ export function DataTableRowActions<TData>({
           </DropdownMenuShortcut>
         </DropdownMenuItem>
       </DataTableRowActionMenu>
+      <BaoCodeImportDialog
+        open={isBaoCodeDialogOpen}
+        onOpenChange={setIsBaoCodeDialogOpen}
+        name={apiKey.name}
+        url={endpoint}
+        isImporting={isBaoCodeImporting}
+        onImport={handleBaoCodeImport}
+      />
     </div>
   )
 }

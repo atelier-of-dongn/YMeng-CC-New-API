@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync"
 	"testing"
 
@@ -115,6 +116,7 @@ func setupRedeemFixture(t *testing.T, quota int) (userId int, key string) {
 		require.NoError(t, DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Unscoped().Delete(&Redemption{}).Error)
 		require.NoError(t, DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Unscoped().Delete(&User{}).Error)
 		require.NoError(t, LOG_DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Unscoped().Delete(&Log{}).Error)
+		require.NoError(t, DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Unscoped().Delete(&TopUp{}).Error)
 	})
 
 	user := &User{Username: "redeem-user", Password: "password", Status: common.UserStatusEnabled, Quota: 0}
@@ -148,11 +150,40 @@ func TestRedeemCreditsQuotaExactlyOnce(t *testing.T) {
 	assert.Equal(t, common.RedemptionCodeStatusUsed, redemption.Status)
 	assert.Equal(t, userId, redemption.UsedUserId)
 
+	var topUp TopUp
+	require.NoError(t, DB.Where("trade_no = ?", "redemption:"+strconv.Itoa(redemption.Id)).First(&topUp).Error)
+	assert.Equal(t, PaymentProviderRedemption, topUp.PaymentProvider)
+	assert.Equal(t, common.TopUpStatusSuccess, topUp.Status)
+	assert.Equal(t, int64(500), topUp.CreditedQuota)
+	wantInvoiceAmount, invoiceErr := InvoiceAmountFromQuota(500)
+	require.NoError(t, invoiceErr)
+	assert.Equal(t, wantInvoiceAmount, topUp.InvoiceAmount)
+	assert.Equal(t, redemption.RedeemedTime, topUp.CompleteTime)
+	assert.Positive(t, topUp.CompleteTime)
+
 	// Redeeming the same code again must fail and must not credit quota.
 	_, err = Redeem(key, userId)
 	require.Error(t, err)
 	require.NoError(t, DB.First(&user, "id = ?", userId).Error)
 	assert.Equal(t, 500, user.Quota)
+}
+
+func TestRedeemRollsBackInvoiceSnapshotFailure(t *testing.T) {
+	userID, key := setupRedeemFixture(t, 500)
+	var redemption Redemption
+	require.NoError(t, DB.Where(commonKeyCol+" = ?", key).First(&redemption).Error)
+	// A conflicting invoice trade number must roll back both the code and wallet.
+	require.NoError(t, DB.Create(&TopUp{UserId: userID, TradeNo: "redemption:" + strconv.Itoa(redemption.Id)}).Error)
+
+	_, err := Redeem(key, userID)
+	require.ErrorIs(t, err, ErrRedeemFailed)
+	var user User
+	require.NoError(t, DB.First(&user, userID).Error)
+	assert.Zero(t, user.Quota)
+	require.NoError(t, DB.First(&redemption, redemption.Id).Error)
+	assert.Equal(t, common.RedemptionCodeStatusEnabled, redemption.Status)
+	assert.Zero(t, redemption.UsedUserId)
+	assert.Zero(t, redemption.RedeemedTime)
 }
 
 func TestRedeemRejectsWalletOverflow(t *testing.T) {
@@ -238,6 +269,8 @@ func TestCatFKDatabaseMatrix(t *testing.T) {
 				require.NoError(t, db.AutoMigrate(&CatFKOrder{}, &TopUp{}, &Redemption{}))
 			}
 			assert.Equal(t, int64(2), GetTopUpById(legacy.Id).Amount)
+			t.Run("ordinary_redemption", TestRedeemCreditsQuotaExactlyOnce)
+			t.Run("invoice_rollback", TestRedeemRollsBackInvoiceSnapshotFailure)
 			t.Run("persistence", TestCatFKOrderPersistenceAndRecovery)
 			t.Run("completion", TestCatFKCompletionIsAtomicAndIdempotent)
 			t.Run("rollback", TestCatFKCompletionRollsBackFailures)
@@ -353,6 +386,9 @@ func TestCatFKCompletionIsAtomicAndIdempotent(t *testing.T) {
 	assert.Equal(t, userID, redemption.UsedUserId)
 	assert.Equal(t, common.RedemptionCodeStatusUsed, redemption.Status)
 	assert.Equal(t, common.TopUpStatusSuccess, GetTopUpById(order.TopUpID).Status)
+	var topUpCount int64
+	require.NoError(t, DB.Model(&TopUp{}).Where("user_id = ?", userID).Count(&topUpCount).Error)
+	assert.Equal(t, int64(1), topUpCount, "CatFK must complete its existing TopUp, not create a second redemption snapshot")
 	var user User
 	require.NoError(t, DB.First(&user, "id = ?", userID).Error)
 	assert.Equal(t, 500, user.Quota)

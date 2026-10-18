@@ -35,6 +35,8 @@ export function resolveLogsViewAccess(
   return role === ROLE.SUPER_ADMIN ? 'root' : 'admin'
 }
 
+const INTERNAL_ACCOUNTING_STORAGE_KEY = 'usage-logs:internal-accounting'
+
 interface UsageLogsContextValue {
   selectedUserId: number | null
   setSelectedUserId: (userId: number | null) => void
@@ -48,6 +50,8 @@ interface UsageLogsContextValue {
   setSensitiveVisible: (visible: boolean) => void
   viewScope: LogsViewScope
   setViewScope: (scope: LogsViewScope) => void
+  internalAccounting: boolean
+  setInternalAccounting: (enabled: boolean) => void
 }
 
 const UsageLogsContext = createContext<UsageLogsContextValue | undefined>(
@@ -62,6 +66,17 @@ export function UsageLogsProvider({ children }: { children: ReactNode }) {
   const [affinityDialogOpen, setAffinityDialogOpen] = useState(false)
   const [sensitiveVisible, setSensitiveVisible] = useState(true)
   const [viewScope, setViewScope] = useState<LogsViewScope>('all')
+  const [internalAccounting, setInternalAccountingState] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      localStorage.getItem(INTERNAL_ACCOUNTING_STORAGE_KEY) === 'true'
+  )
+  const setInternalAccounting = (enabled: boolean) => {
+    setInternalAccountingState(enabled)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(INTERNAL_ACCOUNTING_STORAGE_KEY, String(enabled))
+    }
+  }
 
   return (
     <UsageLogsContext.Provider
@@ -78,6 +93,8 @@ export function UsageLogsProvider({ children }: { children: ReactNode }) {
         setSensitiveVisible,
         viewScope,
         setViewScope,
+        internalAccounting,
+        setInternalAccounting,
       }}
     >
       {children}

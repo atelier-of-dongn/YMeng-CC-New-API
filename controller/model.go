@@ -15,6 +15,7 @@ import (
 	"github.com/QuantumNous/new-api/relay/channel/lingyiwanwu"
 	"github.com/QuantumNous/new-api/relay/channel/minimax"
 	"github.com/QuantumNous/new-api/relay/channel/moonshot"
+	"github.com/QuantumNous/new-api/relay/channel/task/jiasuseedance"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relay/helper"
 	"github.com/QuantumNous/new-api/relaykit/dto"
@@ -82,6 +83,14 @@ func init() {
 			OwnedBy: minimax.ChannelName,
 		})
 	}
+	for _, modelName := range jiasuseedance.ModelList {
+		openAIModels = append(openAIModels, dto.OpenAIModels{
+			Id:      modelName,
+			Object:  "model",
+			Created: 1626777600,
+			OwnedBy: jiasuseedance.ChannelName,
+		})
+	}
 	for modelName, _ := range constant.MidjourneyModel2Action {
 		openAIModels = append(openAIModels, dto.OpenAIModels{
 			Id:      modelName,
@@ -115,6 +124,7 @@ func init() {
 			}
 		}
 	}
+	channelId2Models[constant.ChannelTypeJiaSuSeedance] = jiasuseedance.ModelList
 	openAIModels = lo.UniqBy(openAIModels, func(m dto.OpenAIModels) string {
 		return m.Id
 	})
@@ -187,6 +197,7 @@ type modelListGroups struct {
 
 func getModelListGroups(c *gin.Context) (modelListGroups, error) {
 	tokenGroup := common.GetContextKeyString(c, constant.ContextKeyTokenGroup)
+	tokenGroups := common.GetContextKeyStringSlice(c, constant.ContextKeyTokenGroups)
 	userGroup := common.GetContextKeyString(c, constant.ContextKeyUserGroup)
 	if userGroup == "" && (tokenGroup == "" || tokenGroup == "auto") {
 		var err error
@@ -194,6 +205,14 @@ func getModelListGroups(c *gin.Context) (modelListGroups, error) {
 		if err != nil {
 			return modelListGroups{}, err
 		}
+	}
+
+	if len(tokenGroups) > 0 {
+		return modelListGroups{
+			userGroup:   userGroup,
+			tokenGroup:  tokenGroup,
+			ownerGroups: tokenGroups,
+		}, nil
 	}
 
 	if tokenGroup == "auto" {

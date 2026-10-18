@@ -3,6 +3,7 @@ package ratio_setting
 import (
 	"encoding/json"
 	"errors"
+	"maps"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/setting/config"
@@ -95,6 +96,15 @@ func GetGroupGroupRatio(userGroup, usingGroup string) (float64, bool) {
 		return -1, false
 	}
 	return ratio, true
+}
+
+// GetGroupGroupRatioCopy returns a deep copy of the user-group special ratios.
+func GetGroupGroupRatioCopy() map[string]map[string]float64 {
+	result := make(map[string]map[string]float64)
+	for userGroup, ratios := range groupGroupRatioMap.ReadAll() {
+		result[userGroup] = maps.Clone(ratios)
+	}
+	return result
 }
 
 func GroupGroupRatio2JSONString() string {

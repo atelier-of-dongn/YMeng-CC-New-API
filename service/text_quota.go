@@ -370,11 +370,25 @@ func calculateTextQuotaSummary(ctx *gin.Context, relayInfo *relaycommon.RelayInf
 
 	if !summary.hasBillableUsage() {
 		summary.Quota = 0
+	} else if operation_setting.GetQuotaSetting().SkipBillingOnZeroCompletionTokens &&
+		summary.CompletionTokens == 0 && isCompletionTokenBillingFormat(relayInfo) {
+		summary.Quota = 0
 	} else if !ratio.IsZero() && summary.Quota == 0 {
 		summary.Quota = 1
 	}
 
 	return summary
+}
+
+// isCompletionTokenBillingFormat 判断该 relay 格式是否以输出 Token（CompletionTokens）参与计费。
+// Embedding、Rerank、Image 等格式的 CompletionTokens 天然恒为 0，不受“输出 Token 为 0 时不计费”开关影响。
+func isCompletionTokenBillingFormat(relayInfo *relaycommon.RelayInfo) bool {
+	switch relayInfo.GetFinalRequestRelayFormat() {
+	case types.RelayFormatEmbedding, types.RelayFormatRerank, types.RelayFormatOpenAIImage:
+		return false
+	default:
+		return true
+	}
 }
 
 func usageSemanticFromUsage(relayInfo *relaycommon.RelayInfo, usage *dto.Usage) string {

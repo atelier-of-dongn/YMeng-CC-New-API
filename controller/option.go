@@ -334,6 +334,12 @@ func UpdateOption(c *gin.Context) {
 			common.ApiError(c, err)
 			return
 		}
+	case "IpAccessPolicyAllowedGroups":
+		_, err = setting.ParseIpAccessPolicyAllowedGroups(option.Value.(string))
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
 	case "AutomaticDisableStatusCodes":
 		_, err = operation_setting.ParseHTTPStatusCodeRanges(option.Value.(string))
 		if err != nil {

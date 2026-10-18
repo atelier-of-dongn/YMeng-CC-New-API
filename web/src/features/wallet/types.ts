@@ -100,6 +100,14 @@ export interface PaymentMethod {
   min_topup?: number
   /** Optional react-icons component name or safe icon URL */
   icon?: string
+  /** Whether to show the compatibility notice in the confirmation dialog */
+  show_topup_notice?: boolean
+  /** Whether to show the external top-up link in the confirmation dialog */
+  show_topup_link?: boolean
+  /** Optional custom notice shown in the confirmation dialog */
+  topup_notice_text?: string
+  /** Optional HTTPS image URL used for the external top-up link */
+  topup_link_image?: string
 }
 
 /**
@@ -280,8 +288,10 @@ export interface UserWalletData {
   used_quota: number
   /** Total request count */
   request_count: number
-  /** Affiliate quota (pending rewards) */
+  /** Affiliate quota available for transfer (compat alias of invite_quota) */
   aff_quota: number
+  /** Affiliate commission balance available for transfer */
+  invite_quota?: number
   /** Total affiliate quota earned (historical) */
   aff_history_quota: number
   /** Number of successful affiliate invites */

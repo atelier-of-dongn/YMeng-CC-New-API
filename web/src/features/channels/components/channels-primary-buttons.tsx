@@ -21,6 +21,7 @@ import { getRouteApi } from '@tanstack/react-router'
 import {
   Plus,
   MoreHorizontal,
+  Network,
   Settings2,
   Trash2,
   Tags,
@@ -156,6 +157,17 @@ export function ChannelsPrimaryButtons() {
             })
           }}
         />
+
+        {/* Upstream Sites (upstream cost monitoring) */}
+        <Button
+          variant='outline'
+          size='sm'
+          onClick={() => setOpen('upstream-sites')}
+          aria-label={t('Upstream Sites')}
+        >
+          <Network className='h-4 w-4' />
+          <span className='max-sm:hidden'>{t('Upstream Sites')}</span>
+        </Button>
 
         {/* Create Channel */}
         <Tooltip>

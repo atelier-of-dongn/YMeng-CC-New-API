@@ -2,8 +2,10 @@ package advancedcustom
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -19,6 +21,7 @@ import (
 	"github.com/QuantumNous/new-api/relaykit/types"
 	"github.com/QuantumNous/new-api/setting/model_setting"
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -73,6 +76,28 @@ func TestAdaptorMasksDialedHostsInDialFailure(t *testing.T) {
 		{name: "channel proxy host", proxy: "http://egress.private.invalid:8080", hidden: "egress.private.invalid"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
+			originalDialer := websocket.DefaultDialer
+			dialer := *originalDialer
+			dialer.Proxy = nil // Keep the direct handshake independent of environment proxies.
+			var dialedAddress string
+			if tc.proxy != "" {
+				// A local DNS interceptor may resolve .invalid domains. Fail at the
+				// dial boundary instead, retaining the selected proxy host in the
+				// real adaptor error so its public-message masking is still tested.
+				dialer.NetDialContext = func(_ context.Context, network, address string) (net.Conn, error) {
+					dialedAddress = address
+					host, _, err := net.SplitHostPort(address)
+					if err != nil {
+						return nil, err
+					}
+					return nil, &net.OpError{Op: "dial", Net: network, Err: &net.DNSError{
+						Err: "no such host", Name: host, IsNotFound: true,
+					}}
+				}
+			}
+			websocket.DefaultDialer = &dialer
+			t.Cleanup(func() { websocket.DefaultDialer = originalDialer })
+
 			info := advancedCustomRelayInfo(&dto.AdvancedCustomConfig{
 				Routes: []dto.AdvancedCustomRoute{{IncomingPath: "/v1/realtime", UpstreamPath: "http://localhost:" + upstreamURL.Port() + "/v1/realtime", Converter: relayconvert.ConverterNone}},
 			})
@@ -85,6 +110,9 @@ func TestAdaptorMasksDialedHostsInDialFailure(t *testing.T) {
 
 			_, err := (&Adaptor{}).DoRequest(c, info, nil)
 
+			if tc.proxy != "" {
+				assert.Equal(t, net.JoinHostPort(tc.hidden, "8080"), dialedAddress)
+			}
 			var apiErr *types.NewAPIError
 			require.ErrorAs(t, err, &apiErr)
 			require.Contains(t, apiErr.Error(), tc.hidden)

@@ -91,7 +91,7 @@ export function NoticeSection({ defaultValue }: NoticeSectionProps) {
                   <Textarea
                     rows={8}
                     placeholder={t(
-                      'Planned maintenance on Friday at 22:00 UTC...'
+                      'Enter announcement content (supports Markdown/HTML)'
                     )}
                     {...field}
                   />

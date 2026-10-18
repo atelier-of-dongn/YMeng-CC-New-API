@@ -376,6 +376,14 @@ func migrateDB() error {
 		&SystemTaskLock{},
 		&CasbinRule{},
 		&AuthzRole{},
+		&AffiliateCommission{},
+		&InvoiceProfile{},
+		&InvoiceApplication{},
+		&InvoiceApplicationItem{},
+		&InvoiceRefundAdjustment{},
+		&UpstreamSite{},
+		&UpstreamChannelMonitor{},
+		&UpstreamCostRecord{},
 		&UserAccessToken{},
 	)
 	if err != nil {
@@ -399,7 +407,13 @@ func migrateDB() error {
 			return err
 		}
 	}
-	return nil
+	if err := migrateInvoiceApplicationItemIndexes(); err != nil {
+		return err
+	}
+	if err := BackfillTopUpInvoiceSnapshots(); err != nil {
+		return err
+	}
+	return BackfillRedemptionInvoiceTopUps()
 }
 
 func migrateLOGDB() error {

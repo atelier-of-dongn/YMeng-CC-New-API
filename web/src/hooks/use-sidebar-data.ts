@@ -29,6 +29,8 @@ import {
   MessageSquare,
   PlugZap,
   Radio,
+  ReceiptText,
+  Share2,
   ServerCog,
   Settings,
   ShieldCheck,
@@ -117,6 +119,16 @@ export function useSidebarData(): SidebarData {
             icon: Wallet,
           },
           {
+            title: t('Referral Program'),
+            url: '/affiliate',
+            icon: Share2,
+          },
+          {
+            title: t('Invoice application'),
+            url: '/invoices',
+            icon: ReceiptText,
+          },
+          {
             title: t('Profile'),
             url: '/profile',
             icon: User,
@@ -156,6 +168,16 @@ export function useSidebarData(): SidebarData {
             title: t('Subscriptions'),
             url: '/subscriptions',
             icon: CreditCard,
+          },
+          {
+            title: t('Referral Analytics'),
+            url: '/affiliate-admin',
+            icon: Share2,
+          },
+          {
+            title: t('Invoice management'),
+            url: '/admin-invoices',
+            icon: ReceiptText,
           },
           {
             title: t('System Info'),

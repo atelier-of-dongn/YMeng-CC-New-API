@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { SystemBehaviorSection } from '../general/system-behavior-section'
 import { EmailSettingsSection } from '../integrations/email-settings-section'
 import { MonitoringSettingsSection } from '../integrations/monitoring-settings-section'
+import { UpstreamCostSettingsSection } from '../integrations/upstream-cost-settings-section'
 import { WorkerSettingsSection } from '../integrations/worker-settings-section'
 import { LogSettingsSection } from '../maintenance/log-settings-section'
 import { PerformanceSection } from '../maintenance/performance-section'
@@ -55,6 +56,33 @@ const OPERATIONS_SECTIONS = [
           'perf_metrics_setting.retention_days':
             settings['perf_metrics_setting.retention_days'] ?? 0,
         }}
+      />
+    ),
+  },
+  {
+    id: 'upstream-cost',
+    titleKey: 'Upstream Cost Monitoring',
+    build: (settings: OperationsSettings) => (
+      <UpstreamCostSettingsSection
+        defaultValues={{
+          'upstream_cost_setting.enabled':
+            settings['upstream_cost_setting.enabled'],
+          'upstream_cost_setting.auto_detect':
+            settings['upstream_cost_setting.auto_detect'],
+          'upstream_cost_setting.log_poll_seconds':
+            settings['upstream_cost_setting.log_poll_seconds'],
+          'upstream_cost_setting.pricing_minutes':
+            settings['upstream_cost_setting.pricing_minutes'],
+          'upstream_cost_setting.ratio_change_hold_hours':
+            settings['upstream_cost_setting.ratio_change_hold_hours'],
+          'upstream_cost_setting.retention_days':
+            settings['upstream_cost_setting.retention_days'],
+          'upstream_cost_setting.feishu_webhook_url':
+            settings['upstream_cost_setting.feishu_webhook_url'],
+          'upstream_cost_setting.feishu_secret':
+            settings['upstream_cost_setting.feishu_secret'],
+        }}
+        logConsumeEnabled={Boolean(settings.LogConsumeEnabled)}
       />
     ),
   },

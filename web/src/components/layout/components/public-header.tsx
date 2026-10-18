@@ -17,6 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
+import { ChevronDown } from 'lucide-react'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -26,11 +27,18 @@ import { NotificationPopover } from '@/components/notification-popover'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { ThemeSwitch } from '@/components/theme-switch'
 import { Button } from '@/components/ui/button'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { Skeleton } from '@/components/ui/skeleton'
 import { SystemUpdateAction } from '@/features/system-update/system-update-action'
 import { useNotifications } from '@/hooks/use-notifications'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
+import { splitHeaderNavLinks } from '@/lib/nav-modules'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
@@ -98,6 +106,7 @@ export function PublicHeader(props: PublicHeaderProps) {
   const isAuthenticated = !!user
   const displaySiteName = customSiteName || systemName
   const links = dynamicLinks.length > 0 ? dynamicLinks : navLinks
+  const desktopLinks = splitHeaderNavLinks(links)
 
   let logoContent: ReactNode = (
     <HeaderLogo
@@ -184,7 +193,7 @@ export function PublicHeader(props: PublicHeaderProps) {
         }
         setAuthPromptSecondsLeft(AUTH_PROMPT_SECONDS)
         setAuthPromptTarget({
-          title: t(link.title),
+          title: link.title,
           href: link.href,
         })
         return
@@ -194,7 +203,7 @@ export function PublicHeader(props: PublicHeaderProps) {
         setMobileOpen(false)
       }
     },
-    [t]
+    []
   )
 
   return (
@@ -239,7 +248,7 @@ export function PublicHeader(props: PublicHeaderProps) {
 
             {/* Desktop nav */}
             <div className='hidden min-w-0 items-center gap-0.5 lg:flex'>
-              {links.map((link) => {
+              {desktopLinks.visible.map((link) => {
                 const isActive = pathname === link.href
                 if (link.external) {
                   return (
@@ -257,7 +266,7 @@ export function PublicHeader(props: PublicHeaderProps) {
                         link.disabled && 'pointer-events-none opacity-50'
                       )}
                     >
-                      {t(link.title)}
+                      {link.title}
                     </a>
                   )
                 }
@@ -276,10 +285,50 @@ export function PublicHeader(props: PublicHeaderProps) {
                       link.disabled && 'pointer-events-none opacity-50'
                     )}
                   >
-                    {t(link.title)}
+                    {link.title}
                   </Link>
                 )
               })}
+
+              {desktopLinks.overflow.length > 0 ? (
+                <DropdownMenu modal={false}>
+                  <DropdownMenuTrigger className='text-muted-foreground hover:text-foreground flex items-center gap-1 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors duration-200'>
+                    {t('More')}
+                    <ChevronDown className='size-3.5' aria-hidden='true' />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align='end'>
+                    {desktopLinks.overflow.map((link) => (
+                      <DropdownMenuItem
+                        key={`${link.title}-${link.href}`}
+                        disabled={link.disabled}
+                        render={
+                          link.external ? (
+                            <a
+                              href={link.href}
+                              target='_blank'
+                              rel='noopener noreferrer'
+                              onClick={(event) =>
+                                handleNavLinkClick(event, link)
+                              }
+                            >
+                              {link.title}
+                            </a>
+                          ) : (
+                            <Link
+                              to={link.href}
+                              onClick={(event) =>
+                                handleNavLinkClick(event, link)
+                              }
+                            >
+                              {link.title}
+                            </Link>
+                          )
+                        }
+                      />
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
 
               {(showLanguageSwitcher ||
                 showThemeSwitch ||
@@ -387,7 +436,7 @@ export function PublicHeader(props: PublicHeaderProps) {
                     className={linkClassName}
                     style={transitionStyle}
                   >
-                    {t(link.title)}
+                    {link.title}
                   </a>
                 )
               }
@@ -400,7 +449,7 @@ export function PublicHeader(props: PublicHeaderProps) {
                   className={linkClassName}
                   style={transitionStyle}
                 >
-                  {t(link.title)}
+                  {link.title}
                 </Link>
               )
             })}

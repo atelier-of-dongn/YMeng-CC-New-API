@@ -81,6 +81,9 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"POST /api/user/passkey/verify/finish":         accessTokenAnyRule,
 	"DELETE /api/user/passkey":                     accessTokenScopeRule("account_security:write"),
 	"GET /api/user/aff":                            accessTokenScopeRule("wallet:read"),
+	"GET /api/user/affiliate/summary":              accessTokenScopeRule("wallet:read"),
+	"GET /api/user/affiliate/commissions":          accessTokenScopeRule("wallet:read"),
+	"GET /api/user/affiliate/invitees":             accessTokenScopeRule("wallet:read"),
 	"GET /api/user/topup/info":                     accessTokenScopeRule("wallet:read"),
 	"GET /api/user/topup/self":                     accessTokenScopeRule("wallet:read"),
 	"POST /api/user/topup":                         accessTokenScopeRule("wallet:write"),
@@ -93,6 +96,9 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"POST /api/user/waffo/pay":                     accessTokenScopeRule("wallet:write"),
 	"POST /api/user/waffo-pancake/amount":          accessTokenScopeRule("wallet:read"),
 	"POST /api/user/waffo-pancake/pay":             accessTokenScopeRule("wallet:write"),
+	"POST /api/user/catfk/quote":                   accessTokenScopeRule("wallet:read"),
+	"POST /api/user/catfk/pay":                     accessTokenScopeRule("wallet:write"),
+	"GET /api/user/catfk/orders/:trade_no":         accessTokenScopeRule("wallet:read"),
 	"POST /api/user/aff_transfer":                  accessTokenScopeRule("wallet:write"),
 	"PUT /api/user/setting":                        accessTokenScopeRule("profile:write"),
 	"GET /api/user/2fa/status":                     accessTokenScopeRule("account_security:read"),
@@ -121,6 +127,23 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"DELETE /api/user/:id/reset_passkey":               accessTokenScopeRule("user:write"),
 	"GET /api/user/2fa/stats":                          accessTokenScopeRule("user:read"),
 	"DELETE /api/user/:id/2fa":                         accessTokenScopeRule("user:write"),
+
+	// router/api-router.go: /api/affiliate and /api/invoice
+	"GET /api/affiliate/admin/settings":              accessTokenScopeRule("option:read"),
+	"PUT /api/affiliate/admin/settings":              accessTokenScopeRule("option:write"),
+	"GET /api/affiliate/admin/user-commissions":      accessTokenScopeRule("billing:read"),
+	"GET /api/affiliate/analytics/admin/overview":    accessTokenScopeRule("billing:read"),
+	"GET /api/affiliate/analytics/admin/rankings":    accessTokenScopeRule("billing:read"),
+	"GET /api/affiliate/analytics/admin/commissions": accessTokenScopeRule("billing:read"),
+	"GET /api/invoice/eligibility":                   accessTokenScopeRule("wallet:read"),
+	"GET /api/invoice/self":                          accessTokenScopeRule("wallet:read"),
+	"POST /api/invoice/":                             accessTokenScopeRule("wallet:write"),
+	"GET /api/invoice/self/:id/file":                 accessTokenScopeRule("wallet:read"),
+	"GET /api/invoice/admin/":                        accessTokenScopeRule("billing:read"),
+	"PATCH /api/invoice/admin/:id/processing":        accessTokenScopeRule("billing:write"),
+	"PATCH /api/invoice/admin/:id/reject":            accessTokenScopeRule("billing:write"),
+	"POST /api/invoice/admin/:id/file":               accessTokenScopeRule("billing:write"),
+	"GET /api/invoice/admin/:id/file":                accessTokenScopeRule("billing:read"),
 
 	// router/api-router.go: /api/subscription
 	"GET /api/subscription/plans":                                    accessTokenScopeRule("wallet:read"),
@@ -153,6 +176,8 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"PATCH /api/option/model_pricing":                            accessTokenScopeRule("option:write"),
 	"POST /api/option/model_pricing/convert":                     accessTokenScopeRule("option:read"),
 	"POST /api/option/model_pricing/preview":                     accessTokenScopeRule("option:read"),
+	"POST /api/option/catfk/channels":                            accessTokenScopeRule("option:write"),
+	"POST /api/option/upstream_cost/feishu_test":                 accessTokenScopeRule("option:write"),
 	"POST /api/option/payment_compliance":                        accessTokenSessionRule,
 	"GET /api/option/channel_affinity_cache":                     accessTokenScopeRule("option:read"),
 	"DELETE /api/option/channel_affinity_cache":                  accessTokenScopeRule("option:write"),
@@ -188,6 +213,11 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"GET /api/system-info/instances":               accessTokenScopeRule("ops:read"),
 	"DELETE /api/system-info/stale-instances":      accessTokenScopeRule("ops:write"),
 	"DELETE /api/system-info/instances/:node_name": accessTokenScopeRule("ops:write"),
+
+	// Executable updates require a browser session, including for legacy tokens.
+	"GET /api/system-update/status":   accessTokenScopeRule("ops:read"),
+	"GET /api/system-update/releases": accessTokenScopeRule("ops:read"),
+	"POST /api/system-update/update":  accessTokenSessionRule,
 
 	// router/api-router.go: /api/plugin/task
 	"GET /api/plugin/task":                           accessTokenScopeRule("plugin:read"),
@@ -236,6 +266,7 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"GET /api/audit/self":                       accessTokenScopeRule("usage:read"),
 	"GET /api/log/":                             accessTokenScopeRule("log:read"),
 	"GET /api/log/stat":                         accessTokenScopeRule("log:read"),
+	"GET /api/log/upstream_cost_stat":           accessTokenScopeRule("log:read"),
 	"GET /api/log/self/stat":                    accessTokenScopeRule("usage:read"),
 	"GET /api/log/channel_affinity_usage_cache": accessTokenScopeRule("log:read"),
 	"GET /api/log/search":                       accessTokenScopeRule("log:read"),

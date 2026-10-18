@@ -41,6 +41,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { getAnnouncementColorClass } from '@/lib/colors'
+import { isLikelyHtml } from '@/lib/content-format'
 import { formatDateTimeObject } from '@/lib/time'
 import { cn } from '@/lib/utils'
 
@@ -203,9 +204,17 @@ function NoticeContent({
     )
   }
 
+  const contentIsHtml =
+    notice.trimStart().startsWith('<') && isLikelyHtml(notice)
+
   return (
     <ScrollArea className='h-[min(52vh,28rem)] pr-3'>
-      <RichContent breaks content={notice} />
+      <RichContent
+        breaks
+        content={notice}
+        mode={contentIsHtml ? 'html' : 'markdown'}
+        htmlVariant='isolated'
+      />
     </ScrollArea>
   )
 }

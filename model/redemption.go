@@ -2,6 +2,7 @@ package model
 
 import (
 	"errors"
+	"fmt"
 	"strconv"
 
 	"github.com/QuantumNous/new-api/common"
@@ -155,7 +156,24 @@ func Redeem(key string, userId int) (quota int, err error) {
 	err = DB.Transaction(func(tx *gorm.DB) error {
 		var redeemErr error
 		redemption, redeemErr = redeemInTransaction(tx, key, userId, 0)
-		return redeemErr
+		if redeemErr != nil {
+			return redeemErr
+		}
+		// Ordinary redemption creates its own invoice snapshot. CatFK uses the
+		// shared transaction helper and completes its existing TopUp instead.
+		invoiceAmount, err := InvoiceAmountFromQuota(redemption.Quota)
+		if err != nil {
+			common.SysError(fmt.Sprintf("failed to create redemption invoice snapshot: redemption_id=%d: %v", redemption.Id, err))
+			return nil
+		}
+		return tx.Create(&TopUp{
+			UserId: userId, Amount: int64(redemption.Quota),
+			TradeNo:       fmt.Sprintf("redemption:%d", redemption.Id),
+			PaymentMethod: PaymentProviderRedemption, PaymentProvider: PaymentProviderRedemption,
+			CreateTime: redemption.CreatedTime, CompleteTime: redemption.RedeemedTime,
+			Status: common.TopUpStatusSuccess, CreditedQuota: int64(redemption.Quota),
+			InvoiceAmount: invoiceAmount,
+		}).Error
 	})
 	if err != nil {
 		common.SysError(common.LogText("redemption failed: %s", err.Error()))
@@ -190,9 +208,10 @@ func redeemInTransaction(tx *gorm.DB, key string, userID int, expectedQuota int)
 	if expectedQuota != 0 && redemption.Quota != expectedQuota {
 		return nil, ErrRedemptionQuotaMismatch
 	}
+	redemption.RedeemedTime = common.GetTimestamp()
 	result := tx.Model(&Redemption{}).
 		Where("id = ? AND status = ?", redemption.Id, common.RedemptionCodeStatusEnabled).
-		Updates(map[string]any{"redeemed_time": common.GetTimestamp(), "status": common.RedemptionCodeStatusUsed, "used_user_id": userID})
+		Updates(map[string]any{"redeemed_time": redemption.RedeemedTime, "status": common.RedemptionCodeStatusUsed, "used_user_id": userID})
 	if result.Error != nil {
 		return nil, result.Error
 	}

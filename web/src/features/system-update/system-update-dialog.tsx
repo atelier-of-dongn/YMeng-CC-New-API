@@ -26,7 +26,8 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatTimestampToDate } from '@/lib/format'
 
-import { getSystemReleaseUrl, parseSystemVersion } from './releases'
+import { ManagedUpdateSection } from './managed-update-section'
+import { getForkSystemReleaseUrl, parseSystemVersion } from './releases'
 import {
   getUpdateErrorMessage,
   type useSystemUpdate,
@@ -50,7 +51,7 @@ export function SystemUpdateDialog(props: SystemUpdateDialogProps) {
   const update = props.update
   const release = update.release
   const snapshot = update.snapshot
-  const releaseUrl = release ? getSystemReleaseUrl(release) : null
+  const releaseUrl = release ? getForkSystemReleaseUrl(release) : null
   const isPrerelease =
     release &&
     (release.prerelease ||
@@ -123,6 +124,7 @@ export function SystemUpdateDialog(props: SystemUpdateDialogProps) {
         </>
       }
     >
+      <ManagedUpdateSection enabled={props.open} />
       <dl className='grid min-w-0 gap-3 text-sm sm:grid-cols-2'>
         <div className='min-w-0'>
           <dt className='text-muted-foreground'>{t('Current version')}</dt>

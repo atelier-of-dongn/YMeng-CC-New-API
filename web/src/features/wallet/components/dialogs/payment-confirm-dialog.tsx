@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Loader2 } from 'lucide-react'
+import { ExternalLink, Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { ConfirmDialog } from '@/components/confirm-dialog'
@@ -27,7 +27,13 @@ import { formatLocalCurrencyAmount } from '@/lib/currency'
 
 import { isValidCatfkQQ, isValidCatfkQuote } from '../../catfk-api'
 import { DEFAULT_DISCOUNT_RATE } from '../../constants'
-import { formatCurrency, formatCreemPrice, getPaymentIcon } from '../../lib'
+import {
+  formatCurrency,
+  formatCreemPrice,
+  getPaymentIcon,
+  getTopupPromptContent,
+  getTopupPromptVisibility,
+} from '../../lib'
 import type { PaymentMethod, CatfkQuote } from '../../types'
 
 interface PaymentConfirmDialogProps {
@@ -48,6 +54,7 @@ interface PaymentConfirmDialogProps {
     available: boolean
     qqLocked?: boolean
   }
+  topupLink?: string
 }
 
 export function PaymentConfirmDialog({
@@ -62,12 +69,22 @@ export function PaymentConfirmDialog({
   discountRate = DEFAULT_DISCOUNT_RATE,
   usdExchangeRate = 1,
   catfk,
+  topupLink,
 }: PaymentConfirmDialogProps) {
   const { t } = useTranslation()
   const hasDiscount =
     !catfk && discountRate > 0 && discountRate < 1 && paymentAmount > 0
   const originalAmount = hasDiscount ? paymentAmount / discountRate : 0
   const discountAmount = hasDiscount ? originalAmount - paymentAmount : 0
+  const topupPromptVisibility = getTopupPromptVisibility(
+    paymentMethod,
+    topupLink
+  )
+  const topupPromptContent = getTopupPromptContent(paymentMethod)
+  const showTopupPrompt =
+    (topupPromptVisibility.showNotice && !!topupPromptContent.noticeText) ||
+    (topupPromptVisibility.showLink && !!topupPromptContent.linkImage)
+  const noticeText = topupPromptContent.noticeText
 
   return (
     <ConfirmDialog
@@ -180,6 +197,36 @@ export function PaymentConfirmDialog({
               'Enter ASCII digits only. QQ is used for this payment, not as your account identity.'
             )}
           </p>
+        </div>
+      )}
+      {showTopupPrompt && (
+        <div className='bg-muted/50 flex flex-col items-center gap-3 rounded-lg p-4 text-center'>
+          {topupPromptVisibility.showNotice && noticeText && (
+            <p className='text-muted-foreground text-sm leading-relaxed'>
+              {noticeText}
+            </p>
+          )}
+          {topupPromptVisibility.showLink &&
+            topupLink &&
+            topupPromptContent.linkImage && (
+              <a
+                href={topupLink}
+                target='_blank'
+                rel='noopener noreferrer'
+                aria-label={t('Open external top-up link')}
+                title={t('Open external top-up link')}
+                className='focus-visible:ring-ring group relative inline-flex rounded-lg transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none'
+              >
+                <img
+                  src={topupPromptContent.linkImage}
+                  alt={t('Open external top-up link')}
+                  className='h-12 w-auto rounded-lg'
+                />
+                <span className='bg-background text-muted-foreground group-hover:text-foreground absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full border shadow-sm'>
+                  <ExternalLink className='h-3 w-3' aria-hidden='true' />
+                </span>
+              </a>
+            )}
         </div>
       )}
     </ConfirmDialog>

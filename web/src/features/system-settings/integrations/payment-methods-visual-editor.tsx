@@ -22,7 +22,6 @@ import { useTranslation } from 'react-i18next'
 
 import { StaticDataTable } from '@/components/data-table/static/static-data-table'
 import { StaticRowActions } from '@/components/data-table/static/static-row-actions'
-import { ReactIconByName } from '@/components/react-icon-by-name'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -30,6 +29,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import { getPaymentIcon } from '@/features/wallet/lib/ui'
 
 import { safeJsonParseWithValidation } from '../utils/json-parser'
 import { isArray } from '../utils/json-validators'
@@ -129,7 +129,15 @@ export function PaymentMethodsVisualEditor({
         typeof item.type === 'string' &&
         (!('icon' in item) || typeof item.icon === 'string') &&
         (!('min_topup' in item) || typeof item.min_topup === 'string') &&
-        (!('color' in item) || typeof item.color === 'string')
+        (!('color' in item) || typeof item.color === 'string') &&
+        (!('show_topup_notice' in item) ||
+          typeof item.show_topup_notice === 'string') &&
+        (!('show_topup_link' in item) ||
+          typeof item.show_topup_link === 'string') &&
+        (!('topup_notice_text' in item) ||
+          typeof item.topup_notice_text === 'string') &&
+        (!('topup_link_image' in item) ||
+          typeof item.topup_link_image === 'string')
     )
   }, [value])
 
@@ -333,11 +341,12 @@ export function PaymentMethodsVisualEditor({
 
                   return iconName ? (
                     <div className='flex items-center gap-2'>
-                      <ReactIconByName
-                        name={iconName}
-                        className='text-muted-foreground size-5 shrink-0'
-                        title={iconName}
-                      />
+                      {getPaymentIcon(
+                        method.type,
+                        'text-muted-foreground size-5 shrink-0',
+                        iconName,
+                        method.name
+                      )}
                       <span className='text-muted-foreground truncate font-mono text-sm'>
                         {iconName}
                       </span>
@@ -387,6 +396,10 @@ export function PaymentMethodsVisualEditor({
                 method.icon,
                 method.min_topup,
                 method.color,
+                method.show_topup_notice,
+                method.show_topup_link,
+                method.topup_notice_text,
+                method.topup_link_image,
               ]
                 .filter(Boolean)
                 .join('-')
@@ -434,11 +447,12 @@ export function PaymentMethodsVisualEditor({
                       </span>
                       {iconName ? (
                         <div className='flex min-w-0 items-center gap-2'>
-                          <ReactIconByName
-                            name={iconName}
-                            className='text-muted-foreground size-5 shrink-0'
-                            title={iconName}
-                          />
+                          {getPaymentIcon(
+                            method.type,
+                            'text-muted-foreground size-5 shrink-0',
+                            iconName,
+                            method.name
+                          )}
                           <span className='text-muted-foreground truncate font-mono text-xs'>
                             {iconName}
                           </span>

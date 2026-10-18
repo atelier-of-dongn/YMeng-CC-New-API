@@ -20,10 +20,6 @@ For commercial licensing, please contact support@quantumnous.com
 // Affiliate Functions
 // ============================================================================
 
-/**
- * Generate affiliate registration link
- */
-export function generateAffiliateLink(affCode: string): string {
-  if (typeof window === 'undefined') return ''
-  return `${window.location.origin}/sign-up?aff=${affCode}`
-}
+// 实现已上移到 @/lib/affiliate，供钱包页与推广页共用。
+// 这里保留再导出，避免钱包内部的既有导入路径发生变化。
+export { generateAffiliateLink } from '@/lib/affiliate'

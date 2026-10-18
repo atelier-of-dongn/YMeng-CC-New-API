@@ -29,13 +29,15 @@ import type {
   GetLogStatsResponse,
   GetMidjourneyLogsParams,
   GetTaskLogsParams,
+  GetUpstreamCostStatsResponse,
   TaskArtifactsResponse,
   UserInfo,
 } from './types'
 
-// ============================================================================
+// =====================================================================}
+
 // Generic API Helpers
-// ============================================================================
+// =====================================================================}
 
 function buildApiPath(endpoint: string, isAdmin: boolean): string {
   return isAdmin ? endpoint : `${endpoint}/self`
@@ -70,9 +72,10 @@ async function fetchLogStats<T>(
   return res.data
 }
 
-// ============================================================================
+// =====================================================================}
+
 // Common Log APIs
-// ============================================================================
+// =====================================================================}
 
 export const getAllLogs = (params: GetLogsParams = {}) =>
   fetchLogs('/api/log', params, true)
@@ -87,6 +90,17 @@ export const getLogStats = (params: GetLogStatsParams = {}) =>
 export const getUserLogStats = (
   params: Omit<GetLogStatsParams, 'username' | 'channel'> = {}
 ) => fetchLogStats('/api/log', params, false)
+
+/** Upstream cost totals; accepts the same filters as the admin log stats. */
+export async function getUpstreamCostStats(
+  params: GetLogStatsParams = {}
+): Promise<GetUpstreamCostStatsResponse> {
+  const queryParams = buildQueryParams(
+    params as unknown as Record<string, unknown>
+  )
+  const res = await api.get(`/api/log/upstream_cost_stat?${queryParams}`)
+  return res.data
+}
 
 /**
  * Stream the logs matching params, newest first. The server sends one JSON
@@ -149,9 +163,10 @@ export async function getUserInfo(
   return res.data
 }
 
-// ============================================================================
+// =====================================================================}
+
 // MjProxy (Drawing) Logs API
-// ============================================================================
+// =====================================================================}
 
 export const getAllMidjourneyLogs = (params: GetMidjourneyLogsParams) =>
   fetchLogs('/api/mj', params, true)
@@ -159,9 +174,10 @@ export const getAllMidjourneyLogs = (params: GetMidjourneyLogsParams) =>
 export const getUserMidjourneyLogs = (params: GetMidjourneyLogsParams) =>
   fetchLogs('/api/mj', params, false)
 
-// ============================================================================
+// =====================================================================}
+
 // Task Logs API
-// ============================================================================
+// =====================================================================}
 
 export const getAllTaskLogs = (params: GetTaskLogsParams) =>
   fetchLogs('/api/task', params, true)

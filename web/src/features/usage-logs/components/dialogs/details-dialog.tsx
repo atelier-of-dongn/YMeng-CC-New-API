@@ -505,6 +505,10 @@ export function DetailsDialog(props: DetailsDialogProps) {
   const showTiming = isTimingLogType(props.log.type)
   const showAdminIp =
     !!props.log.ip && (showTiming || (props.isAdmin && isTopup))
+  // Request origin of the relayed call: endpoint and region follow the same
+  // visibility as the IP row, so the log owner sees their own request info.
+  const showRequestEndpoint = showTiming && !!other?.request_path
+  const showRegion = showTiming && !!other?.region
   const adminInfo = other?.admin_info
   const topupAuditFields =
     isTopup && props.isAdmin && adminInfo
@@ -616,10 +620,9 @@ export function DetailsDialog(props: DetailsDialogProps) {
       ? t('Native format')
       : conversionChain.join(' -> ')
   const showConversion =
-    props.isAdmin &&
-    props.log.type !== 6 &&
-    (other?.request_path || conversionChain.length > 0)
+    props.isAdmin && props.log.type !== 6 && conversionChain.length > 0
 
+  const paramOverrideOccurrences = new Map<string, number>()
   const useChannel = other?.admin_info?.use_channel
   const channelChain =
     useChannel && useChannel.length > 0 ? useChannel.join(' → ') : undefined
@@ -710,6 +713,14 @@ export function DetailsDialog(props: DetailsDialogProps) {
             />
           )}
 
+          {showRequestEndpoint && (
+            <DetailRow
+              label={t('Endpoint')}
+              value={other?.request_path ?? ''}
+              mono
+            />
+          )}
+
           {showAdminIp && (
             <DetailRow
               label={t('IP Address')}
@@ -721,6 +732,10 @@ export function DetailsDialog(props: DetailsDialogProps) {
               }
               mono
             />
+          )}
+
+          {showRegion && (
+            <DetailRow label={t('Region')} value={other?.region ?? ''} />
           )}
 
           {showTiming && props.log.use_time > 0 && (
@@ -779,13 +794,6 @@ export function DetailsDialog(props: DetailsDialogProps) {
                 )}
               </Button>
               <div className='min-w-0 space-y-1 pr-6'>
-                {other?.request_path && (
-                  <DetailRow
-                    label={t('Path')}
-                    value={other.request_path}
-                    mono
-                  />
-                )}
                 <div className='flex min-w-0 items-center gap-1.5 text-xs'>
                   <Route
                     className='text-muted-foreground size-3'
@@ -1323,6 +1331,8 @@ export function DetailsDialog(props: DetailsDialogProps) {
             {other.po.filter(Boolean).map((line) => {
               const parsed = parseAuditLine(line)
               if (!parsed) return null
+              const occurrence = (paramOverrideOccurrences.get(line) ?? 0) + 1
+              paramOverrideOccurrences.set(line, occurrence)
               return (
                 <div
                   key={`${parsed.action}-${parsed.content}`}

@@ -3,6 +3,7 @@ package router
 import (
 	"embed"
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
@@ -20,6 +21,10 @@ type WebAssets struct {
 
 func SetWebRouter(router *gin.Engine, assets WebAssets, pluginDispatcher gin.HandlerFunc) {
 	frontendFS := common.EmbedFolder(assets.BuildFS, "web/dist")
+	assetDirectory := os.Getenv("UPDATE_ASSET_DIR")
+	if err := RetainUpdateAssets(assets.BuildFS, assetDirectory); err != nil {
+		common.FatalLog("failed to retain dashboard assets: " + err.Error())
+	}
 	compress := gzip.Gzip(gzip.DefaultCompression)
 
 	router.NoRoute(
@@ -35,6 +40,7 @@ func SetWebRouter(router *gin.Engine, assets WebAssets, pluginDispatcher gin.Han
 		middleware.GlobalWebRateLimit(frontendFS),
 		middleware.Cache(),
 		middleware.ServeFrontendFiles(frontendFS),
+		retainedUpdateAsset(assetDirectory),
 		func(c *gin.Context) {
 			if strings.HasPrefix(c.Request.RequestURI, "/v1") || strings.HasPrefix(c.Request.RequestURI, "/api") || strings.HasPrefix(c.Request.RequestURI, "/assets") {
 				controller.RelayNotFound(c)

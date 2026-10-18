@@ -116,7 +116,12 @@ describe('API key Auto group form mapping', () => {
     expect(defaults.auto_groups_mode).toBe('custom')
     expect(defaults.auto_groups).toEqual([])
 
-    const result = getApiKeyFormSchema(t, 2).safeParse(defaults)
+    // Editing a legacy Auto key requires choosing a group again locally.
+    // After Auto is selected, the filtered custom order must still be fixed.
+    const result = getApiKeyFormSchema(t, 2).safeParse({
+      ...defaults,
+      group: 'auto',
+    })
     expect(result.success).toBe(false)
     if (result.success) return
     expect(result.error.issues[0]?.path).toEqual(['auto_groups'])
@@ -183,6 +188,51 @@ describe('API key Auto group form mapping', () => {
 })
 
 describe('API key user quota query form mapping', () => {
+  test.each([true, false])(
+    'preserves quota query permission %s together with ordered multi-group routing',
+    (stored) => {
+      const defaults = transformApiKeyToFormDefaults({
+        ...baseApiKey,
+        group: 'vip',
+        groups: ['vip', 'default'],
+        allow_user_quota_query: stored,
+      })
+      const payload = transformFormDataToPayload(
+        getApiKeyFormSchema(t).parse(defaults)
+      )
+
+      expect(payload).toMatchObject({
+        group: 'vip',
+        groups: ['vip', 'default'],
+        cross_group_retry: true,
+        allow_user_quota_query: stored,
+      })
+    }
+  )
+
+  test('clears a stale Auto override when switching to multi-group routing', () => {
+    const payload = transformFormDataToPayload({
+      ...getApiKeyFormDefaultValues(true),
+      routing_mode: 'multi',
+      groups: ['vip', 'default'],
+      auto_groups_mode: 'custom',
+      auto_groups: ['default'],
+    })
+
+    expect(payload.auto_groups).toEqual([])
+    expect(payload.groups).toEqual(['vip', 'default'])
+  })
+
+  test('does not grant quota query permission when a legacy response omits it', () => {
+    const legacy: Record<string, unknown> = { ...baseApiKey }
+    delete legacy.allow_user_quota_query
+    const defaults = transformApiKeyToFormDefaults(apiKeySchema.parse(legacy))
+
+    expect(transformFormDataToPayload(defaults).allow_user_quota_query).toBe(
+      false
+    )
+  })
+
   test('lets a new key query the user quota by default', () => {
     for (const defaultUseAutoGroup of [true, false]) {
       const defaults = getApiKeyFormDefaultValues(defaultUseAutoGroup)

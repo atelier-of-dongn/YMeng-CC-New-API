@@ -113,6 +113,9 @@ func main() {
 
 	// 热更新配置
 	go model.SyncOptions(common.SyncFrequency)
+
+	// Every node records the upstream cost of the requests it relays.
+	service.StartUpstreamCostRecorder()
 	go controller.SyncTaskPlugins()
 
 	// 周期性重载授权策略，保证多节点/多 master 部署下权限变更能传播到每个实例
@@ -134,6 +137,9 @@ func main() {
 
 	// Subscription quota reset task (daily/weekly/monthly/custom)
 	service.StartSubscriptionQuotaResetTask()
+
+	// Upstream cost monitor: new-api upstream ratios, balances and token logs
+	service.StartUpstreamCostMonitor()
 
 	// Report this process as a system instance so the System Info page can show
 	// all currently alive nodes in multi-instance deployments.
@@ -194,6 +200,7 @@ func main() {
 	}))
 	// This will cause SSE not to work!!!
 	//server.Use(gzip.Gzip(gzip.DefaultCompression))
+	server.Use(middleware.UpdateLifecycleTracker())
 	server.Use(middleware.RequestId())
 	server.Use(middleware.Version())
 	server.Use(middleware.I18n())
@@ -215,6 +222,8 @@ func main() {
 		Addr:    ":" + port,
 		Handler: server,
 	}
+	updateControlServer := startUpdateControlServer()
+	common.SetUpdateReady(true)
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -231,6 +240,10 @@ func main() {
 	sig := <-quit
 	common.SysLog(common.LogText("received signal: %v, shutting down...", sig))
 
+	// Stop accepting new business requests before graceful shutdown. Existing
+	// streams and upgraded connections remain counted until their handlers return.
+	common.BeginUpdateDrain()
+	common.SetUpdateReady(false)
 	// SSE streams may run for minutes; give them time to finish before forced exit
 	shutdownTimeout := time.Duration(common.GetEnvOrDefault("SHUTDOWN_TIMEOUT_SECONDS", 120)) * time.Second
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
@@ -238,10 +251,16 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		common.SysError(common.LogText("server forced to shutdown: %v", err))
 	}
+	if updateControlServer != nil {
+		if err := updateControlServer.Shutdown(context.Background()); err != nil {
+			common.SysError(fmt.Sprintf("update control server shutdown failed: %v", err))
+		}
+	}
 	// 内存中的看板数据保存入库，避免重启丢失未落库数据 (issue #5679)
 	if common.DataExportEnabled {
 		model.SaveQuotaDataCache()
 	}
+	service.FlushUpstreamCostRecords()
 	common.SysLog(common.LogText("server exited"))
 }
 

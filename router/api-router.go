@@ -30,6 +30,8 @@ func SetApiRouter(router *gin.Engine) {
 		apiRouter.GET("/models", middleware.UserAuth(), controller.DashboardListModels)
 		apiRouter.GET("/status/test", middleware.AdminAuth(), controller.TestStatus)
 		apiRouter.GET("/notice", controller.GetNotice)
+		// 大陆访客的模型可见性提示，未登录也可读取
+		apiRouter.GET("/ip-access-policy/notice", controller.GetIpAccessPolicyNotice)
 		apiRouter.GET("/user-agreement", controller.GetUserAgreement)
 		apiRouter.GET("/privacy-policy", controller.GetPrivacyPolicy)
 		apiRouter.GET("/about", controller.GetAbout)
@@ -119,6 +121,9 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/passkey/verify/finish", middleware.UserCriticalRateLimit("security-verification"), middleware.DisableCache(), controller.PasskeyVerifyFinish)
 				selfRoute.DELETE("/passkey", middleware.DisableCache(), controller.PasskeyDelete)
 				selfRoute.GET("/aff", controller.GetAffCode)
+				selfRoute.GET("/affiliate/summary", controller.GetAffiliateSummary)
+				selfRoute.GET("/affiliate/commissions", controller.GetAffiliateCommissions)
+				selfRoute.GET("/affiliate/invitees", controller.GetAffiliateInvitees)
 				selfRoute.GET("/topup/info", controller.GetTopUpInfo)
 				selfRoute.GET("/topup/self", controller.GetUserTopUps)
 				selfRoute.POST("/topup", middleware.CriticalRateLimit(), controller.TopUp)
@@ -176,6 +181,43 @@ func SetApiRouter(router *gin.Engine) {
 			}
 		}
 
+		// 推广佣金管理端：配置与按邀请人聚合的佣金视图
+		affiliateAdminRoute := apiRouter.Group("/affiliate/admin")
+		affiliateAdminRoute.Use(middleware.RootAuth())
+		{
+			affiliateAdminRoute.GET("/settings", controller.GetAffiliateAdminSettings)
+			affiliateAdminRoute.PUT("/settings", controller.UpdateAffiliateAdminSettings)
+			affiliateAdminRoute.GET("/user-commissions", controller.GetAffiliateAdminUserCommissions)
+		}
+
+		// 推广看板：面向管理员的全站推荐数据分析。
+		affiliateAnalyticsAdminRoute := apiRouter.Group("/affiliate/analytics/admin")
+		affiliateAnalyticsAdminRoute.Use(middleware.AdminAuth())
+		{
+			affiliateAnalyticsAdminRoute.GET("/overview", controller.GetAffiliateAdminAnalyticsOverview)
+			affiliateAnalyticsAdminRoute.GET("/rankings", controller.GetAffiliateAdminAnalyticsRankings)
+			affiliateAnalyticsAdminRoute.GET("/commissions", controller.GetAffiliateAdminAnalyticsCommissions)
+		}
+
+		invoiceRoute := apiRouter.Group("/invoice")
+		invoiceRoute.Use(middleware.UserAuth())
+		{
+			invoiceRoute.GET("/eligibility", controller.GetInvoiceEligibility)
+			invoiceRoute.GET("/self", controller.GetUserInvoiceApplications)
+			invoiceRoute.POST("/", middleware.CriticalRateLimit(), controller.CreateInvoiceApplication)
+			invoiceRoute.GET("/self/:id/file", controller.DownloadInvoicePDF)
+		}
+
+		invoiceAdminRoute := apiRouter.Group("/invoice/admin")
+		invoiceAdminRoute.Use(middleware.AdminAuth())
+		{
+			invoiceAdminRoute.GET("/", controller.GetAllInvoiceApplications)
+			invoiceAdminRoute.PATCH("/:id/processing", controller.MarkInvoiceProcessing)
+			invoiceAdminRoute.PATCH("/:id/reject", controller.RejectInvoiceApplication)
+			invoiceAdminRoute.POST("/:id/file", controller.UploadInvoicePDF)
+			invoiceAdminRoute.GET("/:id/file", controller.DownloadInvoicePDF)
+		}
+
 		// Subscription billing (plans, purchase, admin management)
 		subscriptionRoute := apiRouter.Group("/subscription")
 		subscriptionRoute.Use(middleware.UserAuth())
@@ -223,6 +265,7 @@ func SetApiRouter(router *gin.Engine) {
 			optionRoute.GET("/model_pricing", controller.GetModelPricingConfig)
 			optionRoute.PATCH("/model_pricing", controller.UpdateModelPricingConfig)
 			optionRoute.POST("/model_pricing/convert", controller.PreviewModelPricingConversion)
+			optionRoute.POST("/upstream_cost/feishu_test", controller.TestUpstreamCostFeishu)
 			optionRoute.POST("/model_pricing/preview", controller.PreviewModelPricing)
 			optionRoute.POST("/payment_compliance", controller.ConfirmPaymentCompliance)
 			optionRoute.POST("/catfk/channels", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.ListCatFKPaymentChannels)
@@ -326,6 +369,7 @@ func SetApiRouter(router *gin.Engine) {
 		logRoute := apiRouter.Group("/log")
 		logRoute.GET("/", middleware.AdminAuth(), controller.GetAllLogs)
 		logRoute.GET("/stat", middleware.AdminAuth(), controller.GetLogsStat)
+		logRoute.GET("/upstream_cost_stat", middleware.AdminAuth(), controller.GetUpstreamCostStat)
 		logRoute.GET("/self/stat", middleware.UserAuth(), controller.GetLogsSelfStat)
 		logRoute.GET("/channel_affinity_usage_cache", middleware.AdminAuth(), controller.GetChannelAffinityUsageCacheStats)
 		logRoute.GET("/search", middleware.AdminAuth(), controller.SearchAllLogs)
@@ -343,6 +387,12 @@ func SetApiRouter(router *gin.Engine) {
 			systemTaskRoute.GET("/current", controller.GetCurrentSystemTask)
 			systemTaskRoute.GET("/:task_id", controller.GetSystemTask)
 		}
+		updateRoute := apiRouter.Group("/system-update")
+		updateRoute.Use(middleware.RootAuth())
+		updateRoute.GET("/status", controller.GetSystemUpdateStatus)
+		updateRoute.GET("/releases", controller.GetSystemUpdateReleases)
+		updateRoute.POST("/update", middleware.SensitiveOperationOriginGuard(), controller.StartSystemUpdate)
+
 		systemInfoRoute := apiRouter.Group("/system-info")
 		systemInfoRoute.Use(middleware.RootAuth())
 		{

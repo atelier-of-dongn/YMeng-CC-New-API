@@ -99,4 +99,9 @@ var channelPermissionRoutes = []permissionRoute{
 	{method: http.MethodPost, path: "/upstream_updates/apply_all", permission: authz.ChannelWrite, handler: controller.ApplyAllChannelUpstreamModelUpdates},
 	{method: http.MethodPost, path: "/upstream_updates/detect", permission: authz.ChannelOperate, handler: controller.DetectChannelUpstreamModelUpdates},
 	{method: http.MethodPost, path: "/upstream_updates/detect_all", permission: authz.ChannelOperate, handler: controller.DetectAllChannelUpstreamModelUpdates},
+	{method: http.MethodGet, path: "/upstream_cost/monitors", permission: authz.ChannelRead, handler: controller.GetUpstreamCostMonitors},
+	{method: http.MethodPut, path: "/upstream_cost/monitors/:id", permission: authz.ChannelWrite, handler: controller.UpdateUpstreamCostMonitor},
+	{method: http.MethodGet, path: "/upstream_cost/sites", permission: authz.ChannelRead, handler: controller.GetUpstreamCostSites},
+	{method: http.MethodPut, path: "/upstream_cost/sites/:id", permission: authz.ChannelWrite, handler: controller.UpdateUpstreamCostSite},
+	{method: http.MethodPost, path: "/upstream_cost/refresh", permission: authz.ChannelOperate, handler: controller.RefreshUpstreamCostSites},
 }

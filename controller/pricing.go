@@ -5,7 +5,6 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
-	"github.com/QuantumNous/new-api/service"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/gin-gonic/gin"
@@ -25,12 +24,17 @@ func filterPricingByUsableGroups(pricing []model.Pricing, usableGroup map[string
 			filtered = append(filtered, item)
 			continue
 		}
+		visibleGroups := make([]string, 0, len(item.EnableGroup))
 		for _, group := range item.EnableGroup {
 			if _, ok := usableGroup[group]; ok {
-				filtered = append(filtered, item)
-				break
+				visibleGroups = append(visibleGroups, group)
 			}
 		}
+		if len(visibleGroups) == 0 {
+			continue
+		}
+		item.EnableGroup = visibleGroups
+		filtered = append(filtered, item)
 	}
 	return filtered
 }
@@ -55,7 +59,7 @@ func GetPricing(c *gin.Context) {
 		}
 	}
 
-	usableGroup = service.GetUserUsableGroups(group)
+	usableGroup = visibleUserGroups(c, group)
 	pricing = filterPricingByUsableGroups(pricing, usableGroup)
 	// check groupRatio contains usableGroup
 	for group := range ratio_setting.GetGroupRatioCopy() {
@@ -71,7 +75,7 @@ func GetPricing(c *gin.Context) {
 		"group_ratio":        groupRatio,
 		"usable_group":       usableGroup,
 		"supported_endpoint": model.GetSupportedEndpointMap(),
-		"auto_groups":        service.GetUserAutoGroup(group),
+		"auto_groups":        visibleAutoGroups(c, group),
 		"pricing_version":    "a42d372ccf0b5dd13ecf71203521f9d2",
 	})
 }

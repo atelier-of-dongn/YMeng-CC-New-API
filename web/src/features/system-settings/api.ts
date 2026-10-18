@@ -31,6 +31,7 @@ import type {
   UpdatePasskeyDomainsRequest,
   UpdatePasskeyDomainsResponse,
   UpstreamChannelsResponse,
+  UpstreamCostFeishuTestRequest,
   UpstreamRatiosResponse,
 } from './types'
 
@@ -62,6 +63,17 @@ export async function confirmPaymentCompliance() {
   const res = await api.post<ConfirmPaymentComplianceResponse>(
     '/api/option/payment_compliance',
     { confirmed: true }
+  )
+  return res.data
+}
+
+/** Sends a test alert; empty fields fall back to the saved values (root only). */
+export async function testUpstreamCostFeishu(
+  request: UpstreamCostFeishuTestRequest
+) {
+  const res = await api.post<UpdateOptionResponse>(
+    '/api/option/upstream_cost/feishu_test',
+    request
   )
   return res.data
 }

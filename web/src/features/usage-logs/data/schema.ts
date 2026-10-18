@@ -22,6 +22,21 @@ For commercial licensing, please contact support@quantumnous.com
  */
 import { z } from 'zod'
 
+// Upstream cost of a consume log (admin log list only). `status`: 0 unknown,
+// 1 estimated, 2 matched. `cost_quota` is in local quota units including the
+// site cost factor; `upstream_quota` is in upstream units (display only).
+export const upstreamCostSchema = z.object({
+  status: z.number(),
+  cost_mode: z.enum(['ratio', 'request']).optional(),
+  upstream_group: z.string().default(''),
+  upstream_group_ratio: z.number().default(0),
+  upstream_quota: z.number().default(0),
+  cost_quota: z.number().default(0),
+  internal_use: z.boolean().default(false),
+})
+
+export type UpstreamCostInfo = z.infer<typeof upstreamCostSchema>
+
 // Usage log schema
 export const usageLogSchema = z.object({
   id: z.number(),
@@ -45,6 +60,8 @@ export const usageLogSchema = z.object({
   other: z.string().default(''),
   request_id: z.string().default(''),
   upstream_request_id: z.string().default(''),
+  upstream_cost: upstreamCostSchema.nullish(),
+  affiliate_cost: z.number().nullish(),
 })
 
 export type UsageLog = z.infer<typeof usageLogSchema>

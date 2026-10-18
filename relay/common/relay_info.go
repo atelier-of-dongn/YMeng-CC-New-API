@@ -164,7 +164,8 @@ type RelayInfo struct {
 	UseRuntimeHeadersOverride             bool
 	ParamOverrideAudit                    []string
 
-	PriceData hosttypes.PriceData
+	PreConsumeGroupRatio float64
+	PriceData            hosttypes.PriceData
 
 	// QuotaClamp is set (non-nil) when a quota conversion saturated at the
 	// supported single-request bound (or NaN fallback) while computing this request's charge.

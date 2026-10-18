@@ -41,6 +41,10 @@ import type {
   SearchChannelsParams,
   SearchChannelsResponse,
   TagOperationParams,
+  UpdateUpstreamMonitorParams,
+  UpstreamCostResponse,
+  UpstreamMonitorView,
+  UpstreamSiteView,
 } from './types'
 
 const channelActionConfig = (
@@ -689,6 +693,77 @@ export async function getOllamaVersion(
   channelId: number
 ): Promise<{ success: boolean; message?: string; data?: { version: string } }> {
   const res = await api.get(`/api/channel/ollama/version/${channelId}`)
+  return res.data
+}
+
+// ============================================================================
+// Upstream Cost Monitoring
+// ============================================================================
+
+/**
+ * Get upstream monitors for the given channels. Channels without a monitor
+ * row are omitted from the response.
+ */
+export async function getUpstreamMonitors(
+  ids: number[]
+): Promise<UpstreamCostResponse<UpstreamMonitorView[]>> {
+  const res = await api.get('/api/channel/upstream_cost/monitors', {
+    params: { ids: ids.join(',') },
+  })
+  return res.data
+}
+
+/**
+ * Update (or create) the upstream monitor of a channel
+ */
+export async function updateUpstreamMonitor(
+  channelId: number,
+  data: UpdateUpstreamMonitorParams
+): Promise<UpstreamCostResponse<UpstreamMonitorView>> {
+  const res = await api.put(
+    `/api/channel/upstream_cost/monitors/${channelId}`,
+    data,
+    channelActionConfig()
+  )
+  return res.data
+}
+
+/**
+ * Get all detected upstream sites
+ */
+export async function getUpstreamSites(): Promise<
+  UpstreamCostResponse<UpstreamSiteView[]>
+> {
+  const res = await api.get('/api/channel/upstream_cost/sites')
+  return res.data
+}
+
+/**
+ * Update the cost factor of an upstream site
+ */
+export async function updateUpstreamSite(
+  siteId: number,
+  data: { cost_factor: number }
+): Promise<UpstreamCostResponse<UpstreamSiteView>> {
+  const res = await api.put(
+    `/api/channel/upstream_cost/sites/${siteId}`,
+    data,
+    channelActionConfig()
+  )
+  return res.data
+}
+
+/**
+ * Ask the backend to refresh one upstream site, or all sites when omitted.
+ */
+export async function refreshUpstreamCost(
+  siteId?: number
+): Promise<UpstreamCostResponse<unknown>> {
+  const res = await api.post(
+    '/api/channel/upstream_cost/refresh',
+    siteId === undefined ? {} : { site_id: siteId },
+    channelActionConfig()
+  )
   return res.data
 }
 

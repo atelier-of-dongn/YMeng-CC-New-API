@@ -56,12 +56,14 @@ const (
 	ChannelTypeReplicate      = 56
 	ChannelTypeCodex          = 57
 	ChannelTypeAdvancedCustom = 58
-	ChannelTypeSub2API        = 59
-	ChannelTypeNewAPI         = 60
-	ChannelTypeTaskPlugin     = 61
-	ChannelTypeVLLM           = 62
-	ChannelTypeSGLang         = 63
-	ChannelTypeDummy          // this one is only for count, do not add any channel after this
+	// Keep the custom JiaSu ID for existing channels and task platforms.
+	ChannelTypeJiaSuSeedance = 59
+	ChannelTypeNewAPI        = 60
+	ChannelTypeTaskPlugin    = 61
+	ChannelTypeSub2API       = 62
+	ChannelTypeVLLM          = 63
+	ChannelTypeSGLang        = 64
+	ChannelTypeDummy         = 65 // this one is only for count, do not add any channel after this
 
 )
 
@@ -127,11 +129,12 @@ var ChannelBaseURLs = []string{
 	"https://api.replicate.com",                 //56
 	"https://chatgpt.com",                       //57
 	"",                                          //58
-	"",                                          //59
+	"https://ai.jiasuapi.com",                   //59
 	"",                                          //60
 	"",                                          //61
 	"",                                          //62
-	"",                                          //63
+	"", //63
+	"", //64
 }
 
 func GetChannelBaseURL(channelType int) string {
@@ -200,6 +203,7 @@ var ChannelTypeNames = map[int]string{
 	ChannelTypeSub2API:        "Sub2API",
 	ChannelTypeNewAPI:         "New API",
 	ChannelTypeTaskPlugin:     "Task Plugin",
+	ChannelTypeJiaSuSeedance:  "JiaSu Seedance (Legacy)",
 	ChannelTypeVLLM:           "vLLM",
 	ChannelTypeSGLang:         "SGLang",
 }

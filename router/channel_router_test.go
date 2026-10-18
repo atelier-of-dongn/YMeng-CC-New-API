@@ -43,6 +43,14 @@ func TestChannelDeleteRoutesUseSensitiveWritePermission(t *testing.T) {
 	assertChannelRoutePermission(t, http.MethodPost, "/batch/tag", authz.ChannelWrite, controller.BatchSetChannelTag)
 }
 
+func TestUpstreamCostRoutesUseChannelPermissions(t *testing.T) {
+	assertChannelRoutePermission(t, http.MethodGet, "/upstream_cost/monitors", authz.ChannelRead, controller.GetUpstreamCostMonitors)
+	assertChannelRoutePermission(t, http.MethodPut, "/upstream_cost/monitors/:id", authz.ChannelWrite, controller.UpdateUpstreamCostMonitor)
+	assertChannelRoutePermission(t, http.MethodGet, "/upstream_cost/sites", authz.ChannelRead, controller.GetUpstreamCostSites)
+	assertChannelRoutePermission(t, http.MethodPut, "/upstream_cost/sites/:id", authz.ChannelWrite, controller.UpdateUpstreamCostSite)
+	assertChannelRoutePermission(t, http.MethodPost, "/upstream_cost/refresh", authz.ChannelOperate, controller.RefreshUpstreamCostSites)
+}
+
 func TestChannelStatusRoutesRegisterWithoutConflict(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	engine := gin.New()

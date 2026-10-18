@@ -204,11 +204,11 @@ export function Hero(props: HeroProps) {
                 className='group border-border/40 bg-muted/15 text-foreground/80 hover:border-border hover:bg-muted/30 hover:text-foreground flex items-center gap-3 rounded-full border px-5 py-2.5 text-sm font-medium shadow-[0_1px_2.5px_rgba(0,0,0,0.01)] backdrop-blur-xs transition-all duration-300 hover:scale-[1.02]'
               >
                 <img
-                  src='https://ccswitch.io/favicon.png'
+                  src='/ccswitch-favicon.png'
                   alt='CC Switch'
                   className='size-6 shrink-0 rounded-md object-contain'
                   onError={(e) => {
-                    // Fallback to a styled text avatar if the remote favicon fails to load in sandbox or local environments
+                    // Fallback to a styled text avatar if the local asset is unavailable
                     e.currentTarget.style.display = 'none'
                     const fallback = e.currentTarget.nextSibling as HTMLElement
                     if (fallback) fallback.style.display = 'flex'

@@ -50,21 +50,21 @@ export type ApiKeyGroupOption = {
   ratio?: number | string
 }
 
-type ApiKeyGroupComboboxProps = {
+type ApiKeyGroupComboboxBaseProps = {
   options: ApiKeyGroupOption[]
-  value?: string
-  onValueChange: (value: string) => void
   placeholder?: string
   disabled?: boolean
 }
 
-export function ApiKeyGroupCombobox({
-  options,
-  value,
-  onValueChange,
-  placeholder,
-  disabled,
-}: ApiKeyGroupComboboxProps) {
+type ApiKeyGroupComboboxProps = ApiKeyGroupComboboxBaseProps & (
+  | { multiple?: false; value?: string; onValueChange: (value: string) => void }
+  | { multiple: true; values: string[]; onValuesChange: (values: string[]) => void }
+)
+
+export function ApiKeyGroupCombobox(props: ApiKeyGroupComboboxProps) {
+  const options = props.options
+  const value = props.multiple ? props.values[0] : props.value
+  const disabled = props.disabled
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [searchValue, setSearchValue] = useState('')
@@ -74,9 +74,9 @@ export function ApiKeyGroupCombobox({
 
   const filteredOptions = useMemo(() => {
     const search = searchValue.trim().toLowerCase()
-    if (!search) return options
+    if (!search) return props.options
 
-    return options.filter((option) => {
+    return props.options.filter((option) => {
       const ratioText = String(option.ratio ?? '').toLowerCase()
       return (
         option.value.toLowerCase().includes(search) ||
@@ -85,16 +85,34 @@ export function ApiKeyGroupCombobox({
         ratioText.includes(search)
       )
     })
-  }, [options, searchValue])
+  }, [props.options, searchValue])
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen)
+    if (!nextOpen) setSearchValue('')
+  }
 
   const handleSelect = (selectedValue: string) => {
-    onValueChange(selectedValue)
+    if (props.multiple) {
+      const selectedIndex = props.values.indexOf(selectedValue)
+      if (selectedIndex === -1) {
+        props.onValuesChange([...props.values, selectedValue])
+        return
+      }
+
+      props.onValuesChange(
+        props.values.filter((_, index) => index !== selectedIndex)
+      )
+      return
+    }
+
+    props.onValueChange(selectedValue)
     setOpen(false)
     setSearchValue('')
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={
           <Button
@@ -121,7 +139,9 @@ export function ApiKeyGroupCombobox({
         <span className='flex min-w-0 flex-1 items-center justify-between gap-2 sm:gap-3'>
           <span className='min-w-0'>
             <span className='block truncate font-medium'>
-              {selectedOption?.label || placeholder || t('Select a group')}
+              {selectedOption?.label ||
+                props.placeholder ||
+                t('Select a group')}
             </span>
             {selectedOption?.desc && (
               <span className='text-muted-foreground block truncate text-[11px] sm:text-xs'>
@@ -154,7 +174,10 @@ export function ApiKeyGroupCombobox({
             value={searchValue}
             onValueChange={setSearchValue}
           />
-          <CommandList className='max-h-[360px]'>
+          <CommandList
+            className='max-h-[360px]'
+            aria-multiselectable={props.multiple || undefined}
+          >
             <CommandEmpty>{t('No group found.')}</CommandEmpty>
             <CommandGroup>
               {filteredOptions.map((option) => {

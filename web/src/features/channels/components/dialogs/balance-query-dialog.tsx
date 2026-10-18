@@ -36,7 +36,7 @@ import { handleServerError } from '@/lib/handle-server-error'
 import { createServerError } from '@/lib/server-error-message'
 
 import { getCodexUsage, updateChannelBalance } from '../../api'
-import { channelsQueryKeys } from '../../lib'
+import { channelsQueryKeys, upstreamCostQueryKeys } from '../../lib'
 import { useChannels } from '../channels-provider'
 import {
   CodexUsageDialog,
@@ -55,6 +55,7 @@ export function BalanceQueryDialog(props: BalanceQueryDialogProps) {
   const queryClient = useQueryClient()
   const [isQuerying, setIsQuerying] = useState(false)
   const [balance, setBalance] = useState<number | null>(null)
+  const [balanceUnlimited, setBalanceUnlimited] = useState(false)
   const [balanceUpdatedTime, setBalanceUpdatedTime] = useState<number | null>(
     null
   )
@@ -96,11 +97,25 @@ export function BalanceQueryDialog(props: BalanceQueryDialogProps) {
     setIsQuerying(true)
     try {
       const response = await updateChannelBalance(currentRow.id)
-      if (response.success && response.balance !== undefined) {
+      if (response.success && response.unlimited) {
+        setBalanceUnlimited(true)
+        setBalanceUpdatedTime(Math.floor(Date.now() / 1000))
+        toast.success(
+          t('Balance refreshed: the upstream account has no balance limit')
+        )
+        void queryClient.invalidateQueries({
+          queryKey: upstreamCostQueryKeys.monitors,
+        })
+        await queryClient.invalidateQueries({
+          queryKey: channelsQueryKeys.lists(),
+        })
+        setRawResponse(null)
+      } else if (response.success && response.balance !== undefined) {
         const newBalance = response.balance
         const now = Math.floor(Date.now() / 1000)
 
         setBalance(newBalance)
+        setBalanceUnlimited(false)
         setBalanceUpdatedTime(now)
         toast.success(t('Balance updated successfully'))
 
@@ -112,6 +127,9 @@ export function BalanceQueryDialog(props: BalanceQueryDialogProps) {
         })
 
         // Invalidate queries to refresh the table
+        void queryClient.invalidateQueries({
+          queryKey: upstreamCostQueryKeys.monitors,
+        })
         await queryClient.invalidateQueries({
           queryKey: channelsQueryKeys.lists(),
         })
@@ -130,6 +148,7 @@ export function BalanceQueryDialog(props: BalanceQueryDialogProps) {
 
   const handleClose = () => {
     setBalance(null)
+    setBalanceUnlimited(false)
     setBalanceUpdatedTime(null)
     setRawResponse(null)
     setCodexUsageResponse(null)
@@ -215,9 +234,9 @@ export function BalanceQueryDialog(props: BalanceQueryDialogProps) {
                 <span>{t('Current Balance')}</span>
               </div>
               <div className='text-2xl font-bold'>
-                {balance !== null
-                  ? formatBalance(balance)
-                  : formatBalance(currentRow.balance)}
+                {balanceUnlimited
+                  ? t('Unlimited')
+                  : formatBalance(balance ?? currentRow.balance)}
               </div>
               <div className='text-muted-foreground mt-2 text-xs'>
                 {t('Last updated:')}{' '}

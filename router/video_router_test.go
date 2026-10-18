@@ -121,6 +121,13 @@ func TestGetOpenAIVideoRouteRendersJimengTask(t *testing.T) {
 	assert.NotContains(t, recorder.Body.String(), "cdn.example")
 	assert.NotContains(t, recorder.Body.String(), "jimeng-private-1")
 
+	legacyRequest := httptest.NewRequest(http.MethodGet, "/v1/videos/tasks/task_jimeng_public", nil)
+	legacyRequest.Header.Set("Authorization", "Bearer sk-jimengfetch")
+	legacyRecorder := httptest.NewRecorder()
+	engine.ServeHTTP(legacyRecorder, legacyRequest)
+	assert.Equal(t, http.StatusOK, legacyRecorder.Code, legacyRecorder.Body.String())
+	assert.Contains(t, legacyRecorder.Body.String(), `"id":"task_jimeng_public"`)
+
 	for _, testCase := range []struct {
 		name          string
 		authorization string

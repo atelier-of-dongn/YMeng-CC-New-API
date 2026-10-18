@@ -16,10 +16,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { SectionPageLayout } from '@/components/layout'
+import { getAffiliateSummary } from '@/features/affiliate/api'
 import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { getSelf } from '@/lib/api'
@@ -62,6 +64,11 @@ interface WalletProps {
 
 export function Wallet(props: WalletProps) {
   const { t } = useTranslation()
+  const queryClient = useQueryClient()
+  const { data: affiliateSummary } = useQuery({
+    queryKey: ['affiliate', 'summary'],
+    queryFn: getAffiliateSummary,
+  })
   const [user, setUser] = useState<UserWalletData | null>(null)
   const [userLoading, setUserLoading] = useState(true)
   const [topupAmount, setTopupAmount] = useState(0)
@@ -80,6 +87,12 @@ export function Wallet(props: WalletProps) {
   const [selectedCreemProduct, setSelectedCreemProduct] =
     useState<CreemProduct | null>(null)
   const [showSubscriptionPanel, setShowSubscriptionPanel] = useState(true)
+
+  const availableQuota =
+    affiliateSummary?.available_quota ??
+    user?.invite_quota ??
+    user?.aff_quota ??
+    0
 
   const { status } = useStatus()
   const { currency } = useSystemConfig()
@@ -243,6 +256,9 @@ export function Wallet(props: WalletProps) {
   const handleTransfer = async (amount: number) => {
     const success = await transferQuota(amount)
     if (success) {
+      await queryClient.invalidateQueries({
+        queryKey: ['affiliate', 'summary'],
+      })
       await fetchUser()
     }
     return success
@@ -377,6 +393,8 @@ export function Wallet(props: WalletProps) {
 
             <AffiliateRewardsCard
               user={user}
+              summary={affiliateSummary}
+              availableQuota={availableQuota}
               affiliateLink={affiliateLink}
               onTransfer={() => setTransferDialogOpen(true)}
               complianceConfirmed={
@@ -399,6 +417,7 @@ export function Wallet(props: WalletProps) {
         processing={processing || waffoProcessing || pancakeProcessing}
         discountRate={getDiscountRate()}
         usdExchangeRate={effectiveUsdExchangeRate}
+        topupLink={topupInfo?.topup_link}
       />
 
       <PaymentConfirmDialog
@@ -433,7 +452,7 @@ export function Wallet(props: WalletProps) {
         open={transferDialogOpen}
         onOpenChange={setTransferDialogOpen}
         onConfirm={handleTransfer}
-        availableQuota={user?.aff_quota ?? 0}
+        availableQuota={availableQuota}
         transferring={transferring}
       />
 

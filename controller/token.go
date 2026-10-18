@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -35,6 +36,7 @@ func (input *tokenAutoGroupsInput) UnmarshalJSON(data []byte) error {
 type tokenRequest struct {
 	model.Token
 	AutoGroups tokenAutoGroupsInput `json:"auto_groups"`
+	Group      *string              `json:"group"` // Omitted routing fields preserve the existing route on update.
 	// 指针区分“未传”和显式 false：新建时未传即开启，更新时未传则保留原值。
 	AllowUserQuotaQuery *bool `json:"allow_user_quota_query"`
 }
@@ -87,6 +89,59 @@ func getTokenRequestUserGroup(c *gin.Context) (string, error) {
 		return userGroup, nil
 	}
 	return model.GetUserGroup(c.GetInt("id"), false)
+}
+
+func getTokenOwnerGroup(c *gin.Context, userId int) (string, error) {
+	if userId == c.GetInt("id") {
+		return getTokenRequestUserGroup(c)
+	}
+	return model.GetUserGroup(userId, false)
+}
+
+func validateTokenGroups(userGroup string, groups []string) error {
+	if len(groups) < 2 {
+		return fmt.Errorf("分组序列至少需要 2 个分组")
+	}
+	seen := make(map[string]struct{}, len(groups))
+	for _, group := range groups {
+		group = strings.TrimSpace(group)
+		if group == "" {
+			return fmt.Errorf("分组不能为空")
+		}
+		if group == "auto" {
+			return fmt.Errorf("分组序列不能包含 auto")
+		}
+		if _, exists := seen[group]; exists {
+			return fmt.Errorf("分组重复")
+		}
+		seen[group] = struct{}{}
+		if !service.IsUserSelectableGroup(userGroup, group) {
+			return fmt.Errorf("无权访问分组 %s", group)
+		}
+	}
+	return nil
+}
+
+func normalizeTokenRouting(userGroup string, token *model.Token) error {
+	if len(token.Groups) > 0 {
+		if err := validateTokenGroups(userGroup, token.Groups); err != nil {
+			return err
+		}
+		if err := token.SetGroups(token.Groups); err != nil {
+			return err
+		}
+		token.CrossGroupRetry = true
+		return nil
+	}
+	if token.Group == "auto" {
+		return fmt.Errorf("auto 分组已不再支持，请选择具体分组或配置多分组")
+	}
+	if strings.TrimSpace(token.Group) == "" || !service.IsUserSelectableGroup(userGroup, token.Group) {
+		return fmt.Errorf("请选择一个有权访问的有效分组")
+	}
+	token.GroupSequence = ""
+	token.CrossGroupRetry = false
+	return nil
 }
 
 func setTokenAutoGroups(c *gin.Context, token *model.Token, groups []string) bool {
@@ -304,6 +359,9 @@ func AddToken(c *gin.Context) {
 		return
 	}
 	token := request.Token
+	if request.Group != nil {
+		token.Group = *request.Group
+	}
 	if len(token.Name) > 50 {
 		common.ApiErrorT(c, "Token name is too long")
 		return
@@ -333,12 +391,34 @@ func AddToken(c *gin.Context) {
 		common.ApiErrorT(c, "Maximum number of tokens reached ({{max}})", map[string]any{"max": maxTokens})
 		return
 	}
+	if token.Groups != nil || (request.Group != nil && token.Group != "auto") {
+		userGroup, err := getTokenRequestUserGroup(c)
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
+		if err := normalizeTokenRouting(userGroup, &token); err != nil {
+			common.ApiError(c, err)
+			return
+		}
+	} else {
+		// Never accept a caller-supplied serialized route without validating groups.
+		token.GroupSequence = ""
+		if token.Group != "auto" {
+			token.CrossGroupRetry = false
+		}
+		if token.Group != "auto" {
+			token.CrossGroupRetry = false
+		}
+		if token.Group != "auto" {
+			token.CrossGroupRetry = false
+		}
+	}
 	if token.Group == "auto" {
 		if !setTokenAutoGroups(c, &token, request.AutoGroups.Groups) {
 			return
 		}
 	} else {
-		token.CrossGroupRetry = false
 		_ = token.SetAutoGroups(nil)
 	}
 	key, err := common.GenerateKey()
@@ -360,6 +440,7 @@ func AddToken(c *gin.Context) {
 		ModelLimits:        token.ModelLimits,
 		AllowIps:           token.AllowIps,
 		Group:              token.Group,
+		GroupSequence:      token.GroupSequence,
 		CrossGroupRetry:    token.CrossGroupRetry,
 		AutoGroups:         token.AutoGroups,
 	}
@@ -409,6 +490,9 @@ func UpdateToken(c *gin.Context) {
 		return
 	}
 	token := request.Token
+	if request.Group != nil {
+		token.Group = *request.Group
+	}
 	params := tokenAuditParams(c)
 	if token.Id > 0 {
 		params["id"] = token.Id
@@ -448,6 +532,19 @@ func UpdateToken(c *gin.Context) {
 	if statusOnly != "" {
 		cleanToken.Status = token.Status
 	} else {
+		userGroup, groupErr := getTokenOwnerGroup(c, userId)
+		if groupErr != nil {
+			common.ApiError(c, groupErr)
+			return
+		}
+		if token.Groups == nil && (request.Group == nil || (token.Group == "auto" && cleanToken.Group == "auto")) {
+			token.Group = cleanToken.Group
+			token.GroupSequence = cleanToken.GroupSequence
+			token.CrossGroupRetry = cleanToken.CrossGroupRetry
+		} else if groupErr = normalizeTokenRouting(userGroup, &token); groupErr != nil {
+			common.ApiError(c, groupErr)
+			return
+		}
 		// If you add more fields, please also update token.Update()
 		cleanToken.Name = token.Name
 		cleanToken.ExpiredTime = token.ExpiredTime
@@ -460,9 +557,9 @@ func UpdateToken(c *gin.Context) {
 			cleanToken.AllowUserQuotaQuery = *request.AllowUserQuotaQuery
 		}
 		cleanToken.Group = token.Group
+		cleanToken.GroupSequence = token.GroupSequence
 		cleanToken.CrossGroupRetry = token.CrossGroupRetry
 		if token.Group != "auto" {
-			cleanToken.CrossGroupRetry = false
 			_ = cleanToken.SetAutoGroups(nil)
 		} else if request.AutoGroups.Set {
 			if !setTokenAutoGroups(c, cleanToken, request.AutoGroups.Groups) {

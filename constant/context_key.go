@@ -3,6 +3,7 @@ package constant
 type ContextKey string
 
 const (
+	ContextKeyTokenGroups     ContextKey = "token_groups"
 	ContextKeyTokenCountMeta  ContextKey = "token_count_meta"
 	ContextKeyPromptTokens    ContextKey = "prompt_tokens"
 	ContextKeyEstimatedTokens ContextKey = "estimated_tokens"
@@ -48,6 +49,8 @@ const (
 	ContextKeyAutoGroup           ContextKey = "auto_group"
 	ContextKeyAutoGroupIndex      ContextKey = "auto_group_index"
 	ContextKeyAutoGroupRetryIndex ContextKey = "auto_group_retry_index"
+	ContextKeySelectedGroup       ContextKey = "selected_group"
+	ContextKeyTokenGroupIndex     ContextKey = "token_group_index"
 
 	/* user related keys */
 	ContextKeyUserId      ContextKey = "id"

@@ -28,15 +28,15 @@ export const CHANNEL_PRIORITY_GUIDE_KEYS = {
 
 export const CHANNEL_TYPE_OLLAMA = 4
 
-export const CHANNEL_TYPE_SUB2API = 59
+export const CHANNEL_TYPE_SUB2API = 62
 
 export const CHANNEL_TYPE_NEW_API = 60
 
 export const CHANNEL_TYPE_TASK_PLUGIN = 61
 
-export const CHANNEL_TYPE_VLLM = 62
+export const CHANNEL_TYPE_VLLM = 63
 
-export const CHANNEL_TYPE_SGLANG = 63
+export const CHANNEL_TYPE_SGLANG = 64
 
 export const CHANNEL_TYPES = {
   0: 'Unknown',
@@ -94,11 +94,12 @@ export const CHANNEL_TYPES = {
   56: 'Replicate',
   57: 'ChatGPT Subscription (Codex)',
   58: 'Advanced Custom',
-  59: 'Sub2API',
+  59: 'JiaSu',
   60: 'New API',
   61: 'Task Plugin',
-  62: 'vLLM',
-  63: 'SGLang',
+  62: 'Sub2API',
+  63: 'vLLM',
+  64: 'SGLang',
 } as const
 
 export type ChannelProviderPresentation = {
@@ -175,22 +176,22 @@ export const CHANNEL_PROVIDER_PRESENTATION: Partial<
       "New API's flexible channel lets you configure upstream addresses and authentication per endpoint, choose native forwarding or supported protocol conversions, and configure model listing and balance queries independently",
     badge: { labelKey: 'Flexible integration', tone: 'primary' },
   },
-  59: { descriptionKey: 'Connect to model services through a Sub2API gateway' },
+  62: { descriptionKey: 'Connect to model services through a Sub2API gateway' },
   60: {
     descriptionKey:
       'Connect to New API model services with support for multiple task plugins',
   },
-  62: { descriptionKey: 'Connect to self-hosted models served by vLLM' },
-  63: { descriptionKey: 'Connect to self-hosted models served by SGLang' },
+  63: { descriptionKey: 'Connect to self-hosted models served by vLLM' },
+  64: { descriptionKey: 'Connect to self-hosted models served by SGLang' },
 } satisfies Record<
-  Exclude<keyof typeof CHANNEL_TYPES, 0 | typeof CHANNEL_TYPE_TASK_PLUGIN>,
+  Exclude<keyof typeof CHANNEL_TYPES, 0 | 59 | typeof CHANNEL_TYPE_TASK_PLUGIN>,
   ChannelProviderPresentation
 >
 
 const CHANNEL_TYPE_DISPLAY_ORDER: number[] = [
-  1, 14, 24, 33, 43, 3, 41, 17, 45, 25, 26, 23, 48, 60, 58, 59, 61, 42, 34, 20,
-  4, 62, 40, 27, 15, 46, 18, 31, 35, 49, 19, 47, 37, 38, 39, 11, 8, 57, 22, 21,
-  44, 2, 5, 36, 50, 51, 52, 53, 54, 55, 56,
+  1, 14, 24, 33, 43, 3, 41, 17, 45, 25, 26, 23, 48, 60, 58, 62, 61, 42, 34, 20,
+  4, 63, 64, 40, 27, 15, 46, 18, 31, 35, 49, 19, 47, 37, 38, 39, 11, 8, 57, 22,
+  21, 44, 2, 5, 36, 50, 51, 52, 53, 54, 55, 56,
 ]
 
 export const CHANNEL_TYPE_OPTIONS: { value: number; label: string }[] = (() => {
@@ -205,7 +206,7 @@ export const CHANNEL_TYPE_OPTIONS: { value: number; label: string }[] = (() => {
   }
   for (const [key, label] of Object.entries(CHANNEL_TYPES)) {
     const id = Number(key)
-    if (id !== 0 && !seen.has(id)) {
+    if (id !== 0 && id !== 59 && !seen.has(id)) {
       ordered.push({ value: id, label })
     }
   }
@@ -523,7 +524,7 @@ export const MODEL_FETCHABLE_TYPES = new Set([
   48,
   57,
   58,
-  59,
+  CHANNEL_TYPE_SUB2API,
   60,
   CHANNEL_TYPE_VLLM,
   CHANNEL_TYPE_SGLANG,
@@ -534,7 +535,7 @@ export const FIELD_PASSTHROUGH_TYPES = new Set([
   14,
   57,
   58,
-  59,
+  CHANNEL_TYPE_SUB2API,
   CHANNEL_TYPE_NEW_API,
   CHANNEL_TYPE_VLLM,
   CHANNEL_TYPE_SGLANG,
@@ -544,7 +545,7 @@ export const OPENAI_FIELD_PASSTHROUGH_TYPES = new Set([
   1,
   57,
   58,
-  59,
+  CHANNEL_TYPE_SUB2API,
   CHANNEL_TYPE_NEW_API,
   CHANNEL_TYPE_VLLM,
   CHANNEL_TYPE_SGLANG,
@@ -553,7 +554,7 @@ export const OPENAI_FIELD_PASSTHROUGH_TYPES = new Set([
 export const CLAUDE_FIELD_PASSTHROUGH_TYPES = new Set([
   14,
   58,
-  59,
+  CHANNEL_TYPE_SUB2API,
   CHANNEL_TYPE_NEW_API,
   CHANNEL_TYPE_VLLM,
   CHANNEL_TYPE_SGLANG,
@@ -568,10 +569,10 @@ export const TYPE_TO_KEY_PROMPT: Record<number, string> = {
   50: 'Format: AccessKey|SecretKey (or just ApiKey if upstream is New API)',
   51: 'Format: Access Key ID|Secret Access Key',
   57: 'Paste Codex OAuth JSON credential (access_token / refresh_token / account_id)',
-  59: 'Enter API key for this channel',
+  62: 'Enter API key for this channel',
   60: 'Enter API key for this channel',
-  62: 'vLLM API key, or EMPTY if authentication is disabled',
-  63: 'SGLang API key, or EMPTY if authentication is disabled',
+  63: 'vLLM API key, or EMPTY if authentication is disabled',
+  64: 'SGLang API key, or EMPTY if authentication is disabled',
 }
 
 export const CHANNEL_TYPE_WARNINGS: Record<number, string> = {

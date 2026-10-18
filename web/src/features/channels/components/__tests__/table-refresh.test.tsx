@@ -96,6 +96,21 @@ async function renderChannelsPage(searchGate: () => Promise<void>) {
         },
       }
     }
+    if (url === '/api/channel/upstream_cost/monitors') {
+      return {
+        data: {
+          success: true,
+          data: [
+            {
+              channel_id: 3,
+              effective_group: 'upstream-vip',
+              group_ratio: 2,
+              balance_unlimited: true,
+            },
+          ],
+        },
+      }
+    }
     return { data: { success: true, data: ['vip'] } }
   })
   const client = new QueryClient({
@@ -139,6 +154,10 @@ it('refetches the channel list with the current filters and marks Refresh busy w
   const refresh = screen.getByRole('button', { name: 'Refresh' })
   expect(searchCalls()).toHaveLength(1)
   expect(refresh).toHaveAttribute('aria-busy', 'false')
+  expect(await screen.findByText('Unlimited')).toBeVisible()
+  expect(get).toHaveBeenCalledWith('/api/channel/upstream_cost/monitors', {
+    params: { ids: '3' },
+  })
 
   let release!: () => void
   gate = new Promise((resolve) => {

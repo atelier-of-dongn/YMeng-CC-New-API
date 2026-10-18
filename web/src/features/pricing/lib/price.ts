@@ -128,16 +128,6 @@ function hasRatio(value: number | null | undefined): boolean {
  *    - formatBillingCurrencyFromUSD(0.571) → 0.571 × 7 = ¥4 ✓
  *    - Normal price: ¥7, Recharge price: ¥4 (cheaper!)
  */
-function applyRechargeRate(
-  price: number,
-  showWithRecharge: boolean,
-  priceRate: number,
-  usdExchangeRate: number
-): number {
-  if (!showWithRecharge) return price
-  return (price * priceRate) / usdExchangeRate
-}
-
 /**
  * Format token-based price for display
  */
@@ -145,9 +135,9 @@ export function formatPrice(
   model: PricingModel,
   type: PriceType,
   tokenUnit: TokenUnit,
-  showWithRecharge = false,
-  priceRate = 1,
-  usdExchangeRate = 1,
+  _showWithRecharge = false,
+  _priceRate = 1,
+  _usdExchangeRate = 1,
   selectedGroup?: string,
   showCurrencySymbol = true
 ): string {
@@ -157,13 +147,7 @@ export function formatPrice(
 
   const displayGroupRatio = getDisplayGroupRatio(model, selectedGroup)
 
-  let priceInUSD = calculateTokenPrice(model, type, displayGroupRatio)
-  priceInUSD = applyRechargeRate(
-    priceInUSD,
-    showWithRecharge,
-    priceRate,
-    usdExchangeRate
-  )
+  const priceInUSD = calculateTokenPrice(model, type, displayGroupRatio)
 
   const price = priceInUSD / TOKEN_UNIT_DIVISORS[tokenUnit]
   return formatBillingCurrencyFromUSD(price, {
@@ -182,9 +166,6 @@ export function formatGroupPrice(
   group: string,
   type: PriceType,
   tokenUnit: TokenUnit,
-  showWithRecharge = false,
-  priceRate = 1,
-  usdExchangeRate = 1,
   groupRatio: Record<string, number>
 ): string {
   if (model.quota_type === QUOTA_TYPE_VALUES.REQUEST) {
@@ -192,14 +173,7 @@ export function formatGroupPrice(
   }
 
   const ratio = getConfiguredGroupRatio(groupRatio, group)
-  let priceInUSD = calculateTokenPrice(model, type, ratio)
-
-  priceInUSD = applyRechargeRate(
-    priceInUSD,
-    showWithRecharge,
-    priceRate,
-    usdExchangeRate
-  )
+  const priceInUSD = calculateTokenPrice(model, type, ratio)
 
   const price = priceInUSD / TOKEN_UNIT_DIVISORS[tokenUnit]
   return formatBillingCurrencyFromUSD(price, {
@@ -215,9 +189,6 @@ export function formatGroupPrice(
 export function formatFixedPrice(
   model: PricingModel,
   group: string,
-  showWithRecharge = false,
-  priceRate = 1,
-  usdExchangeRate = 1,
   groupRatio: Record<string, number>
 ): string {
   if (model.quota_type !== QUOTA_TYPE_VALUES.REQUEST) {
@@ -225,14 +196,7 @@ export function formatFixedPrice(
   }
 
   const ratio = getConfiguredGroupRatio(groupRatio, group)
-  let priceInUSD = (model.model_price || 0) * ratio
-
-  priceInUSD = applyRechargeRate(
-    priceInUSD,
-    showWithRecharge,
-    priceRate,
-    usdExchangeRate
-  )
+  const priceInUSD = (model.model_price || 0) * ratio
 
   return formatBillingCurrencyFromUSD(priceInUSD, {
     digitsLarge: 4,
@@ -246,9 +210,9 @@ export function formatFixedPrice(
  */
 export function formatRequestPrice(
   model: PricingModel,
-  showWithRecharge = false,
-  priceRate = 1,
-  usdExchangeRate = 1,
+  _showWithRecharge = false,
+  _priceRate = 1,
+  _usdExchangeRate = 1,
   selectedGroup?: string,
   showCurrencySymbol = true
 ): string {
@@ -258,14 +222,7 @@ export function formatRequestPrice(
 
   const displayGroupRatio = getDisplayGroupRatio(model, selectedGroup)
 
-  let priceInUSD = (model.model_price || 0) * displayGroupRatio
-
-  priceInUSD = applyRechargeRate(
-    priceInUSD,
-    showWithRecharge,
-    priceRate,
-    usdExchangeRate
-  )
+  const priceInUSD = (model.model_price || 0) * displayGroupRatio
 
   return formatBillingCurrencyFromUSD(priceInUSD, {
     showSymbol: showCurrencySymbol,

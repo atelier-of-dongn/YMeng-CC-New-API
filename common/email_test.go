@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/pem"
 	"fmt"
 	"math/big"
@@ -290,6 +291,51 @@ func TestSendEmailUsesExplicitStartTLSWithInsecureCertificate(t *testing.T) {
 	case message := <-server.messages:
 		require.Contains(t, message, "Subject: =?UTF-8?B?")
 		require.Contains(t, message, "<p>123456</p>")
+	case <-time.After(2 * time.Second):
+		t.Fatal("timed out waiting for SMTP DATA")
+	}
+}
+
+func TestBuildEmailHTMLWrapsFragmentsAndPreservesDocuments(t *testing.T) {
+	originalSystemName := SystemName
+	t.Cleanup(func() { SystemName = originalSystemName })
+	SystemName = "New <API>"
+
+	wrapped := buildEmailHTML("<p>验证内容</p>")
+	require.Contains(t, wrapped, "<!doctype html>")
+	require.Contains(t, wrapped, "New &lt;API&gt;")
+	require.Contains(t, wrapped, "<p>验证内容</p>")
+	require.Contains(t, wrapped, "background:#15253d")
+	require.Contains(t, wrapped, `lang="en"`)
+	require.Contains(t, wrapped, "This email was sent automatically by New &lt;API&gt;. Please do not reply.")
+	require.NotContains(t, wrapped, "此邮件由")
+
+	document := "<!doctype html><html><body>custom</body></html>"
+	require.Equal(t, document, buildEmailHTML(document))
+}
+func TestSendEmailWithAttachmentBuildsMultipartMessage(t *testing.T) {
+	server := newFakeSMTPServerWithSTARTTLSAdvertisement(t, false)
+	defer server.close()
+	withSMTPSettings(t)
+
+	SMTPServer = server.host
+	SMTPPort = server.port
+	SMTPSSLEnabled = false
+	SMTPStartTLSEnabled = false
+	SMTPAccount = "sender@example.com"
+	SMTPFrom = "sender@example.com"
+	SMTPToken = "secret"
+
+	pdf := []byte("%PDF-1.7\n%%EOF")
+	require.NoError(t, SendEmailWithAttachment("发票已开具", "receiver@example.com", "<strong>invoice</strong>", "发票.pdf", pdf, "application/pdf"))
+
+	select {
+	case message := <-server.messages:
+		require.Contains(t, message, "Content-Type: multipart/mixed;")
+		require.Contains(t, message, "Content-Type: application/pdf")
+		require.Contains(t, message, "filename*=UTF-8''")
+		require.Contains(t, message, "<strong>invoice</strong>")
+		require.Contains(t, message, base64.StdEncoding.EncodeToString(pdf))
 	case <-time.After(2 * time.Second):
 		t.Fatal("timed out waiting for SMTP DATA")
 	}

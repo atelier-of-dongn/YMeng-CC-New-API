@@ -20,7 +20,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronDown, KeyRound, Settings2, WalletCards } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
-import { useForm, type SubmitErrorHandler } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -51,6 +51,14 @@ import {
   FormMessage,
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   Sheet,
   SheetClose,
@@ -92,6 +100,7 @@ import {
   ApiKeyGroupCombobox,
   type ApiKeyGroupOption,
 } from './api-key-group-combobox'
+import { ApiKeyGroupSequence } from './api-key-group-sequence'
 import { useApiKeys } from './api-keys-provider'
 import { AutoGroupOrderEditor } from './auto-group-order-editor'
 
@@ -202,7 +211,7 @@ export function ApiKeysMutateDrawer({
 
   const form = useForm<ApiKeyFormValues>({
     resolver: zodResolver(schema),
-    defaultValues: getApiKeyFormDefaultValues(defaultUseAutoGroup),
+    defaultValues: getApiKeyFormDefaultValues(),
   })
 
   // Load existing data when updating
@@ -266,13 +275,13 @@ export function ApiKeysMutateDrawer({
   const isFormInitialized = initializedTarget === formTarget
   const selectedGroup = form.watch('group')
 
-  // Correct group after groups load: if the form value is not in available groups, fall back
+  // Remove groups that are no longer available after the group list loads.
   useEffect(() => {
     if (groups.length === 0) return
     const currentGroup = selectedGroup
     if (currentGroup && !groups.some((g) => g.value === currentGroup)) {
       const fallback =
-        groups.find((g) => g.value === 'default')?.value ??
+        groups.find((group) => group.value === 'default')?.value ??
         groups[0]?.value ??
         ''
       form.setValue('group', fallback)
@@ -339,7 +348,7 @@ export function ApiKeysMutateDrawer({
     }
   }
 
-  const onInvalid: SubmitErrorHandler<ApiKeyFormValues> = () => {
+  const onInvalid = () => {
     toast.error(t('Please fix the highlighted fields before saving'))
   }
 
@@ -364,8 +373,13 @@ export function ApiKeysMutateDrawer({
   const quotaPlaceholder = tokensOnly
     ? t('Enter quota in tokens')
     : t('Enter quota in {{currency}}', { currency: currencyLabel })
+  const routingMode = form.watch('routing_mode') ?? 'single'
   const autoGroupsMode = form.watch('auto_groups_mode')
   const unlimitedQuota = form.watch('unlimited_quota')
+  const routingDescription =
+    routingMode === 'single'
+      ? t('Bind this API key to one specific group.')
+      : t('Call groups in the order configured below.')
 
   return (
     <Sheet
@@ -421,35 +435,76 @@ export function ApiKeysMutateDrawer({
 
               <FormField
                 control={form.control}
-                name='group'
+                name='routing_mode'
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>{t('Group')}</FormLabel>
-                    <FormControl>
-                      <ApiKeyGroupCombobox
-                        options={groups}
-                        value={field.value}
-                        onValueChange={(group) => {
-                          field.onChange(group)
-                          if (group === 'auto') {
-                            form.setValue('cross_group_retry', true, {
-                              shouldDirty: true,
-                            })
-                            return
-                          }
-                          form.setValue('cross_group_retry', false, {
-                            shouldDirty: true,
-                          })
-                        }}
-                        placeholder={t('Select a group')}
-                      />
-                    </FormControl>
+                    <FormLabel>{t('Routing mode')}</FormLabel>
+                    <Select
+                      items={[
+                        { value: 'single', label: t('Single group') },
+                        { value: 'multi', label: t('Multiple groups') },
+                      ]}
+                      value={field.value ?? 'single'}
+                      onValueChange={field.onChange}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue>
+                            {routingMode === 'multi'
+                              ? t('Multiple groups')
+                              : t('Single group')}
+                          </SelectValue>
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectGroup>
+                          <SelectItem value='single'>
+                            {t('Single group')}
+                          </SelectItem>
+                          <SelectItem value='multi'>
+                            {t('Multiple groups')}
+                          </SelectItem>
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>{routingDescription}</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              {routingMode === 'single' && (
+                <FormField
+                  control={form.control}
+                  name='group'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('Group')}</FormLabel>
+                      <FormControl>
+                        <ApiKeyGroupCombobox
+                          options={groups}
+                          value={field.value ?? ''}
+                          onValueChange={(group) => {
+                            field.onChange(group)
+                            if (group === 'auto') {
+                              form.setValue('cross_group_retry', true, {
+                                shouldDirty: true,
+                              })
+                              return
+                            }
+                            form.setValue('cross_group_retry', false, {
+                              shouldDirty: true,
+                            })
+                          }}
+                          placeholder={t('Select a group')}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
-              {selectedGroup === 'auto' && (
+              {routingMode === 'single' && selectedGroup === 'auto' && (
                 <FormField
                   control={form.control}
                   name='auto_groups'
@@ -463,7 +518,7 @@ export function ApiKeysMutateDrawer({
                       </FormDescription>
                       <FormControl>
                         <AutoGroupOrderEditor
-                          value={field.value}
+                          value={field.value ?? ''}
                           mode={autoGroupsMode}
                           options={groups}
                           globalOptions={globalAutoGroupOptions}
@@ -490,7 +545,7 @@ export function ApiKeysMutateDrawer({
                 />
               )}
 
-              {selectedGroup === 'auto' && (
+              {routingMode === 'single' && selectedGroup === 'auto' && (
                 <FormField
                   control={form.control}
                   name='cross_group_retry'
@@ -513,6 +568,34 @@ export function ApiKeysMutateDrawer({
                           onCheckedChange={field.onChange}
                         />
                       </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {routingMode === 'multi' && (
+                <FormField
+                  control={form.control}
+                  name='groups'
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('Group call order')}</FormLabel>
+                      <FormControl>
+                        <ApiKeyGroupSequence
+                          options={groups.filter(
+                            (group) => group.value !== 'auto'
+                          )}
+                          value={field.value ?? []}
+                          onValueChange={field.onChange}
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        {t(
+                          'Groups without the requested model are skipped automatically.'
+                        )}
+                      </FormDescription>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />

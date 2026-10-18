@@ -73,6 +73,52 @@ func TestTokenUpdateSynchronouslyNarrowsPreheatedAutoGroupsCache(t *testing.T) {
 	assert.JSONEq(t, `["vip"]`, reloaded.AutoGroups)
 }
 
+// 多分组序列必须随缓存往返；否则缓存命中时 Key 会退化为仅首个分组的单分组路由。
+func TestTokenGroupSequenceRoundTripThroughRedisHashCache(t *testing.T) {
+	useUserCacheMiniRedis(t)
+	token := Token{
+		Id:     43,
+		UserId: 7,
+		Key:    "token-group-sequence-cache-key",
+		Name:   "group-sequence-cache",
+	}
+	require.NoError(t, token.SetGroups([]string{"primary", "fallback"}))
+
+	require.NoError(t, cacheSetTokenForTest(token))
+	cached, err := cacheGetTokenByKey(token.Key)
+	require.NoError(t, err)
+	assert.Equal(t, "primary", cached.Group)
+	assert.Equal(t, []string{"primary", "fallback"}, cached.GetGroups())
+}
+
+func TestTokenUpdatePersistsGroupSequence(t *testing.T) {
+	truncateTables(t)
+	useUserCacheMiniRedis(t)
+	token := Token{
+		UserId:         7,
+		Key:            "token-group-sequence-update-key",
+		Name:           "group-sequence-update",
+		Status:         common.TokenStatusEnabled,
+		ExpiredTime:    -1,
+		UnlimitedQuota: true,
+	}
+	require.NoError(t, token.SetGroups([]string{"primary", "fallback"}))
+	require.NoError(t, token.Insert())
+
+	require.NoError(t, token.SetGroups([]string{"fallback", "extra"}))
+	require.NoError(t, token.Update())
+	reloaded, err := GetTokenByKey(token.Key, true)
+	require.NoError(t, err)
+	assert.Equal(t, "fallback", reloaded.Group)
+	assert.Equal(t, []string{"fallback", "extra"}, reloaded.GetGroups())
+
+	require.NoError(t, token.SetGroups([]string{}))
+	require.NoError(t, token.Update())
+	reloaded, err = GetTokenByKey(token.Key, true)
+	require.NoError(t, err)
+	assert.Empty(t, reloaded.GetGroups())
+}
+
 // cacheSetTokenForTest 以测试身份写入完整 token 缓存（含额度字段），
 // 模拟“已水合”的缓存状态。
 func cacheSetTokenForTest(token Token) error {

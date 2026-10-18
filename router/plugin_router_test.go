@@ -915,3 +915,18 @@ func TestSecurityRoutesDisableCachingBeforeAuthentication(t *testing.T) {
 		})
 	}
 }
+
+func TestAffiliateAnalyticsRoutesRequireAuthentication(t *testing.T) {
+	outer := gin.New()
+	SetApiRouter(outer)
+	for _, path := range []string{
+		"/api/affiliate/analytics/admin/overview?start_timestamp=0&end_timestamp=1",
+		"/api/affiliate/analytics/admin/rankings?start_timestamp=0&end_timestamp=1",
+		"/api/affiliate/analytics/admin/commissions?start_timestamp=0&end_timestamp=1",
+	} {
+		t.Run(path, func(t *testing.T) {
+			response := performPluginRequest(outer, http.MethodGet, path)
+			assert.Equal(t, http.StatusUnauthorized, response.Code)
+		})
+	}
+}

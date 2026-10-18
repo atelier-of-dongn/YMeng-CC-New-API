@@ -113,3 +113,7 @@ export function selectLatestRelease(payload: unknown): SystemRelease | null {
 export function getSystemReleaseUrl(release: SystemRelease): string {
   return `https://github.com/QuantumNous/new-api/releases/tag/${encodeURIComponent(release.tag_name)}`
 }
+
+export function getForkSystemReleaseUrl(release: SystemRelease): string {
+  return `https://github.com/atelier-of-dongn/YMeng-CC-New-API/releases/tag/${encodeURIComponent(release.tag_name)}`
+}

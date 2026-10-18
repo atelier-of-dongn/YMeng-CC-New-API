@@ -446,6 +446,83 @@ it.each([true, false])(
   }
 )
 
+it('imports a selected protocol to BaoCode only after explicit confirmation', async () => {
+  const user = userEvent.setup()
+  const { post } = await renderKeysPage()
+  let destination = ''
+  const importWindow = {
+    close: vi.fn(),
+    location: {
+      get href() {
+        return destination
+      },
+      set href(value: string) {
+        destination = value
+      },
+    },
+  } as unknown as Window
+  vi.spyOn(window, 'open').mockReturnValue(importWindow)
+
+  const importButton = screen.getByRole('button', { name: 'Import to BaoCode' })
+  expect(screen.getByRole('button', { name: 'Open menu' })).toBeInTheDocument()
+  await user.click(importButton)
+  const dialog = screen.getByRole('dialog')
+  expect(dialog).toBeInTheDocument()
+  expect(post).not.toHaveBeenCalled()
+
+  const radios = within(dialog).getAllByRole('radio')
+  expect(radios).toHaveLength(3)
+  expect(
+    screen.getByRole('radio', { name: /OpenAI Chat Completions/ })
+  ).toBeChecked()
+  await user.click(screen.getByRole('radio', { name: /OpenAI Responses/ }))
+  expect(screen.getByRole('radio', { name: /OpenAI Responses/ })).toBeChecked()
+  expect(post).not.toHaveBeenCalled()
+
+  post.mockResolvedValue({
+    data: { success: true, data: { key: 'real-key' } },
+  })
+  await user.click(screen.getByRole('button', { name: 'Import' }))
+
+  await waitFor(() => expect(post).toHaveBeenCalledWith('/api/token/7/key'))
+  const parsed = new URL(destination)
+  const params = new URLSearchParams(parsed.hash.slice(1))
+  expect(parsed.search).toBe('')
+  expect(params.get('v')).toBe('1')
+  expect(params.get('name')).toBe('production')
+  expect(params.get('protocol')).toBe('openai-responses')
+  expect(params.get('url')).toBe(`${window.location.origin}/v1`)
+  expect(params.get('key')).toBe('sk-real-key')
+})
+
+it('reuses the last protocol and never requests the key on cancel', async () => {
+  const user = userEvent.setup()
+  const { post } = await renderKeysPage()
+  vi.spyOn(window, 'open').mockReturnValue({
+    close: vi.fn(),
+    location: { href: '' },
+  } as unknown as Window)
+
+  const openDialog = async () => {
+    await user.click(screen.getByRole('button', { name: 'Import to BaoCode' }))
+    return screen.getByRole('dialog')
+  }
+
+  let dialog = await openDialog()
+  await user.click(screen.getByRole('radio', { name: /Anthropic Messages/ }))
+  await user.click(within(dialog).getByRole('button', { name: 'Cancel' }))
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  )
+  expect(post).not.toHaveBeenCalled()
+
+  dialog = await openDialog()
+  expect(
+    within(dialog).getByRole('radio', { name: /Anthropic Messages/ })
+  ).toBeChecked()
+  expect(post).not.toHaveBeenCalled()
+})
+
 it('keeps full mobile information without group or quota section headings', async () => {
   const matchMedia = window.matchMedia
   vi.spyOn(window, 'matchMedia').mockImplementation((query) => ({

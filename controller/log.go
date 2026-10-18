@@ -67,7 +67,7 @@ func GetAllLogs(c *gin.Context) {
 		model.FormatRootLogs(logs)
 	}
 	pageInfo.SetTotal(int(total))
-	pageInfo.SetItems(logs)
+	pageInfo.SetItems(service.AttachUpstreamCostToLogs(logs))
 	common.ApiSuccess(c, pageInfo)
 	return
 }

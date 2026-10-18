@@ -11,6 +11,39 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func FilterUserUsableGroups(userGroup string, requestedGroups []string) []string {
+	groups := make([]string, 0, len(requestedGroups))
+	for _, group := range requestedGroups {
+		if IsUserSelectableGroup(userGroup, group) {
+			groups = append(groups, group)
+		}
+	}
+	return groups
+}
+
+func GetTokenRouteGroups(userGroup, tokenGroup string, tokenGroups []string) []string {
+	if len(tokenGroups) > 0 {
+		return FilterUserUsableGroups(userGroup, tokenGroups)
+	}
+	if tokenGroup == "auto" {
+		return GetUserAutoGroup(userGroup)
+	}
+	if tokenGroup != "" {
+		return []string{tokenGroup}
+	}
+	return []string{userGroup}
+}
+
+func GetMaxTokenGroupRatio(c *gin.Context) float64 {
+	userGroup := common.GetContextKeyString(c, constant.ContextKeyUserGroup)
+	groups := GetTokenRouteGroups(userGroup, common.GetContextKeyString(c, constant.ContextKeyTokenGroup), common.GetContextKeyStringSlice(c, constant.ContextKeyTokenGroups))
+	maxRatio := 0.0
+	for _, group := range groups {
+		maxRatio = max(maxRatio, GetUserGroupRatio(userGroup, group))
+	}
+	return maxRatio
+}
+
 func GetUserUsableGroups(userGroup string) map[string]string {
 	groupsCopy := setting.GetUserUsableGroupsCopy()
 	if userGroup != "" {

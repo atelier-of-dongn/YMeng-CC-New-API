@@ -47,6 +47,7 @@ function Fixture() {
             TopUpLink: '',
             quota_setting: {
               enable_free_model_pre_consume: true,
+              skip_billing_on_zero_completion_tokens: false,
               trust_quota_usd: 10,
               pre_consume_multiplier: 1,
             },
@@ -104,6 +105,29 @@ test.each(['0.5', '1.5', '2.5', '0.0001'])(
     )
   }
 )
+
+test('zero-output billing switch saves alongside the input pre-consume multiplier', async () => {
+  const user = userEvent.setup()
+  const input = await renderSettings()
+  const skipBilling = screen.getByRole('switch', {
+    name: 'Skip Billing on Zero Output Tokens',
+  })
+  expect(skipBilling).not.toBeChecked()
+  await user.click(skipBilling)
+  fireEvent.change(input, { target: { value: '1.5' } })
+  await user.click(screen.getByRole('button', { name: 'Save Changes' }))
+  await waitFor(() => {
+    expect(api.put).toHaveBeenCalledWith('/api/option/', {
+      key: 'quota_setting.skip_billing_on_zero_completion_tokens',
+      value: true,
+    })
+    expect(api.put).toHaveBeenCalledWith('/api/option/', {
+      key: 'quota_setting.pre_consume_multiplier',
+      value: 1.5,
+    })
+  })
+  expect(skipBilling).toBeChecked()
+})
 
 test.each(['0', '-0.5', ''])(
   'invalid multiplier "%s" shows a field error and prevents saving',

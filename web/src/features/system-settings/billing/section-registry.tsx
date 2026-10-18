@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { parseCurrencyDisplayType } from '@/lib/currency'
 
+import { AffiliateSettingsSection } from '../general/affiliate-settings-section'
 import { CheckinSettingsSection } from '../general/checkin-settings-section'
 import { PricingSection } from '../general/pricing-section'
 import { QuotaSettingsSection } from '../general/quota-settings-section'
@@ -70,6 +71,8 @@ const BILLING_SECTIONS = [
               settings['quota_setting.pre_consume_multiplier'],
             enable_free_model_pre_consume:
               settings['quota_setting.enable_free_model_pre_consume'],
+            skip_billing_on_zero_completion_tokens:
+              settings['quota_setting.skip_billing_on_zero_completion_tokens'],
           },
         }}
         complianceConfirmed={
@@ -188,6 +191,19 @@ const BILLING_SECTIONS = [
             settings['payment_setting.compliance_terms_version'] ?? '',
           confirmedAt: settings['payment_setting.compliance_confirmed_at'] ?? 0,
           confirmedBy: settings['payment_setting.compliance_confirmed_by'] ?? 0,
+        }}
+      />
+    ),
+  },
+  {
+    id: 'affiliate',
+    titleKey: 'Affiliate Commission',
+    build: (settings: BillingSettings) => (
+      <AffiliateSettingsSection
+        defaultValues={{
+          enabled: settings['affiliate_setting.enabled'],
+          commissionRatePercent:
+            settings['affiliate_setting.commission_rate_percent'],
         }}
       />
     ),

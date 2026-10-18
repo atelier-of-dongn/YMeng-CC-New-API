@@ -1505,7 +1505,7 @@ test('request processing configuration does not mark the network category as con
   ).not.toHaveAccessibleName(/Configured/)
 })
 
-test.each([1, 57, 58, 59, 60])(
+test.each([1, 57, 58, 62, 60])(
   'provider %s marks a saved Responses WebSocket setting in Request & Response and clears the mark when disabled',
   async (type) => {
     editingChannel = {

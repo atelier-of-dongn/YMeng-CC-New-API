@@ -23,6 +23,7 @@ import { Eye, EyeOff } from 'lucide-react'
 import { useState, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { StatusBadge } from '@/components/status-badge'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Combobox } from '@/components/ui/combobox'
@@ -34,6 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
 import {
   Tooltip,
   TooltipContent,
@@ -125,7 +127,12 @@ export function CommonLogsFilterBar<TData>(
   const queryClient = useQueryClient()
   const searchParams = route.useSearch()
   const { isAdminView: isAdmin } = useLogsViewScope()
-  const { sensitiveVisible, setSensitiveVisible } = useUsageLogsContext()
+  const {
+    sensitiveVisible,
+    setSensitiveVisible,
+    internalAccounting,
+    setInternalAccounting,
+  } = useUsageLogsContext()
   const fetchingLogs = useIsFetching({ queryKey: ['logs'] })
   const { data: adminGroups } = useQuery({
     queryKey: ['groups'],
@@ -319,6 +326,25 @@ export function CommonLogsFilterBar<TData>(
     </Tooltip>
   )
 
+  const internalAccountingLabel = t('Internal account profit/loss')
+  const internalAccountingToggle = isAdmin ? (
+    <label className='inline-flex h-7 items-center gap-1.5 px-1 text-xs max-sm:h-11'>
+      <Switch
+        size='sm'
+        checked={internalAccounting}
+        onCheckedChange={setInternalAccounting}
+        aria-labelledby='internal-accounting-label'
+      />
+      <StatusBadge
+        id='internal-accounting-label'
+        label={internalAccountingLabel}
+        variant={internalAccounting ? 'info' : 'neutral'}
+        size='sm'
+        copyable={false}
+      />
+    </label>
+  ) : null
+
   const dateRangeFilter = (
     <LogsFilterField wide>
       <CompactDateTimeRangePicker
@@ -489,7 +515,12 @@ export function CommonLogsFilterBar<TData>(
       table={props.table}
       compactMobile
       stats={statsBar}
-      actionStart={sensitiveToggle}
+      actionStart={
+        <>
+          {internalAccountingToggle}
+          {sensitiveToggle}
+        </>
+      }
       actionEnd={<ExportLogsDialog />}
       primaryFilters={
         <>

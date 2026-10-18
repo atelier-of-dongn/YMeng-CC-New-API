@@ -24,13 +24,14 @@ const { I18nextProvider, initReactI18next } = await import('react-i18next')
 const { QueryClient, QueryClientProvider } =
   await import('@tanstack/react-query')
 const { api } = await import('@/lib/api')
+const { default: zh } = await import('@/i18n/locales/zh.json')
 const { ApiKeysProvider } = await import('../api-keys-provider')
 const { ApiKeysMutateDrawer } = await import('../api-keys-mutate-drawer')
 
 const i18n = createInstance()
 await i18n.use(initReactI18next).init({
   lng: 'en',
-  resources: { en: { translation: {} } },
+  resources: { en: { translation: {} }, zh },
 })
 
 type ApiMethod = (url: string, data?: unknown) => Promise<{ data: unknown }>
@@ -132,7 +133,7 @@ async function renderCreateDrawer(): Promise<void> {
   )
   await waitFor(
     () => {
-      const saveButton = findButton('Save changes', false)
+      const saveButton = findButton(i18n.t('Save changes'), false)
       expect(saveButton).toBeEnabled()
     },
     { timeout: 1500 }
@@ -152,7 +153,9 @@ function findButton(text: string, required = true): HTMLButtonElement | null {
 }
 
 function getControlByLabel(labelText: 'Name' | 'Quantity'): HTMLInputElement
-function getControlByLabel(labelText: 'Group'): HTMLButtonElement
+function getControlByLabel(
+  labelText: 'Group' | 'Routing mode' | '路由模式'
+): HTMLButtonElement
 function getControlByLabel(labelText: 'Auto group order'): HTMLElement
 function getControlByLabel(labelText: string): HTMLElement {
   const label = [...document.querySelectorAll<HTMLLabelElement>('label')].find(
@@ -193,7 +196,8 @@ function selectComboboxOption(
   fireEvent.click(option)
 }
 
-afterEach(() => {
+afterEach(async () => {
+  await i18n.changeLanguage('en')
   apiClient.get = originalGet
   apiClient.post = originalPost
   localStorage.clear()
@@ -235,6 +239,20 @@ describe('API keys mutate drawer Auto group integration', () => {
       expect(payload.auto_groups).toEqual([])
       expect(payload.cross_group_retry).toBe(true)
     }
+  })
+
+  test('displays the routing description in Chinese when Chinese is selected', async () => {
+    const createdPayloads: Array<Record<string, unknown>> = []
+    installApiFixtures(createdPayloads)
+    await i18n.changeLanguage('zh')
+    await renderCreateDrawer()
+
+    expect(document.body).toHaveTextContent('将此 API 密钥绑定到一个指定分组。')
+    expect(document.body).toHaveTextContent('路由模式')
+    expect(document.body).toHaveTextContent('单分组')
+
+    fireEvent.click(getControlByLabel('路由模式'))
+    expect(document.body).toHaveTextContent('多分组')
   })
 
   test('preserves an unsaved custom order and mode after Auto to ordinary to Auto changes', async () => {

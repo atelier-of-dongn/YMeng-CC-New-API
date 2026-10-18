@@ -1,0 +1,140 @@
+# Opt-in managed deployment for zero-interruption application updates.
+# Put the existing Nginx/宝塔 upstream at the proxy's published port (3000).
+# Keep the primary database, Redis, SESSION_SECRET and CRYPTO_SECRET stable.
+services:
+  update-proxy:
+    image: haproxy:3.2-alpine
+    restart: always
+    ports:
+      - "3000:3000"
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        if grep -q '^active new-api-blue$' /etc/haproxy/update/update.map; then
+          until getent hosts new-api-blue >/dev/null 2>&1; do sleep 1; done
+          ip="$$(getent hosts new-api-blue | awk 'NR == 1 {print $$1}')"
+          sed -i "s/^active .*/active $$ip/" /etc/haproxy/update/update.map
+        fi
+        exec haproxy -f /usr/local/etc/haproxy/haproxy.cfg
+    volumes:
+      - ./deploy/update/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+      - ./deploy/update:/etc/haproxy/update
+      - update_proxy_socket:/var/run/haproxy
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z 127.0.0.1 3000"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    depends_on:
+      - new-api-blue
+      - new-api-green
+    networks:
+      - new-api-managed
+
+  new-api-blue:
+    image: ${NEW_API_IMAGE:?set NEW_API_IMAGE to a verified immutable image}
+    labels:
+      com.ymeng.update.managed: "true"
+      com.ymeng.update.active: "true"
+    restart: always
+    expose:
+      - "3000"
+      - "3001"
+    environment:
+      SQL_DSN: ${SQL_DSN:?set SQL_DSN}
+      LOG_SQL_DSN: ${LOG_SQL_DSN:-}
+      REDIS_CONN_STRING: ${REDIS_CONN_STRING:-}
+      SESSION_SECRET: ${SESSION_SECRET:?set a stable SESSION_SECRET}
+      CRYPTO_SECRET: ${CRYPTO_SECRET:?set a stable CRYPTO_SECRET}
+      NODE_TYPE: ${NODE_TYPE:-master}
+      UPDATE_MANAGED: "true"
+      UPDATE_INTERNAL_ADDR: ":3001"
+      UPDATE_CONTROL_TOKEN: ${UPDATE_CONTROL_TOKEN:?set a private update control token}
+      UPDATE_CONTROLLER_URL: http://update-controller:8080
+      UPDATE_ASSET_DIR: /var/lib/new-api/assets
+      BATCH_UPDATE_ENABLED: ${BATCH_UPDATE_ENABLED:-false}
+    volumes:
+      - ./data:/data
+      - ./logs:/app/logs
+      - update_assets:/var/lib/new-api/assets
+    networks:
+      - new-api-managed
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/api/status | grep -q '\"success\":true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  new-api-green:
+    image: ${NEW_API_IMAGE:?set NEW_API_IMAGE to a verified immutable image}
+    labels:
+      com.ymeng.update.managed: "true"
+      com.ymeng.update.active: "false"
+    restart: always
+    expose:
+      - "3000"
+      - "3001"
+    environment:
+      SQL_DSN: ${SQL_DSN:?set SQL_DSN}
+      LOG_SQL_DSN: ${LOG_SQL_DSN:-}
+      REDIS_CONN_STRING: ${REDIS_CONN_STRING:-}
+      SESSION_SECRET: ${SESSION_SECRET:?set a stable SESSION_SECRET}
+      CRYPTO_SECRET: ${CRYPTO_SECRET:?set a stable CRYPTO_SECRET}
+      NODE_TYPE: slave
+      UPDATE_MANAGED: "true"
+      UPDATE_INTERNAL_ADDR: ":3001"
+      UPDATE_CONTROL_TOKEN: ${UPDATE_CONTROL_TOKEN:?set a private update control token}
+      UPDATE_CONTROLLER_URL: http://update-controller:8080
+      UPDATE_ASSET_DIR: /var/lib/new-api/assets
+      BATCH_UPDATE_ENABLED: "false"
+    volumes:
+      - ./data:/data
+      - ./logs:/app/logs
+      - update_assets:/var/lib/new-api/assets
+    networks:
+      - new-api-managed
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:3000/api/status | grep -q '\"success\":true'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  update-controller:
+    build:
+      context: .
+      dockerfile: cmd/update-controller/Dockerfile
+    restart: always
+    environment:
+      UPDATE_CONTROL_TOKEN: ${UPDATE_CONTROL_TOKEN:?set a private update control token}
+      UPDATE_RELEASE_PUBLIC_KEY: ${UPDATE_RELEASE_PUBLIC_KEY:?set the release Ed25519 public key}
+      UPDATE_CURRENT_VERSION: ${UPDATE_CURRENT_VERSION:?set the running version}
+      UPDATE_PLATFORM: ${UPDATE_PLATFORM:-linux/amd64}
+      UPDATE_DATABASE: ${UPDATE_DATABASE:?set sqlite, mysql or postgres}
+      UPDATE_DOCKER_SOCKET: /var/run/docker.sock
+      UPDATE_STATE_FILE: /var/lib/update-controller/state.json
+      UPDATE_ACTIVE_CONTAINER: ${UPDATE_ACTIVE_CONTAINER:-new-api-blue}
+      UPDATE_HAPROXY_SOCKET: /var/run/haproxy/admin.sock
+      UPDATE_HAPROXY_MAP: /etc/haproxy/update/update.map
+      UPDATE_HAPROXY_MAP_KEY: active
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./deploy/update:/etc/haproxy/update
+      - update_proxy_socket:/var/run/haproxy
+      - update_controller_state:/var/lib/update-controller
+    depends_on:
+      new-api-blue:
+        condition: service_healthy
+      update-proxy:
+        condition: service_healthy
+    networks:
+      - new-api-managed
+
+volumes:
+  update_assets:
+  update_proxy_socket:
+  update_controller_state:
+
+networks:
+  new-api-managed:
+    driver: bridge

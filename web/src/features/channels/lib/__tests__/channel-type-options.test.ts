@@ -21,8 +21,42 @@ import { describe, expect, test } from 'vitest'
 import {
   CHANNEL_TYPE_OPTIONS,
   CHANNEL_TYPE_TASK_PLUGIN,
+  CHANNEL_TYPES,
+  MODEL_FETCHABLE_TYPES,
+  FIELD_PASSTHROUGH_TYPES,
+  OPENAI_FIELD_PASSTHROUGH_TYPES,
+  CLAUDE_FIELD_PASSTHROUGH_TYPES,
   channelTypeOptionsForTaskPluginBind,
 } from '../../constants'
+
+describe('channel type compatibility', () => {
+  test('keeps legacy JiaSu out of creation and gives gateways and inference servers distinct ids', () => {
+    expect(
+      CHANNEL_TYPE_OPTIONS.filter((option) =>
+        [59, 62, 63, 64].includes(option.value)
+      )
+    ).toEqual(
+      expect.arrayContaining([
+        { value: 62, label: 'Sub2API' },
+        { value: 63, label: 'vLLM' },
+        { value: 64, label: 'SGLang' },
+      ])
+    )
+    expect(CHANNEL_TYPE_OPTIONS.some((option) => option.value === 59)).toBe(
+      false
+    )
+    expect(CHANNEL_TYPES[59]).toBe('JiaSu')
+    for (const capabilities of [
+      MODEL_FETCHABLE_TYPES,
+      FIELD_PASSTHROUGH_TYPES,
+      OPENAI_FIELD_PASSTHROUGH_TYPES,
+      CLAUDE_FIELD_PASSTHROUGH_TYPES,
+    ]) {
+      expect(capabilities.has(59)).toBe(false)
+      expect(capabilities.has(62)).toBe(true)
+    }
+  })
+})
 
 describe('channel type options for task plugin bind', () => {
   test('hides the task plugin type when the caller cannot bind', () => {
