@@ -7711,6 +7711,7 @@
     "Click here if payment did not open": "若未跳转支付请点击",
     "Payment successful": "支付成功",
     "Unable to check payment status. Retrying automatically.": "暂时无法查询支付状态，正在自动重试。",
-    "Waiting for payment confirmation": "等待付款确认"
+    "Waiting for payment confirmation": "等待付款确认",
+    "Check status": "查询状态"
   }
 }

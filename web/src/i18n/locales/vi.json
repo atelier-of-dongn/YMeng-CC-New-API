@@ -7711,6 +7711,7 @@
     "Click here if payment did not open": "Nhấn vào đây nếu trang thanh toán chưa mở",
     "Payment successful": "Thanh toán thành công",
     "Unable to check payment status. Retrying automatically.": "Chưa thể kiểm tra thanh toán. Đang tự động thử lại.",
-    "Waiting for payment confirmation": "Đang chờ xác nhận thanh toán"
+    "Waiting for payment confirmation": "Đang chờ xác nhận thanh toán",
+    "Check status": "Kiểm tra trạng thái"
   }
 }

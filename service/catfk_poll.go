@@ -82,9 +82,12 @@ func (s *catFKService) poll(ctx context.Context) error {
 			continue
 		}
 		if queryErr != nil || evidence == nil {
-			// Version grows on each claim/retry; capped exponential backoff survives
-			// restarts without relying on process-local counters.
+			// A known order may be paid after a long wait. Its CAS version also
+			// grows on successful unpaid reads, so it cannot count query failures.
 			delay := min(int64(900), int64(15)<<min(max(order.Version/2, 0), 6))
+			if order.Status == model.CatFKOrderStatusPending || order.Status == model.CatFKOrderStatusPaid {
+				delay = min(delay, 60)
+			}
 			_, err = s.store.Retry(order.ID, order.Version, s.now().Unix()+delay)
 			if err != nil {
 				return err
@@ -108,7 +111,7 @@ func (s *catFKService) applyEvidence(order *model.CatFKOrder, e *CatFKOrderEvide
 	// Recover an ambiguous creation only after validating the complete purchase
 	// identity; merely receiving an order identifier does not establish payment.
 	if order.UpstreamOrderID == nil {
-		ok, err := s.store.Update(order.ID, order.Version, model.CatFKOrderUpdate{Status: model.CatFKOrderStatusPending, UpstreamOrderID: &e.UpstreamOrderID, NextQueryAt: s.now().Add(30 * time.Second).Unix()})
+		ok, err := s.store.Update(order.ID, order.Version, model.CatFKOrderUpdate{Status: model.CatFKOrderStatusPending, UpstreamOrderID: &e.UpstreamOrderID, NextQueryAt: s.now().Add(15 * time.Second).Unix()})
 		if err != nil || !ok {
 			return err
 		}
@@ -125,11 +128,11 @@ func (s *catFKService) applyEvidence(order *model.CatFKOrder, e *CatFKOrderEvide
 			_, err := s.store.Update(order.ID, order.Version, model.CatFKOrderUpdate{Status: model.CatFKOrderStatusNeedsAttention, FailureCode: "payment_regressed"})
 			return err
 		}
-		_, err := s.store.Retry(order.ID, order.Version, s.now().Add(30*time.Second).Unix())
+		_, err := s.store.Retry(order.ID, order.Version, s.now().Add(15*time.Second).Unix())
 		return err
 	}
 	if order.Status != model.CatFKOrderStatusPaid {
-		ok, err := s.store.Update(order.ID, order.Version, model.CatFKOrderUpdate{Status: model.CatFKOrderStatusPaid, NextQueryAt: s.now().Add(30 * time.Second).Unix()})
+		ok, err := s.store.Update(order.ID, order.Version, model.CatFKOrderUpdate{Status: model.CatFKOrderStatusPaid, NextQueryAt: s.now().Add(15 * time.Second).Unix()})
 		if err != nil || !ok {
 			return err
 		}
@@ -137,7 +140,7 @@ func (s *catFKService) applyEvidence(order *model.CatFKOrder, e *CatFKOrderEvide
 		order.Status = model.CatFKOrderStatusPaid
 	}
 	if !e.Delivered {
-		_, err := s.store.Retry(order.ID, order.Version, s.now().Add(30*time.Second).Unix())
+		_, err := s.store.Retry(order.ID, order.Version, s.now().Add(15*time.Second).Unix())
 		return err
 	}
 	// A delivery must be one exact non-empty code. It is never persisted or

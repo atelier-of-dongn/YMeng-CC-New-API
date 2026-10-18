@@ -27,6 +27,7 @@ it.each(Object.entries(resources))(
       'Read CatFK channels',
       'Expected credited balance (USD)',
       'CatFK product IDs must be unique',
+      'Check status',
       'Waiting for payment confirmation',
       'Click here if payment did not open',
       'Payment successful',
@@ -48,6 +49,7 @@ it.each(Object.entries(resources))(
 it('shows the requested Chinese custom amount note and switches gateway labels with the language', async () => {
   const i18n = createInstance()
   await i18n.init({ lng: 'zh', fallbackLng: 'en', resources })
+  expect(i18n.t('Check status')).toBe('查询状态')
   expect(i18n.t('Waiting for payment confirmation')).toBe('等待付款确认')
   expect(i18n.t('Click here if payment did not open')).toBe(
     '若未跳转支付请点击'

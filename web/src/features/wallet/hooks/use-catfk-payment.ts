@@ -312,6 +312,7 @@ export function useCatfkPayment(
       !payMutation.isPending &&
       orderStatus !== 'needs_attention',
     refetchInterval: 5000,
+    refetchOnWindowFocus: 'always',
     refetchIntervalInBackground: true,
     retry: false,
     meta: { errorToast: false },
@@ -339,6 +340,37 @@ export function useCatfkPayment(
     userId,
     applyOrderStatus,
     t,
+  ])
+
+  const refetchTrackedOrder = trackedOrder.refetch
+  useEffect(() => {
+    if (
+      !pendingTrade ||
+      !userId ||
+      uncertain ||
+      payMutation.isPending ||
+      orderStatus === 'needs_attention'
+    ) {
+      return
+    }
+    const checkOnReturn = () => {
+      if (
+        identity.current === userId &&
+        !inFlight.current &&
+        !unresolved.current
+      ) {
+        void refetchTrackedOrder({ cancelRefetch: false })
+      }
+    }
+    window.addEventListener('focus', checkOnReturn)
+    return () => window.removeEventListener('focus', checkOnReturn)
+  }, [
+    pendingTrade,
+    userId,
+    uncertain,
+    payMutation.isPending,
+    orderStatus,
+    refetchTrackedOrder,
   ])
 
   async function resume() {

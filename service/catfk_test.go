@@ -450,6 +450,52 @@ func TestCatFKPollRecoversSubmittingWithoutCreate(t *testing.T) {
 	assert.Zero(t, store.completed)
 }
 
+func TestCatFKLatePaymentRecoveryDoesNotWaitForOldOrderVersion(t *testing.T) {
+	for _, status := range []string{model.CatFKOrderStatusPending, model.CatFKOrderStatusPaid} {
+		t.Run(status, func(t *testing.T) {
+			s, a, store, _ := catFKFixture(t)
+			_, err := s.create(context.Background(), 7, catFKRequest(t, s))
+			require.NoError(t, err)
+			store.order.Status = status
+			store.order.Version = 100
+			started := s.now()
+			a.queryFn = func(*model.CatFKOrder, CatFKCredentials) (*CatFKOrderEvidence, error) {
+				return nil, errors.New("temporary query failure after waiting for payment")
+			}
+			require.NoError(t, s.poll(context.Background()))
+			assert.LessOrEqual(t, store.order.NextQueryAt-started.Unix(), int64(60), "one transient failure must not postpone a late payment for fifteen minutes")
+			assert.Zero(t, store.completed)
+			s.now = func() time.Time { return started.Add(time.Minute) }
+			a.queryFn = func(o *model.CatFKOrder, _ CatFKCredentials) (*CatFKOrderEvidence, error) {
+				e := catFKTestEvidence(o)
+				return &e, nil
+			}
+			require.NoError(t, s.poll(context.Background()))
+			assert.Equal(t, model.CatFKOrderStatusCompleted, store.order.Status)
+			assert.Equal(t, 1, store.completed)
+			assert.EqualValues(t, 1, a.creates.Load())
+		})
+	}
+}
+
+func TestCatFKPendingPaymentAndDeliveryRecheckPromptly(t *testing.T) {
+	for _, paid := range []bool{false, true} {
+		t.Run(fmt.Sprintf("paid=%t", paid), func(t *testing.T) {
+			s, a, store, _ := catFKFixture(t)
+			_, err := s.create(context.Background(), 7, catFKRequest(t, s))
+			require.NoError(t, err)
+			a.queryFn = func(o *model.CatFKOrder, _ CatFKCredentials) (*CatFKOrderEvidence, error) {
+				e := catFKTestEvidence(o)
+				e.Paid, e.Delivered = paid, false
+				return &e, nil
+			}
+			require.NoError(t, s.poll(context.Background()))
+			assert.Equal(t, s.now().Add(15*time.Second).Unix(), store.order.NextQueryAt)
+			assert.Zero(t, store.completed)
+		})
+	}
+}
+
 func TestCatFKQueryVerificationFailureRequiresAttention(t *testing.T) {
 	s, a, store, _ := catFKFixture(t)
 	req := catFKRequest(t, s)

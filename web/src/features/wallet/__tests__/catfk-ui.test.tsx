@@ -12,6 +12,7 @@ import {
   useSystemConfigStore,
 } from '@/stores/system-config-store'
 
+import { CatfkOrderAction } from '../components/catfk-order-action'
 import { BillingHistoryDialog } from '../components/dialogs/billing-history-dialog'
 import { PaymentConfirmDialog } from '../components/dialogs/payment-confirm-dialog'
 import { RechargeFormCard } from '../components/recharge-form-card'
@@ -221,11 +222,38 @@ it('disables the store method for custom input even matching a tier and re-enabl
   expect(pay).toHaveBeenCalledWith(channel, product)
 })
 
-it('hides the custom amount warning before the user edits the initial amount', () => {
-  render(<RechargeFormCard {...base} selectedPreset={null} />)
+it('shows the custom amount note on the initially disabled store method and hides it after choosing a mapped preset', async () => {
+  function WalletAmounts() {
+    const [preset, setPreset] = useState<number | null>(null)
+    return (
+      <RechargeFormCard
+        {...base}
+        selectedPreset={preset}
+        onSelectPreset={(next) => setPreset(next.value)}
+        topupInfo={{
+          ...topupInfo,
+          enable_online_topup: true,
+          pay_methods: [{ type: 'alipay', name: 'Existing Alipay' }],
+        }}
+      />
+    )
+  }
+  render(<WalletAmounts />)
+  const store = screen.getByRole('button', { name: /WeChat/ })
+  expect(store).toBeDisabled()
+  expect(store).toHaveAccessibleName('WeChat. Custom amounts are not supported')
+  expect(store).toHaveAttribute('title', 'Custom amounts are not supported')
+  expect(screen.getByText('Custom amounts are not supported')).toHaveClass(
+    'text-[11px]',
+    'text-muted-foreground',
+    'font-normal'
+  )
+  expect(screen.getByRole('button', { name: 'Existing Alipay' })).toBeEnabled()
+  await userEvent.click(screen.getByRole('button', { name: /^10 Pay/ }))
   expect(
     screen.queryByText('Custom amounts are not supported')
   ).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'WeChat' })).toBeEnabled()
 })
 
 it('maps a shared preset to a newly configured product by credited USD amount rather than product name or ID', async () => {
@@ -504,6 +532,64 @@ it.each([
     ).toBeDisabled()
   }
 )
+it('hides history query and payment-link controls when a pending order completes after a status check', async () => {
+  const get = vi
+    .spyOn(api, 'get')
+    .mockResolvedValueOnce({
+      data: {
+        success: true,
+        data: {
+          trade_no: 'history-order',
+          status: 'pending',
+          payment_url: 'https://pay.example/existing-order',
+        },
+      },
+    })
+    .mockResolvedValueOnce({
+      data: {
+        success: true,
+        data: {
+          trade_no: 'history-order',
+          status: 'completed',
+        },
+      },
+    })
+  const completed = vi.fn().mockResolvedValue(undefined)
+  render(<CatfkOrderAction tradeNo='history-order' onCompleted={completed} />, {
+    wrapper,
+  })
+  const user = userEvent.setup()
+  await user.click(screen.getByRole('button', { name: 'Check status' }))
+  expect(
+    await screen.findByRole('button', { name: 'Open payment page' })
+  ).toHaveAttribute('href', 'https://pay.example/existing-order')
+  await user.click(screen.getByRole('button', { name: 'Check status' }))
+  await waitFor(() =>
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Wallet credit completed'
+    )
+  )
+  expect(
+    screen.queryByRole('button', { name: 'Check status' })
+  ).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: 'Open payment page' })
+  ).not.toBeInTheDocument()
+  expect(completed).toHaveBeenCalledOnce()
+  expect(get).toHaveBeenLastCalledWith('/api/user/catfk/orders/history-order')
+})
+
+it('keeps the history status query available after a failed request', async () => {
+  vi.spyOn(api, 'get').mockRejectedValue(new Error('Network unavailable'))
+  render(<CatfkOrderAction tradeNo='failed-order' />, { wrapper })
+  await userEvent.click(screen.getByRole('button', { name: 'Check status' }))
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'Check status' })).toBeEnabled()
+  )
+  expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  expect(screen.queryByText('Wallet credit completed')).not.toBeInTheDocument()
+})
+
 it('formats Catfk history quota once and recovers an order through the server without local storage', async () => {
   useSystemConfigStore.getState().setConfig({
     currency: { ...DEFAULT_CURRENCY_CONFIG, quotaPerUnit: 500000 },
@@ -521,8 +607,18 @@ it('formats Catfk history quota once and recovers an order through the server wi
       data: {
         success: true,
         data: {
-          total: 2,
+          total: 3,
           items: [
+            {
+              id: 3,
+              amount: 5000000,
+              money: 72,
+              trade_no: 'completed-catfk-order',
+              payment_method: 'catfk',
+              payment_provider: 'catfk',
+              status: 'success',
+              create_time: 1,
+            },
             {
               id: 1,
               amount: 5000000,
@@ -557,8 +653,11 @@ it('formats Catfk history quota once and recovers an order through the server wi
     { wrapper }
   )
   await screen.findByText('catfk-order')
-  expect(screen.getAllByText('$10')).toHaveLength(2)
-  await userEvent.click(screen.getByRole('button', { name: 'Resume payment' }))
+  expect(screen.getAllByText('$10')).toHaveLength(3)
+  expect(screen.getAllByRole('button', { name: 'Check status' })).toHaveLength(
+    1
+  )
+  await userEvent.click(screen.getByRole('button', { name: 'Check status' }))
   await waitFor(() =>
     expect(screen.getByRole('status')).toHaveTextContent(
       'Payment received. Wallet credit is pending.'

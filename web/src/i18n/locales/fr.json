@@ -7711,6 +7711,7 @@
     "Click here if payment did not open": "Cliquez ici si le paiement ne s’ouvre pas",
     "Payment successful": "Paiement réussi",
     "Unable to check payment status. Retrying automatically.": "État du paiement indisponible. Nouvelle tentative automatique.",
-    "Waiting for payment confirmation": "En attente de confirmation du paiement"
+    "Waiting for payment confirmation": "En attente de confirmation du paiement",
+    "Check status": "Vérifier le statut"
   }
 }

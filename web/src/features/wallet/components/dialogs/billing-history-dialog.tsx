@@ -270,12 +270,13 @@ export function BillingHistoryDialog({
                         </div>
                       </div>
 
-                      {record.payment_provider === 'catfk' && (
-                        <CatfkOrderAction
-                          tradeNo={record.trade_no}
-                          onCompleted={onCatfkCompleted}
-                        />
-                      )}
+                      {record.payment_provider === 'catfk' &&
+                        record.status !== 'success' && (
+                          <CatfkOrderAction
+                            tradeNo={record.trade_no}
+                            onCompleted={onCatfkCompleted}
+                          />
+                        )}
 
                       {/* Admin Actions */}
                       {isAdmin &&

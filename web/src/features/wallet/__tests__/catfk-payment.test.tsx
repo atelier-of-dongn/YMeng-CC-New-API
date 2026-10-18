@@ -304,6 +304,49 @@ it('keeps the payment dialog amount bound to its order when choosing another pro
   expect(completed).toHaveBeenCalledOnce()
 })
 
+it('checks a dismissed pending order immediately when returning from the external payment page', async () => {
+  localStorage.setItem('wallet:catfk:order:1', 'return-order')
+  const get = vi.spyOn(api, 'get').mockResolvedValue({
+    data: {
+      success: true,
+      data: { trade_no: 'return-order', status: 'pending' },
+    },
+  })
+  const completed = vi.fn().mockResolvedValue(undefined)
+  const { result } = renderHook(() => useCatfkPayment(info, 1, completed), {
+    wrapper,
+  })
+  await waitFor(() => expect(result.current.orderStatus).toBe('pending'))
+  act(() => result.current.setStatusDialogOpen(false))
+  get.mockResolvedValue({
+    data: {
+      success: true,
+      data: { trade_no: 'return-order', status: 'completed' },
+    },
+  })
+  const callsBeforeReturn = get.mock.calls.length
+  act(() => window.dispatchEvent(new Event('focus')))
+  expect(get.mock.calls.length).toBeGreaterThan(callsBeforeReturn)
+  await waitFor(() => expect(completed).toHaveBeenCalledOnce())
+  expect(result.current.pendingTrade).toBeNull()
+  expect(result.current.statusDialogOpen).toBe(false)
+})
+
+it('does not query an order again on window focus after it has completed', async () => {
+  localStorage.setItem('wallet:catfk:order:1', 'done-order')
+  const get = vi.spyOn(api, 'get').mockResolvedValue({
+    data: {
+      success: true,
+      data: { trade_no: 'done-order', status: 'completed' },
+    },
+  })
+  const { result } = renderHook(() => useCatfkPayment(info, 1), { wrapper })
+  await waitFor(() => expect(result.current.pendingTrade).toBeNull())
+  const calls = get.mock.calls.length
+  act(() => window.dispatchEvent(new Event('focus')))
+  expect(get).toHaveBeenCalledTimes(calls)
+})
+
 it('automatically checks a saved order and refreshes the wallet only after completed settlement', async () => {
   localStorage.setItem('wallet:catfk:order:1', 'saved-trade')
   vi.spyOn(api, 'get').mockResolvedValue({

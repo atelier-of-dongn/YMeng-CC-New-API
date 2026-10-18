@@ -61,7 +61,7 @@ export function CatfkPaymentStatusDialog(props: {
               onClick={props.onCheck}
               disabled={props.checking}
             >
-              {t('Resume payment')}
+              {t('Check status')}
             </Button>
           )}
           <Button onClick={() => props.onOpenChange(false)}>

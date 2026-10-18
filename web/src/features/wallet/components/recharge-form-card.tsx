@@ -134,7 +134,6 @@ export function RechargeFormCard({
 }: RechargeFormCardProps) {
   const { t } = useTranslation()
   const [localAmount, setLocalAmount] = useState(topupAmount.toString())
-  const [customAmountEdited, setCustomAmountEdited] = useState(false)
 
   useEffect(() => {
     // Empty string must survive, otherwise the field can never be cleared
@@ -144,7 +143,6 @@ export function RechargeFormCard({
   }, [topupAmount])
 
   const handleAmountChange = (value: string) => {
-    setCustomAmountEdited(true)
     setLocalAmount(value)
     const numValue = Number.parseInt(value) || 0
     if (numValue >= 0) {
@@ -301,10 +299,7 @@ export function RechargeFormCard({
                               ? 'border-foreground bg-foreground/5 dark:border-foreground dark:bg-foreground/10'
                               : 'border-muted'
                           )}
-                          onClick={() => {
-                            setCustomAmountEdited(false)
-                            onSelectPreset(preset)
-                          }}
+                          onClick={() => onSelectPreset(preset)}
                         >
                           <div className='flex w-full items-center justify-between'>
                             <div className='text-base font-semibold sm:text-lg'>
@@ -391,13 +386,8 @@ export function RechargeFormCard({
                       let disabledLabel: string | undefined
                       if (method.channel) {
                         if (selectedPreset === null) {
-                          disabledReason = t('Select a preset...')
-                          if (customAmountEdited) {
-                            disabledLabel = t(
-                              'Custom amounts are not supported'
-                            )
-                            disabledReason = disabledLabel
-                          }
+                          disabledLabel = t('Custom amounts are not supported')
+                          disabledReason = disabledLabel
                         } else if (!selectedCatfkProduct) {
                           disabledReason = t('Invalid top-up amount')
                         } else if (

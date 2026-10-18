@@ -7711,6 +7711,7 @@
     "Click here if payment did not open": "Нажмите, если страница оплаты не открылась",
     "Payment successful": "Оплата прошла успешно",
     "Unable to check payment status. Retrying automatically.": "Не удалось проверить оплату. Повторяем автоматически.",
-    "Waiting for payment confirmation": "Ожидание подтверждения оплаты"
+    "Waiting for payment confirmation": "Ожидание подтверждения оплаты",
+    "Check status": "Проверить статус"
   }
 }

@@ -455,7 +455,6 @@ export function Wallet(props: WalletProps) {
               }
             : undefined
         }
-        topupLink={undefined}
         calculating={catfk.calculating}
         processing={catfk.processing}
         catfk={{

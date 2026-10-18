@@ -30,9 +30,9 @@ export function CatfkOrderAction(props: {
         throw new Error(t('Invalid payment response'))
       }
       setStatus(order.status)
-      if (order.status === 'completed') await props.onCompleted?.()
       const url = safeCatfkPaymentUrl(order.payment_url)
       setPaymentUrl(order.status === 'pending' ? url : null)
+      if (order.status === 'completed') await props.onCompleted?.()
     } catch (error) {
       handleServerError(error, t('Payment request failed'))
     }
@@ -50,9 +50,15 @@ export function CatfkOrderAction(props: {
           {t('Open payment page')}
         </Button>
       )}
-      <Button variant='outline' disabled={mutation.isPending} onClick={resume}>
-        {t('Resume payment')}
-      </Button>
+      {status !== 'completed' && (
+        <Button
+          variant='outline'
+          disabled={mutation.isPending}
+          onClick={resume}
+        >
+          {t('Check status')}
+        </Button>
+      )}
     </div>
   )
 }

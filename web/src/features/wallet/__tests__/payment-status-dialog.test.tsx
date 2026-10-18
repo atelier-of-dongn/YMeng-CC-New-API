@@ -215,7 +215,7 @@ it('shows a recoverable query error and keeps the safe fallback available withou
   expect(
     screen.getByText('Unable to check payment status. Retrying automatically.')
   ).toBeVisible()
-  await userEvent.click(screen.getByRole('button', { name: 'Resume payment' }))
+  await userEvent.click(screen.getByRole('button', { name: 'Check status' }))
   expect(check).toHaveBeenCalledOnce()
   expect(screen.getByRole('link')).toHaveAttribute('href', paymentUrl)
 })
