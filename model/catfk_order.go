@@ -120,6 +120,17 @@ func GetCatFKOrderForUser(userID int, tradeNo string) (*CatFKOrder, error) {
 	return order, err
 }
 
+// FindCatFKOrderForRequest recovers a persisted purchase before revalidating a
+// quote or current settings. A retry must not create a different purchase.
+func FindCatFKOrderForRequest(userID int, idempotencyKey string) (*CatFKOrder, error) {
+	order := &CatFKOrder{}
+	err := DB.Where("user_id = ? AND idempotency_key = ?", userID, idempotencyKey).First(order).Error
+	if errors.Is(err, gorm.ErrRecordNotFound) {
+		return nil, nil
+	}
+	return order, err
+}
+
 func ListDueCatFKOrders(now int64, limit int) ([]*CatFKOrder, error) {
 	orders := make([]*CatFKOrder, 0)
 	if limit <= 0 || limit > 1000 {

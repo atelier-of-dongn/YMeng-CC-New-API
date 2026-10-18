@@ -7,10 +7,12 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"math"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/QuantumNous/new-api/common"
@@ -127,6 +129,7 @@ func (catFKUnverifiedAdapter) Channels(context.Context, string) ([]operation_set
 type catFKStore interface {
 	Create(*model.CatFKOrder) (*model.CatFKOrder, bool, error)
 	Get(int, string) (*model.CatFKOrder, error)
+	Find(int, string) (*model.CatFKOrder, error)
 	Due(int64, int) ([]*model.CatFKOrder, error)
 	Claim(int, int64, int64) (*model.CatFKOrder, bool, error)
 	Update(int, int64, model.CatFKOrderUpdate) (bool, error)
@@ -141,6 +144,9 @@ func (catFKModelStore) Create(o *model.CatFKOrder) (*model.CatFKOrder, bool, err
 }
 func (catFKModelStore) Get(u int, t string) (*model.CatFKOrder, error) {
 	return model.GetCatFKOrderForUser(u, t)
+}
+func (catFKModelStore) Find(u int, key string) (*model.CatFKOrder, error) {
+	return model.FindCatFKOrderForRequest(u, key)
 }
 func (catFKModelStore) Due(n int64, l int) ([]*model.CatFKOrder, error) {
 	return model.ListDueCatFKOrders(n, l)
@@ -168,9 +174,9 @@ type catFKService struct {
 }
 
 func catFKProductionService() *catFKService {
-	return &catFKService{adapter: catFKUnverifiedAdapter{}, store: catFKModelStore{}, setting: operation_setting.GetCatFKSetting, now: time.Now, key: catFKEncryptionKey}
+	return &catFKService{adapter: newCatFKHTTPAdapter(), store: catFKModelStore{}, setting: operation_setting.GetCatFKSetting, now: time.Now, key: catFKEncryptionKey}
 }
-func CatFKProtocolReady() bool { return catFKUnverifiedAdapter{}.Ready() }
+func CatFKProtocolReady() bool { return newCatFKHTTPAdapter().Ready() }
 func CatFKUnavailableReason() string {
 	if !CatFKProtocolReady() {
 		return ErrCatFKProtocolUnverified.Error()
@@ -180,6 +186,11 @@ func CatFKUnavailableReason() string {
 	}
 	if _, err := catFKEncryptionKey(); err != nil {
 		return ErrCatFKEncryptionKey.Error()
+	}
+	cfg := operation_setting.GetCatFKSetting()
+	token, err := operation_setting.NormalizeCatFKStoreToken(cfg.StoreToken)
+	if err != nil || token == "" || len(cfg.Products) == 0 || len(cfg.Channels) == 0 {
+		return "Invalid CatFK settings"
 	}
 	return ""
 }
@@ -217,6 +228,9 @@ func GetUserCatFKPayment(userID int, tradeNo string) (*CatFKPayment, error) {
 	return catFKSafePayment(order), nil
 }
 func ListCatFKChannels(ctx context.Context, token string) ([]operation_setting.CatFKChannel, error) {
+	if !CatFKProtocolReady() {
+		return nil, ErrCatFKProtocolUnverified
+	}
 	channels, err := catFKProductionService().adapter.Channels(ctx, token)
 	return channels, catFKPublicError(err)
 }
@@ -363,17 +377,8 @@ func (s *catFKService) quote(ctx context.Context, userID int, productID, channel
 	return &CatFKQuote{QuoteID: token, Amount: amountFloat, Currency: offer.Currency, TopUpAmount: product.Amount}, nil
 }
 func (s *catFKService) create(ctx context.Context, userID int, req CatFKPaymentRequest) (*CatFKPayment, error) {
-	// This gate must precede all persistence and external calls.
 	if !s.adapter.Ready() {
 		return nil, ErrCatFKProtocolUnverified
-	}
-	cfg := s.setting()
-	if !cfg.Enabled {
-		return nil, ErrCatFKDisabled
-	}
-	key, err := s.key()
-	if err != nil {
-		return nil, err
 	}
 	if userID <= 0 || req.ProductID == "" || req.ChannelID == "" || len(req.IdempotencyKey) < 16 || len(req.IdempotencyKey) > 128 || len(req.QQ) == 0 || len(req.QQ) > 32 {
 		return nil, ErrCatFKInvalidRequest
@@ -382,6 +387,26 @@ func (s *catFKService) create(ctx context.Context, userID int, req CatFKPaymentR
 		if digit < '0' || digit > '9' {
 			return nil, ErrCatFKInvalidRequest
 		}
+	}
+	// Recovery is account-scoped and does not depend on an expired quote,
+	// disabled new purchases, or a changed shop configuration.
+	existing, err := s.store.Find(userID, req.IdempotencyKey)
+	if err != nil {
+		return nil, ErrCatFKOrderUnavailable
+	}
+	if existing != nil {
+		if existing.TierID != req.ProductID || existing.ChannelID != req.ChannelID {
+			return nil, ErrCatFKInvalidRequest
+		}
+		return catFKSafePayment(existing), nil
+	}
+	cfg := s.setting()
+	if !cfg.Enabled {
+		return nil, ErrCatFKDisabled
+	}
+	key, err := s.key()
+	if err != nil {
+		return nil, err
 	}
 	var snap catFKQuoteSnapshot
 	if err = catFKOpen(key, "catfk/quote/v1", req.QuoteID, &snap); err != nil || snap.UserID != userID || snap.ProductID != req.ProductID || snap.ChannelID != req.ChannelID || snap.ConfigHash != catFKConfigHash(cfg) || snap.ExpiresAt <= s.now().Unix() {
@@ -415,6 +440,9 @@ func (s *catFKService) create(ctx context.Context, userID int, req CatFKPaymentR
 		return nil, ErrCatFKOrderUnavailable
 	}
 	if alreadyExists {
+		if order.TierID != req.ProductID || order.ChannelID != req.ChannelID {
+			return nil, ErrCatFKInvalidRequest
+		}
 		return catFKSafePayment(order), nil
 	}
 	claimed, ok, err := s.store.Claim(order.ID, s.now().Unix(), 120)
@@ -433,6 +461,14 @@ func (s *catFKService) create(ctx context.Context, userID int, req CatFKPaymentR
 	result, createErr := s.adapter.Create(createCtx, claimed, credentials, req.QQ)
 	cancel()
 	update := model.CatFKOrderUpdate{Status: model.CatFKOrderStatusCreationUnknown, FailureCode: "creation_unknown", NextQueryAt: s.now().Add(time.Minute).Unix()}
+	// A received identifier is valuable for recovery even if the verification
+	// query fails. It never authorizes payment navigation or wallet credit.
+	if result != nil && result.UpstreamOrderID != "" && len(result.UpstreamOrderID) <= 128 && !strings.ContainsAny(result.UpstreamOrderID, " \t\r\n\x00") {
+		update.UpstreamOrderID = &result.UpstreamOrderID
+		if catFKValidPaymentURL(result.PaymentURL) {
+			update.PaymentURL = &result.PaymentURL
+		}
+	}
 	// Persist refreshed cookies even when the create result is ambiguous. An
 	// adapter must return any obtained recovery credentials on error as well.
 	if result != nil && result.Credentials != nil {
@@ -441,6 +477,11 @@ func (s *catFKService) create(ctx context.Context, userID int, req CatFKPaymentR
 			return nil, sealErr
 		}
 		update.CredentialCiphertext = &encrypted
+	}
+	if errors.Is(createErr, ErrCatFKVerification) {
+		update.Status = model.CatFKOrderStatusNeedsAttention
+		update.FailureCode = "verification_mismatch"
+		update.NextQueryAt = 0
 	}
 	if createErr == nil && result != nil && result.UpstreamOrderID != "" && catFKValidPaymentURL(result.PaymentURL) {
 		if result.Evidence.UpstreamOrderID == result.UpstreamOrderID && catFKMatchesPurchase(claimed, &result.Evidence) {
@@ -479,10 +520,11 @@ func catFKPublicError(err error) error {
 	return ErrCatFKOrderUnavailable
 }
 
-// catFKMatchesPurchase validates the normalized identity and exact monetary
-// snapshot for both creation receipts and subsequent paid/delivery evidence.
+// catFKMatchesPurchase validates upstream trade, shop, goods, quantity and exact
+// amount. Channel/currency remain local purchase metadata unless also returned
+// by upstream, in which case they must match; missing fields are never invented.
 func catFKMatchesPurchase(order *model.CatFKOrder, e *CatFKOrderEvidence) bool {
 	actual, ae := decimal.NewFromString(e.Amount)
 	expected, ee := decimal.NewFromString(order.PriceAmount)
-	return e.UpstreamOrderID != "" && (order.UpstreamOrderID == nil || *order.UpstreamOrderID == e.UpstreamOrderID) && e.ShopID == order.ShopID && e.ProductID == order.ProductID && e.ChannelID == order.ChannelID && e.Quantity == 1 && ae == nil && ee == nil && actual.IsPositive() && actual.Equal(expected) && e.Currency == order.Currency
+	return e.UpstreamOrderID != "" && (order.UpstreamOrderID == nil || *order.UpstreamOrderID == e.UpstreamOrderID) && e.ShopID == order.ShopID && e.ProductID == order.ProductID && (e.ChannelID == "" || e.ChannelID == order.ChannelID) && e.Quantity == 1 && ae == nil && ee == nil && actual.IsPositive() && actual.Equal(expected) && (e.Currency == "" || e.Currency == order.Currency)
 }

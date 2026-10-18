@@ -327,6 +327,13 @@ func TestCatFKOrderPersistenceAndRecovery(t *testing.T) {
 	assert.True(t, existed)
 	assert.Equal(t, order.ID, existing.ID)
 	assert.Equal(t, 500, existing.ExpectedQuota)
+	recovered, err := FindCatFKOrderForRequest(userID, order.IdempotencyKey)
+	require.NoError(t, err)
+	require.NotNil(t, recovered)
+	assert.Equal(t, order.ID, recovered.ID)
+	otherAccount, err := FindCatFKOrderForRequest(userID+1, order.IdempotencyKey)
+	require.NoError(t, err)
+	assert.Nil(t, otherAccount)
 	_, err = GetCatFKOrderForUser(userID+1, order.TradeNo)
 	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
 	payload, err := common.Marshal(order)
@@ -341,7 +348,7 @@ func TestCatFKOrderPersistenceAndRecovery(t *testing.T) {
 	_, ok, err = ClaimCatFKOrder(order.ID, now, 60)
 	require.NoError(t, err)
 	assert.False(t, ok)
-	recovered, ok, err := ClaimCatFKOrder(order.ID, now+61, 60)
+	recovered, ok, err = ClaimCatFKOrder(order.ID, now+61, 60)
 	require.NoError(t, err)
 	require.True(t, ok)
 	assert.Equal(t, CatFKOrderStatusCreationUnknown, recovered.Status)
@@ -402,13 +409,13 @@ func TestCatFKCompletionRollsBackFailures(t *testing.T) {
 			initialQuota := 0
 			switch scenario {
 			case "denomination":
-				require.NoError(t, DB.Model(&Redemption{}).Where("key = ?", key).Update("quota", 501).Error)
+				require.NoError(t, DB.Model(&Redemption{}).Where(commonKeyCol+" = ?", key).Update("quota", 501).Error)
 			case "expired":
-				require.NoError(t, DB.Model(&Redemption{}).Where("key = ?", key).Update("expired_time", common.GetTimestamp()-1).Error)
+				require.NoError(t, DB.Model(&Redemption{}).Where(commonKeyCol+" = ?", key).Update("expired_time", common.GetTimestamp()-1).Error)
 			case "disabled":
-				require.NoError(t, DB.Model(&Redemption{}).Where("key = ?", key).Update("status", common.RedemptionCodeStatusDisabled).Error)
+				require.NoError(t, DB.Model(&Redemption{}).Where(commonKeyCol+" = ?", key).Update("status", common.RedemptionCodeStatusDisabled).Error)
 			case "used":
-				require.NoError(t, DB.Model(&Redemption{}).Where("key = ?", key).Update("status", common.RedemptionCodeStatusUsed).Error)
+				require.NoError(t, DB.Model(&Redemption{}).Where(commonKeyCol+" = ?", key).Update("status", common.RedemptionCodeStatusUsed).Error)
 			case "wallet_overflow":
 				initialQuota = common.MaxWalletQuota - 499
 				require.NoError(t, DB.Model(&User{}).Where("id = ?", userID).Update("quota", initialQuota).Error)
@@ -418,7 +425,7 @@ func TestCatFKCompletionRollsBackFailures(t *testing.T) {
 				require.NoError(t, DB.Model(&TopUp{}).Where("id = ?", order.TopUpID).Update("status", common.TopUpStatusSuccess).Error)
 			}
 			var before Redemption
-			require.NoError(t, DB.Where("key = ?", key).First(&before).Error)
+			require.NoError(t, DB.Where(commonKeyCol+" = ?", key).First(&before).Error)
 			_, err := CompleteVerifiedCatFKOrder(order.ID, order.Version, key, "")
 			require.Error(t, err)
 			stored, err := GetCatFKOrderByTradeNo(order.TradeNo)
@@ -428,7 +435,7 @@ func TestCatFKCompletionRollsBackFailures(t *testing.T) {
 			assert.Nil(t, stored.RedemptionID)
 			assert.Equal(t, "encrypted-credentials", stored.CredentialCiphertext)
 			var after Redemption
-			require.NoError(t, DB.Where("key = ?", key).First(&after).Error)
+			require.NoError(t, DB.Where(commonKeyCol+" = ?", key).First(&after).Error)
 			assert.Equal(t, before.Status, after.Status)
 			assert.Equal(t, before.UsedUserId, after.UsedUserId)
 			var user User

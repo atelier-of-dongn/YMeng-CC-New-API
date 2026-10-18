@@ -15,7 +15,7 @@ type catFKPollHandler struct{}
 func (catFKPollHandler) Type() string { return "catfk_order_poll" }
 
 // Disabling new purchases never stops recovery of previously created orders.
-// The unverified production adapter cannot issue queries or schedule tasks.
+// Protocol readiness and the encryption key still guard all background queries.
 func (catFKPollHandler) Enabled() bool           { return CatFKProtocolReady() }
 func (catFKPollHandler) Interval() time.Duration { return 15 * time.Second }
 func (catFKPollHandler) NewPayload() any         { return nil }
@@ -74,6 +74,13 @@ func (s *catFKService) poll(ctx context.Context) error {
 		queryCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 		evidence, queryErr := s.adapter.Query(queryCtx, order, credentials)
 		cancel()
+		if errors.Is(queryErr, ErrCatFKVerification) {
+			_, err = s.store.Update(order.ID, order.Version, model.CatFKOrderUpdate{Status: model.CatFKOrderStatusNeedsAttention, FailureCode: "verification_mismatch"})
+			if err != nil {
+				return err
+			}
+			continue
+		}
 		if queryErr != nil || evidence == nil {
 			// Version grows on each claim/retry; capped exponential backoff survives
 			// restarts without relying on process-local counters.

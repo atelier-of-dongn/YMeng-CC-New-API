@@ -219,6 +219,14 @@ func UpdateOption(c *gin.Context) {
 			common.ApiSuccess(c, nil)
 			return
 		}
+		if option.Key == "catfk_setting.store_token" {
+			token, err := operation_setting.NormalizeCatFKStoreToken(value)
+			if err != nil {
+				common.ApiError(c, err)
+				return
+			}
+			option.Value = token
+		}
 		if option.Key == "catfk_setting.enabled" && value == "true" && !operation_setting.IsPaymentComplianceConfirmed() {
 			common.ApiErrorT(c, "Payment, redemption, subscription, and invitation reward features are disabled. The administrator must confirm compliance terms before enabling them.")
 			return

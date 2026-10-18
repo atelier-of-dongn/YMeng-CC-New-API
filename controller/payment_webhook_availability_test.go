@@ -14,8 +14,10 @@ import (
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/QuantumNous/new-api/setting/system_setting"
 	"github.com/gin-gonic/gin"
+	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/gorm"
 )
 
 func confirmPaymentComplianceForTest(t *testing.T) {
@@ -323,15 +325,30 @@ func TestCatFKStoreTokenIsNotReturnedByOptions(t *testing.T) {
 	assert.NotContains(t, recorder.Body.String(), key)
 }
 
-func TestCatFKUnverifiedProtocolRejectsPaymentEndpoints(t *testing.T) {
+func TestCatFKDisabledPurchasesAndInvalidShopRejectPaymentEndpoints(t *testing.T) {
 	confirmPaymentComplianceForTest(t)
+	previousDB := model.DB
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	require.NoError(t, db.AutoMigrate(&model.CatFKOrder{}))
+	model.DB = db
+	t.Cleanup(func() {
+		model.DB = previousDB
+		sqlDB, dbErr := db.DB()
+		require.NoError(t, dbErr)
+		require.NoError(t, sqlDB.Close())
+	})
+	cfg := operation_setting.GetCatFKSetting()
+	previous := *cfg
+	cfg.Enabled = false
+	t.Cleanup(func() { *cfg = previous })
 	for _, tc := range []struct {
-		name, body string
-		handler    gin.HandlerFunc
+		name, body, messageKey string
+		handler                gin.HandlerFunc
 	}{
-		{"quote", `{"product_id":"tier","channel_id":"alipay"}`, RequestCatFKQuote},
-		{"pay", `{"product_id":"tier","channel_id":"alipay","qq":"12345","idempotency_key":"abcdefghijklmnop"}`, RequestCatFKPay},
-		{"channels", `{"store_token":"public-shop-token"}`, ListCatFKPaymentChannels},
+		{"quote", `{"product_id":"tier","channel_id":"alipay"}`, "CatFK payments are disabled", RequestCatFKQuote},
+		{"pay", `{"product_id":"tier","channel_id":"alipay","qq":"12345","idempotency_key":"abcdefghijklmnop"}`, "CatFK payments are disabled", RequestCatFKPay},
+		{"channels", `{"store_token":"https://other.example/shop/test"}`, "Invalid CatFK payment request", ListCatFKPaymentChannels},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			recorder := httptest.NewRecorder()
@@ -346,7 +363,7 @@ func TestCatFKUnverifiedProtocolRejectsPaymentEndpoints(t *testing.T) {
 			}
 			require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &response))
 			assert.False(t, response.Success)
-			assert.Equal(t, "CatFK protocol is not verified", response.MessageKey)
+			assert.Equal(t, tc.messageKey, response.MessageKey)
 		})
 	}
 }

@@ -2,6 +2,7 @@ package operation_setting
 
 import (
 	"math"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -31,6 +32,28 @@ type CatFKSetting struct {
 
 var catfkSetting = CatFKSetting{Products: []CatFKProduct{}, Channels: []CatFKChannel{}}
 var catfkProductIDPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,64}$`)
+var catfkStoreTokenPattern = regexp.MustCompile(`^[a-zA-Z0-9_-]{1,128}$`)
+
+// NormalizeCatFKStoreToken accepts the public shop identifier or its canonical
+// platform URL. It never accepts an administrator-selected upstream host.
+func NormalizeCatFKStoreToken(value string) (string, error) {
+	if len(value) > 4096 || strings.ContainsAny(value, "\r\n\x00") {
+		return "", common.NewMessage("Invalid CatFK settings")
+	}
+	token := strings.TrimSpace(value)
+	if token == "" || catfkStoreTokenPattern.MatchString(token) {
+		return token, nil
+	}
+	u, err := url.Parse(token)
+	if err != nil || u.Scheme != "https" || u.Host != "catfk.com" || u.User != nil || u.RawQuery != "" || u.ForceQuery || u.Fragment != "" || u.RawPath != "" {
+		return "", common.NewMessage("Invalid CatFK settings")
+	}
+	token, ok := strings.CutPrefix(strings.TrimSuffix(u.Path, "/"), "/shop/")
+	if !ok || !catfkStoreTokenPattern.MatchString(token) {
+		return "", common.NewMessage("Invalid CatFK settings")
+	}
+	return token, nil
+}
 
 func init() { config.GlobalConfig.Register("catfk_setting", &catfkSetting) }
 
@@ -47,8 +70,8 @@ func ValidateCatFKOption(key, value string) error {
 			return common.NewMessage("Invalid CatFK settings")
 		}
 	case "catfk_setting.store_token":
-		if len(value) > 4096 || strings.ContainsAny(value, "\r\n\x00") {
-			return common.NewMessage("Invalid CatFK settings")
+		if _, err := NormalizeCatFKStoreToken(value); err != nil {
+			return err
 		}
 	case "catfk_setting.products":
 		var products []CatFKProduct

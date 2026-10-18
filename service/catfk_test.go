@@ -78,6 +78,14 @@ func (f *catFKTestStore) Get(u int, t string) (*model.CatFKOrder, error) {
 	}
 	return cloneCatFK(f.order), nil
 }
+func (f *catFKTestStore) Find(u int, key string) (*model.CatFKOrder, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.order == nil || f.order.UserID != u || f.order.IdempotencyKey != key {
+		return nil, nil
+	}
+	return cloneCatFK(f.order), nil
+}
 func (f *catFKTestStore) Due(_ int64, limit int) ([]*model.CatFKOrder, error) {
 	f.dueLimit = limit
 	return []*model.CatFKOrder{cloneCatFK(f.order)}, nil
@@ -171,20 +179,32 @@ func catFKRequest(t *testing.T, s *catFKService) CatFKPaymentRequest {
 	return CatFKPaymentRequest{ProductID: "tier", ChannelID: "pay", QuoteID: q.QuoteID, QQ: "123456", IdempotencyKey: "stable-request-key"}
 }
 
-func TestCatFKProductionRemainsUnavailable(t *testing.T) {
-	assert.False(t, CatFKProtocolReady())
-	assert.Equal(t, ErrCatFKProtocolUnverified.Error(), CatFKUnavailableReason())
-	// Nil dependencies deliberately prove that neither persistence nor upstream
-	// nor even key/config lookup is touched before the production protocol gate.
+func TestCatFKStoreTokenAcceptsOnlyPlatformShopLinks(t *testing.T) {
+	for _, input := range []string{"YMengCC", " https://catfk.com/shop/YMengCC/ "} {
+		token, err := operation_setting.NormalizeCatFKStoreToken(input)
+		require.NoError(t, err)
+		assert.Equal(t, "YMengCC", token)
+		require.NoError(t, operation_setting.ValidateCatFKOption("catfk_setting.store_token", input))
+	}
+	for _, input := range []string{"https://other.example/shop/YMengCC", "http://catfk.com/shop/YMengCC", "https://catfk.com:8443/shop/YMengCC", "https://catfk.com/shop/YMengCC?x=1", "https://catfk.com/shop/YMengCC#x", "YMengCC\r\n"} {
+		_, err := operation_setting.NormalizeCatFKStoreToken(input)
+		require.Error(t, err)
+		require.Error(t, operation_setting.ValidateCatFKOption("catfk_setting.store_token", input))
+	}
+}
+
+func TestCatFKUnverifiedAdapterRejectsPaymentOperations(t *testing.T) {
+	assert.True(t, CatFKProtocolReady())
+	// An unverified adapter still cannot touch persistence, keys or settings.
 	s := &catFKService{adapter: catFKUnverifiedAdapter{}}
 	_, err := s.create(context.Background(), 7, CatFKPaymentRequest{})
 	require.ErrorIs(t, err, ErrCatFKProtocolUnverified)
 	_, err = s.quote(context.Background(), 7, "tier", "pay")
 	require.ErrorIs(t, err, ErrCatFKProtocolUnverified)
 	require.ErrorIs(t, s.poll(context.Background()), ErrCatFKProtocolUnverified)
-	_, err = ListCatFKChannels(context.Background(), "secret")
-	require.ErrorIs(t, err, ErrCatFKProtocolUnverified)
-	assert.False(t, (catFKPollHandler{}).Enabled())
+	_, err = ListCatFKChannels(context.Background(), "https://other.example/shop/secret")
+	require.ErrorIs(t, err, ErrCatFKInvalidRequest)
+	assert.True(t, (catFKPollHandler{}).Enabled())
 	assert.Equal(t, ErrCatFKOrderUnavailable, catFKPublicError(errors.New("SQL contains sensitive value")))
 }
 
@@ -294,6 +314,44 @@ func TestCatFKAmbiguousCreationNeverResubmits(t *testing.T) {
 	assert.EqualValues(t, 1, a.creates.Load())
 }
 
+func TestCatFKExistingRequestSurvivesQuoteExpiryAndDisabledPurchases(t *testing.T) {
+	s, a, store, cfg := catFKFixture(t)
+	req := catFKRequest(t, s)
+	first, err := s.create(context.Background(), 7, req)
+	require.NoError(t, err)
+	cfg.Enabled = false
+	cfg.StoreToken = "changed-shop"
+	s.now = func() time.Time { return time.Unix(1700000600, 0) }
+	recovered, err := s.create(context.Background(), 7, req)
+	require.NoError(t, err)
+	assert.Equal(t, first, recovered)
+	assert.EqualValues(t, 1, a.creates.Load())
+	assert.Equal(t, first.TradeNo, store.order.TradeNo)
+
+	req.ChannelID = "different-channel"
+	_, err = s.create(context.Background(), 7, req)
+	require.ErrorIs(t, err, ErrCatFKInvalidRequest)
+	assert.EqualValues(t, 1, a.creates.Load())
+}
+
+func TestCatFKPartialCreationRetainsRecoveryIdentity(t *testing.T) {
+	s, a, store, _ := catFKFixture(t)
+	req := catFKRequest(t, s)
+	a.createFn = func(_ *model.CatFKOrder, c CatFKCredentials) (*CatFKCreatedOrder, error) {
+		c.Cookie = "recovery-cookie"
+		return &CatFKCreatedOrder{UpstreamOrderID: "known-upstream", Credentials: &c}, context.DeadlineExceeded
+	}
+	payment, err := s.create(context.Background(), 7, req)
+	require.NoError(t, err)
+	assert.Equal(t, model.CatFKOrderStatusCreationUnknown, payment.Status)
+	require.NotNil(t, store.order.UpstreamOrderID)
+	assert.Equal(t, "known-upstream", *store.order.UpstreamOrderID)
+	assert.Empty(t, payment.PaymentURL)
+	_, err = s.create(context.Background(), 7, req)
+	require.NoError(t, err)
+	assert.EqualValues(t, 1, a.creates.Load())
+}
+
 func TestCatFKCreationSnapshotMismatch(t *testing.T) {
 	s, a, store, _ := catFKFixture(t)
 	req := catFKRequest(t, s)
@@ -307,6 +365,31 @@ func TestCatFKCreationSnapshotMismatch(t *testing.T) {
 	assert.Equal(t, model.CatFKOrderStatusNeedsAttention, p.Status)
 	assert.Empty(t, p.PaymentURL)
 	assert.Zero(t, store.completed)
+}
+
+func TestCatFKDocumentedReceiptCanSettleOnlyTheBoundPurchase(t *testing.T) {
+	s, a, store, _ := catFKFixture(t)
+	req := catFKRequest(t, s)
+	a.createFn = func(o *model.CatFKOrder, _ CatFKCredentials) (*CatFKCreatedOrder, error) {
+		e := catFKTestEvidence(o)
+		e.ChannelID, e.Currency = "", ""
+		e.Paid, e.Delivered, e.RedemptionKey = false, false, ""
+		return &CatFKCreatedOrder{UpstreamOrderID: "upstream", PaymentURL: "https://payments.example/pay", Evidence: e}, nil
+	}
+	payment, err := s.create(context.Background(), 7, req)
+	require.NoError(t, err)
+	assert.Equal(t, model.CatFKOrderStatusPending, payment.Status)
+	assert.NotEmpty(t, payment.PaymentURL)
+	assert.Zero(t, store.completed)
+	a.queryFn = func(o *model.CatFKOrder, _ CatFKCredentials) (*CatFKOrderEvidence, error) {
+		e := catFKTestEvidence(o)
+		e.ChannelID, e.Currency = "", ""
+		return &e, nil
+	}
+	require.NoError(t, s.poll(context.Background()))
+	assert.Equal(t, model.CatFKOrderStatusCompleted, store.order.Status)
+	assert.Equal(t, 7, store.order.UserID)
+	assert.Equal(t, 1, store.completed)
 }
 
 func TestCatFKSettlementRequiresCompleteEvidence(t *testing.T) {
@@ -364,6 +447,20 @@ func TestCatFKPollRecoversSubmittingWithoutCreate(t *testing.T) {
 	assert.Equal(t, model.CatFKOrderStatusCreationUnknown, store.order.Status)
 	assert.Greater(t, store.order.NextQueryAt, s.now().Unix())
 	assert.EqualValues(t, 1, a.creates.Load())
+	assert.Zero(t, store.completed)
+}
+
+func TestCatFKQueryVerificationFailureRequiresAttention(t *testing.T) {
+	s, a, store, _ := catFKFixture(t)
+	req := catFKRequest(t, s)
+	_, err := s.create(context.Background(), 7, req)
+	require.NoError(t, err)
+	a.queryFn = func(_ *model.CatFKOrder, _ CatFKCredentials) (*CatFKOrderEvidence, error) {
+		return nil, ErrCatFKVerification
+	}
+	require.NoError(t, s.poll(context.Background()))
+	assert.Equal(t, model.CatFKOrderStatusNeedsAttention, store.order.Status)
+	assert.Equal(t, "verification_mismatch", store.order.FailureCode)
 	assert.Zero(t, store.completed)
 }
 
