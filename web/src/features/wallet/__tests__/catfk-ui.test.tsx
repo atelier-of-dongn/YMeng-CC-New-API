@@ -13,7 +13,9 @@ import {
 import { BillingHistoryDialog } from '../components/dialogs/billing-history-dialog'
 import { PaymentConfirmDialog } from '../components/dialogs/payment-confirm-dialog'
 import { RechargeFormCard } from '../components/recharge-form-card'
-import type { CatfkChannel, TopupInfo } from '../types'
+import { useCatfkPayment } from '../hooks/use-catfk-payment'
+import { useTopupInfo } from '../hooks/use-topup-info'
+import type { TopupInfo } from '../types'
 
 const channel = { id: 'wechat', name: 'WeChat' }
 const product = { id: 'ten', name: 'Ten dollars', amount: 10 }
@@ -35,10 +37,10 @@ const topupInfo: TopupInfo = {
 }
 const base: ComponentProps<typeof RechargeFormCard> = {
   topupInfo,
-  presetAmounts: [{ value: 20 }],
-  selectedPreset: null,
+  presetAmounts: [{ value: 10 }, { value: 20 }],
+  selectedPreset: 10,
   onSelectPreset: vi.fn(),
-  topupAmount: 20,
+  topupAmount: 10,
   onTopupAmountChange: vi.fn(),
   paymentAmount: 140,
   calculating: false,
@@ -65,60 +67,163 @@ afterEach(() => {
     .getState()
     .setConfig({ currency: { ...DEFAULT_CURRENCY_CONFIG } })
   localStorage.clear()
+  vi.restoreAllMocks()
 })
 
-it('shows no arbitrary amount for a Catfk-only wallet and uses the original grid after channel selection', async () => {
+it('places store channels in the same payment grid with identical button styling and no provider heading', () => {
+  render(
+    <RechargeFormCard
+      {...base}
+      topupInfo={{
+        ...topupInfo,
+        enable_online_topup: true,
+        pay_methods: [
+          { type: 'alipay', name: 'Existing Alipay' },
+          { type: 'catfk', name: 'WeChat' },
+        ],
+      }}
+      onCatfkPaymentSelect={vi.fn()}
+    />
+  )
+  const regular = screen.getByRole('button', { name: 'Existing Alipay' })
+  const store = screen.getByRole('button', { name: 'WeChat' })
+  expect(store.parentElement).toBe(regular.parentElement)
+  expect(store.className).toBe(regular.className)
+  expect(screen.queryByText('Catfk Payment')).not.toBeInTheDocument()
+  expect(screen.getAllByRole('button', { name: 'WeChat' })).toHaveLength(1)
+})
+
+it('uses the original preset buttons and keeps custom input visible while quoting the selected amount', async () => {
+  const post = vi.spyOn(api, 'post').mockResolvedValue({
+    data: { success: true, data: quote },
+  })
   function WalletAmounts() {
-    const [selected, select] = useState<CatfkChannel | null>(null)
+    const payment = useCatfkPayment(topupInfo.catfk, 1)
+    return (
+      <>
+        <RechargeFormCard
+          {...base}
+          catfkChannel={payment.channel}
+          onCatfkPaymentSelect={(selectedChannel, selectedProduct) =>
+            payment.selectProduct(selectedProduct, selectedChannel)
+          }
+        />
+        <PaymentConfirmDialog
+          open={payment.open}
+          onOpenChange={(open) => {
+            if (!open) payment.reset()
+          }}
+          onConfirm={payment.confirm}
+          topupAmount={payment.product?.amount ?? 0}
+          paymentAmount={payment.quote?.amount ?? 0}
+          paymentMethod={
+            payment.channel ? { ...payment.channel, type: 'catfk' } : undefined
+          }
+          calculating={payment.calculating}
+          processing={payment.processing}
+          catfk={{
+            quote: payment.quote,
+            qq: payment.qq,
+            onQQChange: payment.setQQ,
+            available: true,
+          }}
+        />
+      </>
+    )
+  }
+  const user = userEvent.setup()
+  render(<WalletAmounts />, { wrapper })
+  const preset = screen.getByRole('button', { name: /^10 Pay/ })
+  const presetText = preset.textContent
+  expect(
+    screen.getByRole('spinbutton', { name: 'Custom Amount' })
+  ).toBeVisible()
+  await user.click(screen.getByRole('button', { name: /WeChat/ }))
+  await screen.findByRole('textbox', { name: 'QQ number' })
+  await waitFor(() =>
+    expect(post).toHaveBeenCalledWith('/api/user/catfk/quote', {
+      product_id: 'ten',
+      channel_id: 'wechat',
+    })
+  )
+  expect(preset.textContent).toBe(presetText)
+  expect(
+    screen.queryByRole('button', { name: /Ten dollars/ })
+  ).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Cancel' }))
+  expect(screen.getByRole('button', { name: /^10 Pay/ })).toHaveClass(
+    'border-foreground'
+  )
+  expect(
+    screen.getByRole('spinbutton', { name: 'Custom Amount' })
+  ).toBeVisible()
+  expect(post).toHaveBeenCalledOnce()
+})
+
+it('disables the store method for custom input even matching a tier and re-enables it after selecting a mapped preset', async () => {
+  const pay = vi.fn()
+  const regularPay = vi.fn()
+  function WalletAmounts() {
+    const [amount, setAmount] = useState(10)
+    const [preset, setPreset] = useState<number | null>(10)
     return (
       <RechargeFormCard
         {...base}
-        catfkChannel={selected}
-        onCatfkChannelSelect={select}
+        topupInfo={{
+          ...topupInfo,
+          enable_online_topup: true,
+          pay_methods: [{ type: 'alipay', name: 'Existing Alipay' }],
+        }}
+        topupAmount={amount}
+        selectedPreset={preset}
+        onSelectPreset={(next) => {
+          setAmount(next.value)
+          setPreset(next.value)
+        }}
+        onTopupAmountChange={(next) => {
+          setAmount(next)
+          setPreset(null)
+        }}
+        onCatfkPaymentSelect={pay}
+        onPaymentMethodSelect={regularPay}
       />
     )
   }
   const user = userEvent.setup()
   render(<WalletAmounts />)
-  expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
-  expect(screen.queryByRole('button', { name: /^20 / })).not.toBeInTheDocument()
-  await user.click(screen.getByRole('button', { name: 'WeChat' }))
-  expect(screen.getByRole('button', { name: 'WeChat' })).toHaveAttribute(
-    'aria-pressed',
-    'true'
+  const store = screen.getByRole('button', { name: /WeChat/ })
+  expect(store).toBeEnabled()
+  const note = screen.getByText('Custom amounts are not supported')
+  expect(note).toHaveClass(
+    'text-[11px]',
+    'text-muted-foreground',
+    'font-normal'
   )
-  expect(screen.getByRole('button', { name: /Ten dollars/ })).toHaveTextContent(
-    '$10.00'
+  const input = screen.getByRole('spinbutton', { name: 'Custom Amount' })
+  await user.clear(input)
+  await user.type(input, '10')
+  expect(screen.getByRole('button', { name: /WeChat/ })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Existing Alipay' })).toBeEnabled()
+  await user.click(screen.getByRole('button', { name: 'Existing Alipay' }))
+  expect(regularPay).toHaveBeenCalledWith(
+    expect.objectContaining({ type: 'alipay' })
   )
-  expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: /^10 Pay/ }))
+  expect(screen.getByRole('button', { name: /WeChat/ })).toBeEnabled()
+  await user.click(screen.getByRole('button', { name: /WeChat/ }))
+  expect(pay).toHaveBeenCalledWith(channel, product)
 })
-it('preserves the arbitrary amount when switching from Catfk back to another payment method', async () => {
-  function WalletAmounts() {
-    const [selected, select] = useState<CatfkChannel | null>(channel)
-    return (
-      <RechargeFormCard
-        {...base}
-        topupInfo={{ ...topupInfo, enable_online_topup: true }}
-        catfkChannel={selected}
-        onCatfkChannelSelect={select}
-      />
-    )
-  }
-  render(<WalletAmounts />)
-  expect(screen.queryByRole('spinbutton')).not.toBeInTheDocument()
-  await userEvent.click(screen.getByRole('button', { name: 'Custom Amount' }))
-  expect(screen.getByRole('spinbutton', { name: 'Custom Amount' })).toHaveValue(
-    20
-  )
-  expect(
-    screen.queryByRole('button', { name: /Ten dollars/ })
-  ).not.toBeInTheDocument()
+
+it('disables an unmapped preset without replacing the shared amount buttons', () => {
+  render(<RechargeFormCard {...base} selectedPreset={20} topupAmount={20} />)
+  expect(screen.getByRole('button', { name: /WeChat/ })).toBeDisabled()
+  expect(screen.getByRole('button', { name: /^20 Pay/ })).toBeEnabled()
 })
-it('displays the server unavailable reason and disables fixed amounts', () => {
+
+it('displays the server unavailable reason and disables the store method without disabling shared presets', () => {
   render(
     <RechargeFormCard
       {...base}
-      catfkChannel={channel}
       topupInfo={{
         ...topupInfo,
         catfk: {
@@ -132,7 +237,45 @@ it('displays the server unavailable reason and disables fixed amounts', () => {
     />
   )
   expect(screen.getByText('Protocol not verified')).toBeVisible()
-  expect(screen.getByRole('button', { name: /Ten dollars/ })).toBeDisabled()
+  expect(screen.getByRole('button', { name: /WeChat/ })).toBeDisabled()
+  expect(screen.getByRole('button', { name: /^10 Pay/ })).toBeEnabled()
+})
+
+it('preserves the configured store method name and icon when loading payment settings', async () => {
+  vi.spyOn(api, 'get').mockResolvedValue({
+    data: {
+      success: true,
+      data: {
+        ...topupInfo,
+        pay_methods: [
+          {
+            type: 'catfk',
+            name: 'Configured Alipay',
+            icon: 'https://example.com/alipay.png',
+          },
+        ],
+      },
+    },
+  })
+  function LoadedMethods() {
+    const info = useTopupInfo()
+    return (
+      <RechargeFormCard
+        {...base}
+        topupInfo={info.topupInfo}
+        presetAmounts={info.presetAmounts}
+        loading={info.loading}
+      />
+    )
+  }
+  render(<LoadedMethods />)
+  const method = await screen.findByRole('button', {
+    name: /Configured Alipay/,
+  })
+  expect(method).toBeVisible()
+  expect(
+    screen.getByRole('img', { name: 'Configured Alipay' })
+  ).toHaveAttribute('src', 'https://example.com/alipay.png')
 })
 it('requires a valid quote and ASCII QQ before confirmation and locks QQ for uncertain orders', async () => {
   const confirm = vi.fn()
@@ -254,12 +397,10 @@ it('formats Catfk history quota once and recovers an order through the server wi
   )
   await screen.findByText('catfk-order')
   expect(screen.getAllByText('$10')).toHaveLength(2)
-  await userEvent.click(
-    screen.getByRole('button', { name: 'Resume Catfk payment' })
-  )
+  await userEvent.click(screen.getByRole('button', { name: 'Resume payment' }))
   await waitFor(() =>
     expect(screen.getByRole('status')).toHaveTextContent(
-      'Catfk payment received. Wallet credit is pending.'
+      'Payment received. Wallet credit is pending.'
     )
   )
   expect(get).toHaveBeenCalledWith('/api/user/catfk/orders/catfk-order')

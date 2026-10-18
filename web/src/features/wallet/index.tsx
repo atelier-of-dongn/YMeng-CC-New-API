@@ -338,14 +338,13 @@ export function Wallet(props: WalletProps) {
               <div id='wallet-add-funds' className='scroll-mt-4'>
                 <RechargeFormCard
                   catfkChannel={catfk.channel}
-                  catfkProductId={catfk.product?.id}
-                  onCatfkChannelSelect={(channel) => {
+                  onCatfkPaymentSelect={(channel, product) => {
                     paymentSelectionVersion.current++
                     setConfirmDialogOpen(false)
                     setSelectedPaymentMethod(undefined)
-                    catfk.selectChannel(channel)
+                    void catfk.selectProduct(product, channel)
                   }}
-                  onCatfkProductSelect={catfk.selectProduct}
+                  catfkPaymentUrl={catfk.paymentUrl}
                   pendingCatfkTrade={catfk.pendingTrade}
                   onResumeCatfk={catfk.resume}
                   catfkBusy={catfk.processing || catfk.resuming}
@@ -437,6 +436,7 @@ export function Wallet(props: WalletProps) {
               }
             : undefined
         }
+        topupLink={undefined}
         calculating={catfk.calculating}
         processing={catfk.processing}
         catfk={{

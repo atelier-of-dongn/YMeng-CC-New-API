@@ -6,21 +6,21 @@ export function CatfkOrderStatus(props: { status: string | null }) {
   const { t } = useTranslation()
   if (!props.status) return null
   const labels: Record<string, string> = {
-    new: t('Catfk order created'),
-    submitting: t('Catfk order is being submitted'),
+    new: t('Order created'),
+    submitting: t('Submitting order'),
     creation_unknown: t(
-      'Catfk order creation is uncertain. Contact support before creating another order.'
+      'Order creation is uncertain. Contact support before creating another order.'
     ),
-    pending: t('Catfk payment is pending'),
-    paid: t('Catfk payment received. Wallet credit is pending.'),
-    needs_attention: t('Catfk order needs attention. Contact support.'),
-    completed: t('Catfk wallet credit completed'),
-    expired: t('Catfk order expired'),
+    pending: t('Payment is pending'),
+    paid: t('Payment received. Wallet credit is pending.'),
+    needs_attention: t('Order needs attention. Contact support.'),
+    completed: t('Wallet credit completed'),
+    expired: t('Order expired'),
   }
   return (
     <Alert>
       <AlertDescription role='status'>
-        {labels[props.status] || t('Catfk order status is unavailable')}
+        {labels[props.status] || t('Order status is unavailable')}
       </AlertDescription>
     </Alert>
   )

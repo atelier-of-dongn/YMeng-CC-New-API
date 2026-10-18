@@ -83,12 +83,9 @@ export function CatFKSettingsFields(props: Props) {
   })
   return (
     <div className='space-y-6'>
-      <p
-        role='status'
-        className='text-muted-foreground rounded-md border p-4 text-sm'
-      >
+      <p className='text-muted-foreground text-sm'>
         {t(
-          'CatFK is not connected: the provider protocol has not been verified. Saving settings does not make payments available.'
+          'Store payments use live CNY quotes and credit the configured USD balance.'
         )}
       </p>
       <div className='flex items-center justify-between gap-4'>

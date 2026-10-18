@@ -13,6 +13,7 @@ export function CatfkOrderAction(props: {
   onCompleted?: () => Promise<void>
 }) {
   const { t } = useTranslation()
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null)
   const [status, setStatus] = useState<string | null>(null)
   const mutation = useMutation({
     mutationFn: getCatfkOrder,
@@ -31,7 +32,7 @@ export function CatfkOrderAction(props: {
       setStatus(order.status)
       if (order.status === 'completed') await props.onCompleted?.()
       const url = safeCatfkPaymentUrl(order.payment_url)
-      if (order.status === 'pending' && url) window.location.assign(url)
+      setPaymentUrl(order.status === 'pending' ? url : null)
     } catch (error) {
       handleServerError(error, t('Payment request failed'))
     }
@@ -39,8 +40,18 @@ export function CatfkOrderAction(props: {
   return (
     <div className='mt-3 space-y-2'>
       <CatfkOrderStatus status={status} />
+      {paymentUrl && (
+        <Button
+          variant='outline'
+          render={
+            <a href={paymentUrl} target='_blank' rel='noopener noreferrer' />
+          }
+        >
+          {t('Open payment page')}
+        </Button>
+      )}
       <Button variant='outline' disabled={mutation.isPending} onClick={resume}>
-        {t('Resume Catfk payment')}
+        {t('Resume payment')}
       </Button>
     </div>
   )

@@ -11,6 +11,9 @@ import {
   CatFKSettingsFields,
   type CatFKFormValues,
 } from '../catfk-settings-fields'
+import { PaymentMethodDialog } from '../payment-method-dialog'
+import { PaymentMethodsVisualEditor } from '../payment-methods-visual-editor'
+import { PaymentSettingsSection } from '../payment-settings-section'
 
 const defaults: CatFKFormValues = {
   CatFKEnabled: false,
@@ -45,6 +48,110 @@ function Wrapper(props: { children: React.ReactNode }) {
   )
 }
 afterEach(() => vi.restoreAllMocks())
+
+test('payment settings keep store configuration under General and remove the standalone provider tab', async () => {
+  render(
+    <PaymentSettingsSection
+      defaultValues={{
+        PayAddress: '',
+        EpayId: '',
+        EpayKey: '',
+        Price: 1,
+        MinTopUp: 1,
+        CustomCallbackAddress: '',
+        PayMethods: '[]',
+        AmountOptions: '[]',
+        AmountDiscount: '{}',
+        StripeApiSecret: '',
+        StripeWebhookSecret: '',
+        StripePriceId: '',
+        StripeUnitPrice: 1,
+        StripeMinTopUp: 1,
+        StripePromotionCodesEnabled: false,
+        CreemApiKey: '',
+        CreemWebhookSecret: '',
+        CreemTestMode: false,
+        CreemProducts: '[]',
+        ...defaults,
+      }}
+      waffoDefaultValues={{
+        WaffoEnabled: false,
+        WaffoApiKey: '',
+        WaffoPrivateKey: '',
+        WaffoPublicCert: '',
+        WaffoSandboxPublicCert: '',
+        WaffoSandboxApiKey: '',
+        WaffoSandboxPrivateKey: '',
+        WaffoSandbox: false,
+        WaffoMerchantId: '',
+        WaffoCurrency: 'USD',
+        WaffoUnitPrice: 1,
+        WaffoMinTopUp: 1,
+        WaffoNotifyUrl: '',
+        WaffoReturnUrl: '',
+        WaffoPayMethods: '[]',
+      }}
+      waffoPancakeDefaultValues={{
+        WaffoPancakeMerchantID: '',
+        WaffoPancakePrivateKey: '',
+        WaffoPancakeReturnURL: '',
+      }}
+      complianceDefaults={{
+        confirmed: true,
+        termsVersion: 'v1',
+        confirmedAt: 0,
+        confirmedBy: 1,
+      }}
+    />,
+    { wrapper: Wrapper }
+  )
+  expect(screen.getByRole('tab', { name: 'General' })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  )
+  expect(
+    screen.queryByRole('tab', { name: /CatFK|Yunmao/ })
+  ).not.toBeInTheDocument()
+  await userEvent.click(
+    screen.getByRole('button', { name: 'Store payment settings' })
+  )
+  expect(
+    screen.getByRole('dialog', { name: 'Store payment settings' })
+  ).toBeVisible()
+  await userEvent.keyboard('{Escape}')
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+})
+
+test('adding a store payment uses the normal payment method dialog and preserves the existing Alipay option', async () => {
+  const user = userEvent.setup()
+  const save = vi.fn()
+  render(<PaymentMethodDialog open onOpenChange={vi.fn()} onSave={save} />)
+  await user.click(screen.getByRole('combobox', { name: 'Payment type key' }))
+  expect(
+    await screen.findByRole('option', { name: /Epay: alipay/ })
+  ).toBeVisible()
+  await user.click(screen.getByRole('option', { name: 'Yunmao' }))
+  expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Alipay')
+  await user.click(screen.getByRole('button', { name: 'Add' }))
+  expect(save).toHaveBeenCalledWith(
+    expect.objectContaining({ type: 'catfk', name: 'Alipay', icon: 'SiAlipay' })
+  )
+})
+
+test('the general payment method editor exposes store configuration without a separate gateway tab', async () => {
+  const configure = vi.fn()
+  render(
+    <PaymentMethodsVisualEditor
+      value='[]'
+      onChange={vi.fn()}
+      onConfigureStore={configure}
+    />
+  )
+  await userEvent.click(
+    screen.getByRole('button', { name: 'Store payment settings' })
+  )
+  expect(configure).toHaveBeenCalledOnce()
+})
 
 test('adding, editing and confirming deletion update the visible mapping while preserving its stable ID', async () => {
   const user = userEvent.setup()
@@ -187,7 +294,9 @@ test('a protocol failure is displayed without inventing available channels', asy
     expect(notice).toHaveBeenCalledWith('CatFK protocol is not verified')
   )
   expect(screen.queryByRole('checkbox')).not.toBeInTheDocument()
-  expect(screen.getByRole('status')).toHaveTextContent('CatFK is not connected')
+  expect(
+    screen.queryByText(/provider protocol has not been verified/)
+  ).not.toBeInTheDocument()
 })
 
 test('invalid persisted mappings block edits and an unconfirmed account cannot enable CatFK', () => {

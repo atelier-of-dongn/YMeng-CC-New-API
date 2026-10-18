@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
-import { beforeEach, expect, it, vi } from 'vitest'
+import { beforeEach, afterEach, expect, it, vi } from 'vitest'
 
 import { api } from '@/lib/api'
 
@@ -25,6 +25,111 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 beforeEach(() => {
   localStorage.clear()
+  vi.spyOn(window, 'open').mockReturnValue(null)
+})
+
+afterEach(() => vi.restoreAllMocks())
+
+it('keeps the site open and closes the payment window only after server-confirmed payment', async () => {
+  const popup = {
+    opener: {},
+    location: { href: '' },
+    close: vi.fn(),
+    closed: false,
+  }
+  const open = vi
+    .spyOn(window, 'open')
+    .mockReturnValue(popup as unknown as Window)
+  vi.spyOn(api, 'post')
+    .mockResolvedValueOnce({ data: { success: true, data: quote } })
+    .mockResolvedValueOnce({
+      data: {
+        success: true,
+        data: {
+          trade_no: 'trade1',
+          status: 'pending',
+          payment_url: 'https://pay.example/checkout',
+        },
+      },
+    })
+  const read = vi.spyOn(api, 'get').mockResolvedValue({
+    data: { success: true, data: { trade_no: 'trade1', status: 'pending' } },
+  })
+  const completed = vi.fn()
+  const { result } = renderHook(() => useCatfkPayment(info, 1, completed), {
+    wrapper,
+  })
+  act(() => result.current.selectChannel(channel))
+  await act(() => result.current.selectProduct(product))
+  act(() => result.current.setQQ('1234'))
+  await act(() => result.current.confirm())
+  expect(open).toHaveBeenCalledWith('', '_blank')
+  expect(popup.opener).toBeNull()
+  expect(popup.location.href).toBe('https://pay.example/checkout')
+  expect(popup.close).not.toHaveBeenCalled()
+  read.mockResolvedValue({
+    data: { success: true, data: { trade_no: 'trade1', status: 'paid' } },
+  })
+  await act(() => result.current.resume())
+  expect(popup.close).toHaveBeenCalledOnce()
+  expect(completed).not.toHaveBeenCalled()
+  read.mockResolvedValue({
+    data: { success: true, data: { trade_no: 'trade1', status: 'completed' } },
+  })
+  await act(() => result.current.resume())
+  expect(completed).toHaveBeenCalledOnce()
+})
+
+it('automatically checks a saved order and refreshes the wallet only after completed settlement', async () => {
+  localStorage.setItem('wallet:catfk:order:1', 'saved-trade')
+  vi.spyOn(api, 'get').mockResolvedValue({
+    data: {
+      success: true,
+      data: { trade_no: 'saved-trade', status: 'completed' },
+    },
+  })
+  const completed = vi.fn().mockResolvedValue(undefined)
+  const { result } = renderHook(() => useCatfkPayment(info, 1, completed), {
+    wrapper,
+  })
+  await waitFor(() => expect(completed).toHaveBeenCalledOnce())
+  expect(result.current.pendingTrade).toBeNull()
+  expect(localStorage.getItem('wallet:catfk:order:1')).toBeNull()
+})
+
+it('keeps a known payment link recoverable when popup creation is blocked without resubmitting', async () => {
+  const post = vi
+    .spyOn(api, 'post')
+    .mockResolvedValueOnce({ data: { success: true, data: quote } })
+    .mockResolvedValueOnce({
+      data: {
+        success: true,
+        data: {
+          trade_no: 'blocked-trade',
+          status: 'pending',
+          payment_url: 'https://pay.example/same-order',
+        },
+      },
+    })
+  vi.spyOn(api, 'get').mockResolvedValue({
+    data: {
+      success: true,
+      data: {
+        trade_no: 'blocked-trade',
+        status: 'pending',
+        payment_url: 'https://pay.example/same-order',
+      },
+    },
+  })
+  const { result } = renderHook(() => useCatfkPayment(info, 1), { wrapper })
+  act(() => result.current.selectChannel(channel))
+  await act(() => result.current.selectProduct(product))
+  act(() => result.current.setQQ('1234'))
+  await act(() => result.current.confirm())
+  expect(result.current.paymentUrl).toBe('https://pay.example/same-order')
+  await act(() => result.current.resume())
+  expect(result.current.paymentUrl).toBe('https://pay.example/same-order')
+  expect(post).toHaveBeenCalledTimes(2)
 })
 
 it('accepts only ASCII digit QQ strings and HTTPS payment URLs without credentials', () => {

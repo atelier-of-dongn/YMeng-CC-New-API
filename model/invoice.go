@@ -42,6 +42,7 @@ var (
 		PaymentProviderWaffo,
 		PaymentProviderWaffoPancake,
 		PaymentProviderRedemption,
+		PaymentProviderCatFK,
 	}
 )
 
@@ -156,9 +157,15 @@ func CalculateTopUpInvoiceSnapshot(topUp *TopUp) (int64, int64, error) {
 	switch topUp.PaymentProvider {
 	case PaymentProviderStripe:
 		credited = decimal.NewFromFloat(topUp.Money).Mul(quotaPerUnit)
-	case PaymentProviderCreem:
-		credited = decimal.NewFromInt(topUp.Amount)
-	case PaymentProviderRedemption:
+	case PaymentProviderCatFK:
+		// CatFK stores wallet quota units, which may exceed relay charge limits.
+		quota, err := common.WalletQuotaFromDecimalStrict(decimal.NewFromInt(topUp.Amount))
+		if err != nil {
+			return 0, 0, ErrInvoiceOrderInvalid
+		}
+		amount, err := InvoiceAmountFromQuota(quota)
+		return int64(quota), amount, err
+	case PaymentProviderCreem, PaymentProviderRedemption:
 		credited = decimal.NewFromInt(topUp.Amount)
 	default:
 		credited = decimal.NewFromInt(topUp.Amount).Mul(quotaPerUnit)
@@ -229,7 +236,18 @@ func BackfillRedemptionInvoiceTopUps() error {
 			for _, tradeNo := range existingTradeNos {
 				existing[tradeNo] = struct{}{}
 			}
-			topUps := make([]*TopUp, 0, len(redemptions)-len(existing))
+			redemptionIDs := make([]int, 0, len(redemptions))
+			for _, redemption := range redemptions {
+				redemptionIDs = append(redemptionIDs, redemption.Id)
+			}
+			var linkedRedemptionIDs []int
+			if err := tx.Model(&CatFKOrder{}).Where("redemption_id IN ?", redemptionIDs).Pluck("redemption_id", &linkedRedemptionIDs).Error; err != nil {
+				return err
+			}
+			for _, id := range linkedRedemptionIDs {
+				existing[fmt.Sprintf("redemption:%d", id)] = struct{}{}
+			}
+			topUps := make([]*TopUp, 0, len(redemptions))
 			for _, redemption := range redemptions {
 				tradeNo := fmt.Sprintf("redemption:%d", redemption.Id)
 				if _, ok := existing[tradeNo]; ok {

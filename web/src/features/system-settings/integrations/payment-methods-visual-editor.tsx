@@ -40,10 +40,12 @@ import {
 
 type PaymentMethodsVisualEditorProps = {
   value: string
+  onConfigureStore?: () => void
   onChange: (value: string) => void
 }
 
 const PAYMENT_TYPE_ICON_NAMES: Record<string, string> = {
+  catfk: 'SiAlipay',
   alipay: 'SiAlipay',
   stripe: 'SiStripe',
   waffo_pancake: 'LuCreditCard',
@@ -61,6 +63,7 @@ function getEffectiveIconName(method: PaymentMethodData) {
 export function PaymentMethodsVisualEditor({
   value,
   onChange,
+  onConfigureStore,
 }: PaymentMethodsVisualEditorProps) {
   const { t } = useTranslation()
   const paymentTemplates = [
@@ -96,6 +99,10 @@ export function PaymentMethodsVisualEditor({
         name: 'Waffo Pancake',
         type: 'waffo_pancake',
       },
+    },
+    {
+      name: t('Yunmao'),
+      template: { icon: 'SiAlipay', name: t('Alipay'), type: 'catfk' },
     },
     {
       name: t('Custom Epay method'),
@@ -252,6 +259,11 @@ export function PaymentMethodsVisualEditor({
           />
         </div>
         <div className='flex gap-2'>
+          {onConfigureStore && (
+            <Button type='button' variant='outline' onClick={onConfigureStore}>
+              {t('Store payment settings')}
+            </Button>
+          )}
           <Popover>
             <PopoverTrigger
               render={
@@ -481,6 +493,7 @@ export function PaymentMethodsVisualEditor({
         open={dialogOpen}
         onOpenChange={setDialogOpen}
         onSave={handleSave}
+        onConfigureStore={onConfigureStore}
         editData={editData}
       />
     </div>

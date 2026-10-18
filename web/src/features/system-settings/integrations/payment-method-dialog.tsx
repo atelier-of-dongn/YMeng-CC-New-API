@@ -78,11 +78,13 @@ export type PaymentMethodData = {
 type PaymentMethodDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onConfigureStore?: () => void
   onSave: (data: PaymentMethodData) => void
   editData?: PaymentMethodData | null
 }
 
 const PAYMENT_TYPE_ICON_NAMES: Record<string, string> = {
+  catfk: 'SiAlipay',
   alipay: 'SiAlipay',
   stripe: 'SiStripe',
   waffo_pancake: 'LuCreditCard',
@@ -95,6 +97,7 @@ export function PaymentMethodDialog({
   open,
   onOpenChange,
   onSave,
+  onConfigureStore,
   editData,
 }: PaymentMethodDialogProps) {
   const { t } = useTranslation()
@@ -106,6 +109,12 @@ export function PaymentMethodDialog({
       label: `${t('Alipay')} (Epay: alipay)`,
       name: t('Alipay'),
       value: 'alipay',
+    },
+    {
+      iconName: 'SiAlipay',
+      label: t('Yunmao'),
+      name: t('Alipay'),
+      value: 'catfk',
     },
     {
       iconName: 'SiWechat',
@@ -294,7 +303,7 @@ export function PaymentMethodDialog({
                 </FormControl>
                 <FormDescription className='leading-relaxed'>
                   {t(
-                    'Used to decide the payment flow. Built-in keys include stripe for Stripe and waffo_pancake for Waffo Pancake; other values are sent to Epay as the type parameter.'
+                    'Choose the payment provider. Store payments use the configured product tiers.'
                   )}
                 </FormDescription>
                 <FormMessage />
@@ -302,6 +311,11 @@ export function PaymentMethodDialog({
             )}
           />
 
+          {form.watch('type') === 'catfk' && onConfigureStore && (
+            <Button type='button' variant='outline' onClick={onConfigureStore}>
+              {t('Store payment settings')}
+            </Button>
+          )}
           <FormField
             control={form.control}
             name='icon'

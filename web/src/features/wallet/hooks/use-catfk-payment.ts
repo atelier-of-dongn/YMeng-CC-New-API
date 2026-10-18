@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -34,6 +34,9 @@ export function useCatfkPayment(
   const [qq, setQQ] = useState('')
   const [open, setOpen] = useState(false)
   const [calculating, setCalculating] = useState(false)
+  const [paymentUrl, setPaymentUrl] = useState<string | null>(null)
+  const paymentWindows = useRef(new Map<string, Window>())
+  const completedTrades = useRef(new Set<string>())
   const [pendingTrade, setPendingTrade] = useState<string | null>(null)
   const [orderStatus, setOrderStatus] = useState<string | null>(null)
   const [uncertain, setUncertain] = useState(false)
@@ -66,6 +69,9 @@ export function useCatfkPayment(
 
   useEffect(() => {
     generation.current++
+    setPaymentUrl(null)
+    paymentWindows.current.clear()
+    completedTrades.current.clear()
     inFlight.current = false
     attempt.current = null
     setChannel(null)
@@ -105,18 +111,19 @@ export function useCatfkPayment(
     setProduct(null)
   }
 
-  async function selectProduct(next: CatfkProduct) {
+  async function selectProduct(next: CatfkProduct, selectedChannel = channel) {
     if (inFlight.current || unresolved.current) return
     reset()
+    setChannel(selectedChannel)
     setProduct(next)
-    if (!userId || !channel || !info?.enabled || !info.available) return
+    if (!userId || !selectedChannel || !info?.enabled || !info.available) return
     const version = generation.current
     setOpen(true)
     setCalculating(true)
     try {
       const result = await quoteMutation.mutateAsync({
         product_id: next.id,
-        channel_id: channel.id,
+        channel_id: selectedChannel.id,
       })
       if (version !== generation.current || identity.current !== userId) return
       if (!isValidCatfkQuote(result, next.amount)) {
@@ -150,6 +157,8 @@ export function useCatfkPayment(
       return
     }
     if (attempt.current && attempt.current.qq !== qq) return
+    const popup = window.open('', '_blank')
+    if (popup) popup.opener = null
     const version = generation.current
     if (!attempt.current) attempt.current = { qq, key: crypto.randomUUID() }
     inFlight.current = true
@@ -170,7 +179,10 @@ export function useCatfkPayment(
         qq,
         idempotency_key: attempt.current.key,
       })
-      if (version !== generation.current || identity.current !== userId) return
+      if (version !== generation.current || identity.current !== userId) {
+        popup?.close()
+        return
+      }
       if (
         typeof order.trade_no !== 'string' ||
         !order.trade_no ||
@@ -188,9 +200,16 @@ export function useCatfkPayment(
         /* Recovery still works in this session. */
       }
       const url = safeCatfkPaymentUrl(order.payment_url)
-      if (order.status === 'pending' && url) window.location.assign(url)
-      else setOpen(false)
+      setPaymentUrl(url)
+      if (order.status === 'pending' && url && popup) {
+        paymentWindows.current.set(order.trade_no, popup)
+        popup.location.href = url
+      } else {
+        popup?.close()
+      }
+      setOpen(false)
     } catch (error) {
+      popup?.close()
       if (version === generation.current && identity.current === userId) {
         if (error instanceof CatfkPaymentRejectedError) {
           unresolved.current = false
@@ -215,8 +234,79 @@ export function useCatfkPayment(
     }
   }
 
+  const applyOrderStatus = useCallback(
+    async (trade: string, status: string) => {
+      setOrderStatus(status)
+      if (status === 'paid' || status === 'completed' || status === 'expired') {
+        paymentWindows.current.get(trade)?.close()
+        paymentWindows.current.delete(trade)
+        setPaymentUrl(null)
+      }
+      if (status === 'completed' || status === 'expired') {
+        unresolved.current = false
+        attempt.current = null
+        setPendingTrade(null)
+        setUncertain(false)
+        try {
+          if (storageKey && localStorage.getItem(storageKey) === trade) {
+            localStorage.removeItem(storageKey)
+          }
+        } catch {
+          /* Storage may be unavailable. */
+        }
+        if (status === 'completed' && !completedTrades.current.has(trade)) {
+          completedTrades.current.add(trade)
+          await onCompleted?.()
+        }
+      }
+    },
+    [onCompleted, storageKey]
+  )
+
+  const trackedOrder = useQuery({
+    queryKey: ['wallet', 'store-order', userId, pendingTrade],
+    queryFn: () => {
+      if (!pendingTrade) throw new Error('Order is unavailable')
+      return getCatfkOrder(pendingTrade)
+    },
+    enabled:
+      !!pendingTrade &&
+      !!userId &&
+      !uncertain &&
+      !payMutation.isPending &&
+      orderStatus !== 'needs_attention',
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
+    retry: false,
+    meta: { errorToast: false },
+  })
+  useEffect(() => {
+    const order = trackedOrder.data
+    if (
+      !order ||
+      order.trade_no !== pendingTrade ||
+      identity.current !== userId ||
+      inFlight.current ||
+      unresolved.current
+    ) {
+      return
+    }
+    void applyOrderStatus(order.trade_no, order.status).catch(
+      (error: unknown) => {
+        handleServerError(error, t('Failed to refresh user information'))
+      }
+    )
+  }, [trackedOrder.data, pendingTrade, userId, applyOrderStatus, t])
+
   async function resume() {
-    if (!pendingTrade || orderMutation.isPending) return
+    if (
+      !pendingTrade ||
+      orderMutation.isPending ||
+      inFlight.current ||
+      unresolved.current
+    ) {
+      return
+    }
     const version = generation.current
     try {
       const order = await orderMutation.mutateAsync(pendingTrade)
@@ -224,22 +314,11 @@ export function useCatfkPayment(
       if (order.trade_no !== pendingTrade || typeof order.status !== 'string') {
         throw new Error(t('Invalid payment response'))
       }
-      setOrderStatus(order.status)
-      if (order.status === 'completed' || order.status === 'expired') {
-        unresolved.current = false
-        attempt.current = null
-        setPendingTrade(null)
-        setUncertain(false)
-        try {
-          if (storageKey) localStorage.removeItem(storageKey)
-        } catch {
-          /* Storage may be unavailable. */
-        }
-        if (order.status === 'completed') await onCompleted?.()
-        return
-      }
+      await applyOrderStatus(order.trade_no, order.status)
       const url = safeCatfkPaymentUrl(order.payment_url)
-      if (order.status === 'pending' && url) window.location.assign(url)
+      if (order.status === 'pending') {
+        setPaymentUrl(url)
+      }
     } catch (error) {
       if (version === generation.current && identity.current === userId) {
         handleServerError(error, t('Payment request failed'))
@@ -260,6 +339,7 @@ export function useCatfkPayment(
     selectProduct,
     confirm,
     reset,
+    paymentUrl,
     pendingTrade,
     resume,
     resuming: orderMutation.isPending,

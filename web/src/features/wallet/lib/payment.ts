@@ -147,7 +147,8 @@ export function getDefaultPaymentType(topupInfo: TopupInfo | null): string {
 
   // Return first available payment method or default
   if (topupInfo.pay_methods?.length > 0) {
-    return topupInfo.pay_methods[0].type
+    const method = topupInfo.pay_methods.find((item) => item.type !== 'catfk')
+    if (method) return method.type
   }
 
   if (topupInfo.enable_stripe_topup) {

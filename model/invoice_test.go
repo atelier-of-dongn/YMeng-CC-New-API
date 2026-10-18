@@ -2,13 +2,19 @@ package model
 
 import (
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/QuantumNous/new-api/common"
 
+	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 func insertInvoiceTestUser(t *testing.T, id, quota int) {
@@ -55,6 +61,156 @@ func TestGetInvoiceEligibilityExcludesNonPaymentSources(t *testing.T) {
 	require.Len(t, result.Orders, 1)
 	assert.Equal(t, eligible.Id, result.Orders[0].Id)
 	assert.Equal(t, int64(600*InvoiceAmountScale), result.Orders[0].Amount)
+}
+
+// TestCatFKInvoiceDatabaseMatrix requires disposable databases for external dialects.
+func TestCatFKInvoiceDatabaseMatrix(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "mysql", "postgres"} {
+		t.Run(dialect, func(t *testing.T) {
+			var driver gorm.Dialector
+			switch dialect {
+			case "sqlite":
+				driver = sqlite.Open(filepath.Join(t.TempDir(), "invoice.db"))
+			case "mysql":
+				dsn := os.Getenv("TEST_MYSQL_DSN")
+				if dsn == "" {
+					t.Skip("TEST_MYSQL_DSN not configured")
+				}
+				driver = mysql.Open(dsn)
+			case "postgres":
+				dsn := os.Getenv("TEST_POSTGRES_DSN")
+				if dsn == "" {
+					t.Skip("TEST_POSTGRES_DSN not configured")
+				}
+				driver = postgres.Open(dsn)
+			}
+			db, err := gorm.Open(driver, &gorm.Config{})
+			require.NoError(t, err)
+			sqlDB, err := db.DB()
+			require.NoError(t, err)
+			sqlDB.SetMaxOpenConns(1)
+			previousDB, previousLogDB := DB, LOG_DB
+			previousMainType, previousLogType := common.MainDatabaseType(), common.LogDatabaseType()
+			DB, LOG_DB = db, db
+			common.SetDatabaseTypes(common.DatabaseType(dialect), common.DatabaseType(dialect))
+			initCol()
+			t.Cleanup(func() {
+				require.NoError(t, db.Migrator().DropTable(&InvoiceApplicationItem{}, &InvoiceApplication{}, &InvoiceProfile{}, &InvoiceRefundAdjustment{}, &CatFKOrder{}, &TopUp{}, &Redemption{}, &Log{}, &User{}))
+				DB, LOG_DB = previousDB, previousLogDB
+				common.SetDatabaseTypes(previousMainType, previousLogType)
+				initCol()
+				require.NoError(t, sqlDB.Close())
+			})
+			var version string
+			query := "SELECT version()"
+			if dialect == "sqlite" {
+				query = "SELECT sqlite_version()"
+			}
+			require.NoError(t, db.Raw(query).Scan(&version).Error)
+			t.Logf("database version: %s", version)
+			for range 2 {
+				require.NoError(t, db.AutoMigrate(&User{}, &TopUp{}, &Redemption{}, &Log{}, &CatFKOrder{}, &InvoiceProfile{}, &InvoiceApplication{}, &InvoiceApplicationItem{}, &InvoiceRefundAdjustment{}))
+			}
+			t.Run("eligibility_and_application", TestCatFKInvoiceEligibilityAndApplication)
+			t.Run("legacy_backfill", TestCatFKInvoiceBackfillPreservesOneOrderPerRecharge)
+		})
+	}
+}
+
+func TestCatFKInvoiceSnapshotPreservesWalletQuotaUnits(t *testing.T) {
+	previous := common.QuotaPerUnit
+	common.QuotaPerUnit = 500_000
+	t.Cleanup(func() { common.QuotaPerUnit = previous })
+	credited, amount, err := CalculateTopUpInvoiceSnapshot(&TopUp{
+		PaymentProvider: PaymentProviderCatFK, Amount: 3_000_000_000, Money: 10.18,
+	})
+	require.NoError(t, err)
+	assert.Equal(t, int64(3_000_000_000), credited)
+	assert.Equal(t, int64(6000*InvoiceAmountScale), amount)
+	_, _, err = CalculateTopUpInvoiceSnapshot(&TopUp{PaymentProvider: PaymentProviderCatFK, Amount: int64(common.MaxWalletQuota) + 1})
+	require.ErrorIs(t, err, ErrInvoiceOrderInvalid)
+}
+
+func TestCatFKInvoiceEligibilityAndApplication(t *testing.T) {
+	originalQuotaPerUnit := common.QuotaPerUnit
+	common.QuotaPerUnit = 100
+	t.Cleanup(func() { common.QuotaPerUnit = originalQuotaPerUnit })
+	userID, key := setupRedeemFixture(t, 500)
+	order := setupCatFKOrderFixture(t, userID, "invoice")
+	require.NoError(t, DB.AutoMigrate(&InvoiceProfile{}, &InvoiceApplication{}, &InvoiceApplicationItem{}, &InvoiceRefundAdjustment{}))
+	t.Cleanup(func() {
+		require.NoError(t, DB.Where("user_id = ?", userID).Delete(&InvoiceProfile{}).Error)
+		require.NoError(t, DB.Where("application_id IN (?)", DB.Model(&InvoiceApplication{}).Select("id").Where("user_id = ?", userID)).Delete(&InvoiceApplicationItem{}).Error)
+		require.NoError(t, DB.Where("user_id = ?", userID).Delete(&InvoiceApplication{}).Error)
+	})
+	for _, state := range []string{"pending", "paid"} {
+		if state == "paid" {
+			order = markCatFKOrderPaid(t, order)
+		}
+		eligibility, err := GetInvoiceEligibility(userID)
+		require.NoError(t, err)
+		assert.Empty(t, eligibility.Orders, state+" orders are not completed recharges")
+		_, err = CreateInvoiceApplication(userID, "Example Company", "TAX-CATFK", []int{order.TopUpID})
+		require.ErrorIs(t, err, ErrInvoiceOrderInvalid)
+	}
+	_, err := CompleteVerifiedCatFKOrder(order.ID, order.Version, key, "")
+	require.NoError(t, err)
+	topUp := GetTopUpById(order.TopUpID)
+	require.NotNil(t, topUp)
+	assert.Equal(t, int64(500), topUp.CreditedQuota)
+	assert.Equal(t, int64(5*InvoiceAmountScale), topUp.InvoiceAmount, "invoice basis is credited balance, not CNY paid or raw quota")
+
+	common.QuotaPerUnit = 200
+	eligibility, err := GetInvoiceEligibility(userID)
+	require.NoError(t, err)
+	require.Len(t, eligibility.Orders, 1)
+	assert.Equal(t, order.TradeNo, eligibility.Orders[0].TradeNo)
+	assert.Equal(t, PaymentProviderCatFK, eligibility.Orders[0].PaymentProvider)
+	assert.Equal(t, int64(5*InvoiceAmountScale), eligibility.Orders[0].Amount, "completed snapshot survives quota configuration changes")
+	other, err := GetInvoiceEligibility(userID + 1)
+	require.NoError(t, err)
+	assert.Empty(t, other.Orders)
+	_, err = CreateInvoiceApplication(userID+1, "Other Company", "TAX-OTHER", []int{order.TopUpID})
+	require.ErrorIs(t, err, ErrInvoiceOrderInvalid)
+	_, err = CreateInvoiceApplication(userID, "Example Company", "TAX-CATFK", []int{order.TopUpID})
+	require.ErrorIs(t, err, ErrInvoiceAmountTooLow)
+	regular := insertInvoiceTestTopUp(t, userID, "invoice-regular", PaymentProviderEpay, common.TopUpStatusSuccess, 600)
+	application, err := CreateInvoiceApplication(userID, "Example Company", "TAX-CATFK", []int{order.TopUpID, regular.Id})
+	require.NoError(t, err)
+	assert.Equal(t, int64(605*InvoiceAmountScale), application.NetAmount)
+	_, err = CreateInvoiceApplication(userID, "Example Company", "TAX-CATFK", []int{order.TopUpID, regular.Id})
+	require.ErrorIs(t, err, ErrInvoiceOrderInvalid)
+	eligibility, err = GetInvoiceEligibility(userID)
+	require.NoError(t, err)
+	for _, item := range eligibility.Orders {
+		assert.Equal(t, InvoiceStatusApplied, item.InvoiceStatus)
+	}
+}
+
+func TestCatFKInvoiceBackfillPreservesOneOrderPerRecharge(t *testing.T) {
+	originalQuotaPerUnit := common.QuotaPerUnit
+	common.QuotaPerUnit = 100
+	t.Cleanup(func() { common.QuotaPerUnit = originalQuotaPerUnit })
+	userID, key := setupRedeemFixture(t, 500)
+	order := markCatFKOrderPaid(t, setupCatFKOrderFixture(t, userID, "invoice-backfill"))
+	_, err := CompleteVerifiedCatFKOrder(order.ID, order.Version, key, "")
+	require.NoError(t, err)
+	// Existing releases completed these TopUps without invoice snapshots.
+	require.NoError(t, DB.Model(&TopUp{}).Where("id = ?", order.TopUpID).Updates(map[string]any{"credited_quota": 0, "invoice_amount": 0}).Error)
+	for range 2 {
+		require.NoError(t, BackfillTopUpInvoiceSnapshots())
+		require.NoError(t, BackfillRedemptionInvoiceTopUps())
+	}
+	topUp := GetTopUpById(order.TopUpID)
+	require.NotNil(t, topUp)
+	assert.Equal(t, int64(500), topUp.CreditedQuota)
+	assert.Equal(t, int64(5*InvoiceAmountScale), topUp.InvoiceAmount)
+	var count int64
+	require.NoError(t, DB.Model(&TopUp{}).Where("user_id = ?", userID).Count(&count).Error)
+	assert.Equal(t, int64(1), count, "an internally consumed code must not create another invoiceable recharge")
+	var user User
+	require.NoError(t, DB.First(&user, userID).Error)
+	assert.Equal(t, 500, user.Quota, "invoice backfills must not credit quota again")
 }
 
 func TestCreateInvoiceApplicationRequiresNetAmountGreaterThan500(t *testing.T) {

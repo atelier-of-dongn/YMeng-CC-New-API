@@ -280,7 +280,11 @@ func CompleteVerifiedCatFKOrder(id int, version int64, redemptionKey string, cal
 		if err := tx.Model(&CatFKOrder{}).Where("id = ?", id).Update("redemption_id", redemption.Id).Error; err != nil {
 			return err
 		}
-		result = tx.Model(&TopUp{}).Where("id = ? AND status = ?", topup.Id, common.TopUpStatusPending).Updates(map[string]any{"status": common.TopUpStatusSuccess, "complete_time": now})
+		invoiceAmount, err := InvoiceAmountFromQuota(order.ExpectedQuota)
+		if err != nil {
+			return err
+		}
+		result = tx.Model(&TopUp{}).Where("id = ? AND status = ?", topup.Id, common.TopUpStatusPending).Updates(map[string]any{"status": common.TopUpStatusSuccess, "complete_time": now, "credited_quota": int64(order.ExpectedQuota), "invoice_amount": invoiceAmount})
 		if result.Error != nil {
 			return result.Error
 		}
