@@ -7706,6 +7706,11 @@
     "Install update": "安裝更新",
     "Prepare the new version while existing requests finish on the current version.": "在現有請求繼續由目前版本處理時準備新版本。",
     "Contact method": "聯絡方式",
-    "Enter QQ number (5-12 digits)": "請輸入QQ號（5-12位數字）"
+    "Enter QQ number (5-12 digits)": "請輸入QQ號（5-12位數字）",
+    "Automatically credited {{amount}}. No redemption needed.": "自動入帳{{amount}}，無需兌換",
+    "Click here if payment did not open": "若未跳轉付款請點擊",
+    "Payment successful": "付款成功",
+    "Unable to check payment status. Retrying automatically.": "暫時無法查詢付款狀態，正在自動重試。",
+    "Waiting for payment confirmation": "等待付款確認"
   }
 }

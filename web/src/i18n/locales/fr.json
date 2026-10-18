@@ -7706,6 +7706,11 @@
     "Install update": "Installer la mise à jour",
     "Prepare the new version while existing requests finish on the current version.": "Préparer la nouvelle version pendant que les requêtes existantes terminent sur la version actuelle.",
     "Contact method": "Coordonnées",
-    "Enter QQ number (5-12 digits)": "Numéro QQ (5 à 12 chiffres)"
+    "Enter QQ number (5-12 digits)": "Numéro QQ (5 à 12 chiffres)",
+    "Automatically credited {{amount}}. No redemption needed.": "{{amount}} crédités automatiquement. Aucun échange nécessaire.",
+    "Click here if payment did not open": "Cliquez ici si le paiement ne s’ouvre pas",
+    "Payment successful": "Paiement réussi",
+    "Unable to check payment status. Retrying automatically.": "État du paiement indisponible. Nouvelle tentative automatique.",
+    "Waiting for payment confirmation": "En attente de confirmation du paiement"
   }
 }

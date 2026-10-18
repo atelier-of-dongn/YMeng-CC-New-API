@@ -7706,6 +7706,11 @@
     "Install update": "Cài đặt bản cập nhật",
     "Prepare the new version while existing requests finish on the current version.": "Chuẩn bị phiên bản mới trong khi các yêu cầu hiện tại hoàn tất trên phiên bản hiện tại.",
     "Contact method": "Liên hệ",
-    "Enter QQ number (5-12 digits)": "Nhập số QQ (5-12 chữ số)"
+    "Enter QQ number (5-12 digits)": "Nhập số QQ (5-12 chữ số)",
+    "Automatically credited {{amount}}. No redemption needed.": "Đã tự động cộng {{amount}}. Không cần đổi mã.",
+    "Click here if payment did not open": "Nhấn vào đây nếu trang thanh toán chưa mở",
+    "Payment successful": "Thanh toán thành công",
+    "Unable to check payment status. Retrying automatically.": "Chưa thể kiểm tra thanh toán. Đang tự động thử lại.",
+    "Waiting for payment confirmation": "Đang chờ xác nhận thanh toán"
   }
 }

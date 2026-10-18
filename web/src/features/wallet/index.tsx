@@ -25,9 +25,13 @@ import { getAffiliateSummary } from '@/features/affiliate/api'
 import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { getSelf } from '@/lib/api'
+import { handleServerError } from '@/lib/handle-server-error'
+import { requireServerSuccess } from '@/lib/server-error-message'
+import { useAuthStore } from '@/stores/auth-store'
 
 import { AffiliateRewardsCard } from './components/affiliate-rewards-card'
 import { BillingHistoryDialog } from './components/dialogs/billing-history-dialog'
+import { CatfkPaymentStatusDialog } from './components/dialogs/catfk-payment-status-dialog'
 import { CreemConfirmDialog } from './components/dialogs/creem-confirm-dialog'
 import { PaymentConfirmDialog } from './components/dialogs/payment-confirm-dialog'
 import { TransferDialog } from './components/dialogs/transfer-dialog'
@@ -126,22 +130,37 @@ export function Wallet(props: WalletProps) {
     useWaffoPancakePayment()
 
   // Fetch and refresh user data
-  const fetchUser = useCallback(async () => {
+  const fetchUser = useCallback(async (propagateError = false) => {
+    const accountId = useAuthStore.getState().auth.user?.id
     try {
       setUserLoading(true)
-      const response = await getSelf()
-      if (response.success && response.data) {
-        setUser(response.data as UserWalletData)
+      const response = requireServerSuccess(await getSelf())
+      if (!response.data) throw new Error('Failed to refresh user information')
+      const current = useAuthStore.getState().auth
+      if (current.user?.id !== accountId) return
+      setUser(response.data as UserWalletData)
+      if (current.user && current.user.id === response.data.id) {
+        current.setUser({
+          ...current.user,
+          quota: response.data.quota,
+          used_quota: response.data.used_quota,
+          request_count: response.data.request_count,
+        })
       }
     } catch (error) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to fetch user data:', error)
+      if (propagateError) throw error
+      handleServerError(error)
     } finally {
       setUserLoading(false)
     }
   }, [])
+  const refreshCreditedBalance = useCallback(() => fetchUser(true), [fetchUser])
 
-  const catfk = useCatfkPayment(topupInfo?.catfk, user?.id, fetchUser)
+  const catfk = useCatfkPayment(
+    topupInfo?.catfk,
+    user?.id,
+    refreshCreditedBalance
+  )
 
   useEffect(() => {
     fetchUser()
@@ -446,6 +465,15 @@ export function Wallet(props: WalletProps) {
           available: !!topupInfo?.catfk?.available,
           qqLocked: catfk.uncertain,
         }}
+      />
+
+      <CatfkPaymentStatusDialog
+        open={catfk.statusDialogOpen}
+        onOpenChange={catfk.setStatusDialogOpen}
+        order={catfk.statusOrder}
+        checking={catfk.resuming}
+        queryFailed={catfk.statusQueryFailed}
+        onCheck={catfk.resume}
       />
 
       <TransferDialog

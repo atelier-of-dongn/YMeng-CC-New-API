@@ -27,6 +27,11 @@ it.each(Object.entries(resources))(
       'Read CatFK channels',
       'Expected credited balance (USD)',
       'CatFK product IDs must be unique',
+      'Waiting for payment confirmation',
+      'Click here if payment did not open',
+      'Payment successful',
+      'Automatically credited {{amount}}. No redemption needed.',
+      'Unable to check payment status. Retrying automatically.',
       'Contact method',
       'Enter QQ number (5-12 digits)',
       'Custom amounts are not supported',
@@ -43,6 +48,16 @@ it.each(Object.entries(resources))(
 it('shows the requested Chinese custom amount note and switches gateway labels with the language', async () => {
   const i18n = createInstance()
   await i18n.init({ lng: 'zh', fallbackLng: 'en', resources })
+  expect(i18n.t('Waiting for payment confirmation')).toBe('等待付款确认')
+  expect(i18n.t('Click here if payment did not open')).toBe(
+    '若未跳转支付请点击'
+  )
+  expect(i18n.t('Payment successful')).toBe('支付成功')
+  expect(
+    i18n.t('Automatically credited {{amount}}. No redemption needed.', {
+      amount: '¥70',
+    })
+  ).toBe('自动到账¥70，无需兑换')
   expect(i18n.t('Contact method')).toBe('联系方式')
   expect(i18n.t('Enter QQ number (5-12 digits)')).toBe(
     '请输入QQ号（5-12位数字）'

@@ -1,4 +1,8 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQueryClient,
+} from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeEach, afterEach, expect, it, vi } from 'vitest'
@@ -77,6 +81,226 @@ it('keeps the site open and closes the payment window only after server-confirme
     data: { success: true, data: { trade_no: 'trade1', status: 'completed' } },
   })
   await act(() => result.current.resume())
+  expect(completed).toHaveBeenCalledOnce()
+})
+
+it('refreshes a completed order even when the browser rejects closing the cross-origin payment window', async () => {
+  const popup = {
+    opener: {},
+    location: { href: '' },
+    closed: false,
+    close: () => {
+      throw new DOMException(
+        'Blocked cross-origin window access',
+        'SecurityError'
+      )
+    },
+  }
+  vi.spyOn(window, 'open').mockReturnValue(popup as unknown as Window)
+  vi.spyOn(api, 'post')
+    .mockResolvedValueOnce({ data: { success: true, data: quote } })
+    .mockResolvedValueOnce({
+      data: {
+        success: true,
+        data: {
+          trade_no: 'popup-order',
+          status: 'pending',
+          payment_url: 'https://pay.example/order',
+        },
+      },
+    })
+  const read = vi.spyOn(api, 'get').mockResolvedValue({
+    data: {
+      success: true,
+      data: { trade_no: 'popup-order', status: 'pending' },
+    },
+  })
+  const completed = vi.fn().mockResolvedValue(undefined)
+  const { result } = renderHook(() => useCatfkPayment(info, 1, completed), {
+    wrapper,
+  })
+  await act(() => result.current.selectProduct(product, channel))
+  act(() => result.current.setQQ('12345'))
+  await act(() => result.current.confirm())
+  read.mockResolvedValue({
+    data: {
+      success: true,
+      data: { trade_no: 'popup-order', status: 'completed' },
+    },
+  })
+  await act(() => result.current.resume())
+  expect(completed).toHaveBeenCalledOnce()
+  expect(result.current.pendingTrade).toBeNull()
+})
+
+it('preserves a completed order for retry when refreshing its credited balance fails', async () => {
+  localStorage.setItem('wallet:catfk:order:1', 'refresh-order')
+  vi.spyOn(api, 'get').mockResolvedValue({
+    data: {
+      success: true,
+      data: { trade_no: 'refresh-order', status: 'completed' },
+    },
+  })
+  const completed = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('Balance request failed'))
+    .mockResolvedValue(undefined)
+  const { result } = renderHook(() => useCatfkPayment(info, 1, completed), {
+    wrapper,
+  })
+  await waitFor(() => expect(completed).toHaveBeenCalledOnce())
+  expect(localStorage.getItem('wallet:catfk:order:1')).toBe('refresh-order')
+  await act(() => result.current.resume())
+  expect(completed).toHaveBeenCalledTimes(2)
+  expect(result.current.pendingTrade).toBeNull()
+  expect(localStorage.getItem('wallet:catfk:order:1')).toBeNull()
+})
+
+it('retries a failed balance refresh when a later order read returns the same completed status', async () => {
+  localStorage.setItem('wallet:catfk:order:1', 'unchanged-order')
+  vi.spyOn(api, 'get').mockResolvedValue({
+    data: {
+      success: true,
+      data: { trade_no: 'unchanged-order', status: 'completed' },
+    },
+  })
+  const completed = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('Balance request failed'))
+    .mockResolvedValue(undefined)
+  const { result } = renderHook(
+    () => ({
+      payment: useCatfkPayment(info, 1, completed),
+      client: useQueryClient(),
+    }),
+    { wrapper }
+  )
+  await waitFor(() => expect(completed).toHaveBeenCalledOnce())
+  await act(() =>
+    result.current.client.invalidateQueries({
+      queryKey: ['wallet', 'store-order', 1, 'unchanged-order'],
+    })
+  )
+  await waitFor(() => expect(completed).toHaveBeenCalledTimes(2))
+  expect(result.current.payment.pendingTrade).toBeNull()
+})
+
+it('keeps recovery tracking until a concurrent balance refresh succeeds', async () => {
+  localStorage.setItem('wallet:catfk:order:1', 'concurrent-order')
+  vi.spyOn(api, 'get').mockResolvedValue({
+    data: {
+      success: true,
+      data: { trade_no: 'concurrent-order', status: 'completed' },
+    },
+  })
+  let finish!: () => void
+  const completed = vi.fn(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve
+      })
+  )
+  const { result } = renderHook(() => useCatfkPayment(info, 1, completed), {
+    wrapper,
+  })
+  await waitFor(() => expect(completed).toHaveBeenCalledOnce())
+  await act(() => result.current.resume())
+  expect(localStorage.getItem('wallet:catfk:order:1')).toBe('concurrent-order')
+  await act(async () => finish())
+  expect(localStorage.getItem('wallet:catfk:order:1')).toBeNull()
+  expect(completed).toHaveBeenCalledOnce()
+})
+
+it('preserves the new account order when the previous account balance refresh completes late', async () => {
+  localStorage.setItem('wallet:catfk:order:1', 'account-one-order')
+  localStorage.setItem('wallet:catfk:order:2', 'account-two-order')
+  vi.spyOn(api, 'get').mockImplementation(async (url) => ({
+    data: {
+      success: true,
+      data: {
+        trade_no: String(url).split('/').at(-1),
+        status: String(url).endsWith('account-one-order')
+          ? 'completed'
+          : 'pending',
+      },
+    },
+  }))
+  let finish!: () => void
+  const completed = vi.fn(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve
+      })
+  )
+  const { result, rerender } = renderHook(
+    ({ id }) => useCatfkPayment(info, id, completed),
+    { wrapper, initialProps: { id: 1 } }
+  )
+  await waitFor(() => expect(completed).toHaveBeenCalledOnce())
+  rerender({ id: 2 })
+  await act(async () => finish())
+  expect(result.current.pendingTrade).toBe('account-two-order')
+  expect(localStorage.getItem('wallet:catfk:order:2')).toBe('account-two-order')
+})
+
+it('keeps the payment dialog amount bound to its order when choosing another product and keeps tracking after dismissal', async () => {
+  vi.spyOn(api, 'post')
+    .mockResolvedValueOnce({ data: { success: true, data: quote } })
+    .mockResolvedValueOnce({
+      data: {
+        success: true,
+        data: {
+          trade_no: 'snapshot-order',
+          status: 'pending',
+          payment_url: 'https://pay.example/checkout',
+        },
+      },
+    })
+    .mockResolvedValueOnce({
+      data: { success: true, data: { ...quote, topup_amount: 50 } },
+    })
+  const get = vi.spyOn(api, 'get').mockResolvedValue({
+    data: {
+      success: true,
+      data: { trade_no: 'snapshot-order', status: 'pending' },
+    },
+  })
+  const completed = vi.fn().mockResolvedValue(undefined)
+  const { result } = renderHook(
+    () => ({
+      ...useCatfkPayment(info, 1, completed),
+      client: useQueryClient(),
+    }),
+    { wrapper }
+  )
+  await act(() => result.current.selectProduct(product, channel))
+  act(() => result.current.setQQ('12345'))
+  await act(() => result.current.confirm())
+  expect(result.current.statusDialogOpen).toBe(true)
+  act(() => result.current.setStatusDialogOpen(false))
+  get.mockResolvedValue({
+    data: {
+      success: true,
+      data: { trade_no: 'snapshot-order', status: 'completed' },
+    },
+  })
+  await act(() =>
+    result.current.client.invalidateQueries({
+      queryKey: ['wallet', 'store-order', 1, 'snapshot-order'],
+    })
+  )
+  await waitFor(() =>
+    expect(result.current.statusOrder?.status).toBe('completed')
+  )
+  expect(result.current.statusDialogOpen).toBe(false)
+  await act(() =>
+    result.current.selectProduct(
+      { id: 'fifty', name: 'Fifty', amount: 50 },
+      channel
+    )
+  )
+  expect(result.current.statusOrder?.amount).toBe(10)
+  expect(result.current.statusOrder?.tradeNo).toBe('snapshot-order')
   expect(completed).toHaveBeenCalledOnce()
 })
 
@@ -320,6 +544,8 @@ it('clears the previous account quote, QQ and channel when the account changes',
   await act(() => result.current.selectProduct(product))
   act(() => result.current.setQQ('001234'))
   rerender({ id: 2 })
+  expect(result.current.statusOrder).toBeNull()
+  expect(result.current.statusDialogOpen).toBe(false)
   expect(result.current.qq).toBe('')
   expect(result.current.quote).toBeNull()
   expect(result.current.channel).toBeNull()

@@ -17,6 +17,7 @@ import type {
   CatfkChannel,
   CatfkInfo,
   CatfkProduct,
+  CatfkPaymentStatusOrder,
   CatfkQuote,
 } from '../types'
 
@@ -33,10 +34,14 @@ export function useCatfkPayment(
   const [quote, setQuote] = useState<CatfkQuote | null>(null)
   const [qq, setQQ] = useState('')
   const [open, setOpen] = useState(false)
+  const [statusDialogOpen, setStatusDialogOpen] = useState(false)
+  const [statusOrder, setStatusOrder] =
+    useState<CatfkPaymentStatusOrder | null>(null)
   const [calculating, setCalculating] = useState(false)
   const [paymentUrl, setPaymentUrl] = useState<string | null>(null)
   const paymentWindows = useRef(new Map<string, Window>())
   const completedTrades = useRef(new Set<string>())
+  const refreshingTrades = useRef(new Set<string>())
   const [pendingTrade, setPendingTrade] = useState<string | null>(null)
   const [orderStatus, setOrderStatus] = useState<string | null>(null)
   const [uncertain, setUncertain] = useState(false)
@@ -70,6 +75,8 @@ export function useCatfkPayment(
   useEffect(() => {
     generation.current++
     setPaymentUrl(null)
+    setStatusDialogOpen(false)
+    setStatusOrder(null)
     paymentWindows.current.clear()
     completedTrades.current.clear()
     inFlight.current = false
@@ -114,6 +121,7 @@ export function useCatfkPayment(
   async function selectProduct(next: CatfkProduct, selectedChannel = channel) {
     if (inFlight.current || unresolved.current) return
     reset()
+    setStatusDialogOpen(false)
     setChannel(selectedChannel)
     setProduct(next)
     if (!userId || !selectedChannel || !info?.enabled || !info.available) return
@@ -201,6 +209,13 @@ export function useCatfkPayment(
       }
       const url = safeCatfkPaymentUrl(order.payment_url)
       setPaymentUrl(url)
+      setStatusOrder({
+        tradeNo: order.trade_no,
+        amount: product.amount,
+        status: order.status,
+        paymentUrl: url,
+      })
+      setStatusDialogOpen(true)
       if (order.status === 'pending' && url && popup) {
         paymentWindows.current.set(order.trade_no, popup)
         popup.location.href = url
@@ -237,12 +252,37 @@ export function useCatfkPayment(
   const applyOrderStatus = useCallback(
     async (trade: string, status: string) => {
       setOrderStatus(status)
+      setStatusOrder((current) =>
+        current?.tradeNo === trade
+          ? {
+              ...current,
+              status,
+              paymentUrl: status === 'pending' ? current.paymentUrl : null,
+            }
+          : current
+      )
       if (status === 'paid' || status === 'completed' || status === 'expired') {
-        paymentWindows.current.get(trade)?.close()
+        try {
+          paymentWindows.current.get(trade)?.close()
+        } catch {
+          // Cross-origin window restrictions must not interrupt wallet refresh.
+        }
         paymentWindows.current.delete(trade)
         setPaymentUrl(null)
       }
       if (status === 'completed' || status === 'expired') {
+        if (status === 'completed' && !completedTrades.current.has(trade)) {
+          if (refreshingTrades.current.has(trade)) return
+          refreshingTrades.current.add(trade)
+          try {
+            await onCompleted?.()
+            if (identity.current !== userId) return
+            completedTrades.current.add(trade)
+          } finally {
+            refreshingTrades.current.delete(trade)
+          }
+        }
+        if (identity.current !== userId) return
         unresolved.current = false
         attempt.current = null
         setPendingTrade(null)
@@ -254,13 +294,9 @@ export function useCatfkPayment(
         } catch {
           /* Storage may be unavailable. */
         }
-        if (status === 'completed' && !completedTrades.current.has(trade)) {
-          completedTrades.current.add(trade)
-          await onCompleted?.()
-        }
       }
     },
-    [onCompleted, storageKey]
+    [onCompleted, storageKey, userId]
   )
 
   const trackedOrder = useQuery({
@@ -296,7 +332,14 @@ export function useCatfkPayment(
         handleServerError(error, t('Failed to refresh user information'))
       }
     )
-  }, [trackedOrder.data, pendingTrade, userId, applyOrderStatus, t])
+  }, [
+    trackedOrder.data,
+    trackedOrder.dataUpdatedAt,
+    pendingTrade,
+    userId,
+    applyOrderStatus,
+    t,
+  ])
 
   async function resume() {
     if (
@@ -327,6 +370,10 @@ export function useCatfkPayment(
   }
 
   return {
+    statusDialogOpen,
+    setStatusDialogOpen,
+    statusOrder,
+    statusQueryFailed: trackedOrder.isError,
     channel,
     product,
     quote,

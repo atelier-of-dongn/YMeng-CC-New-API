@@ -7706,6 +7706,11 @@
     "Install update": "更新をインストール",
     "Prepare the new version while existing requests finish on the current version.": "既存のリクエストを現在のバージョンで完了させながら新しいバージョンを準備します。",
     "Contact method": "連絡先",
-    "Enter QQ number (5-12 digits)": "QQ番号を入力（5～12桁の数字）"
+    "Enter QQ number (5-12 digits)": "QQ番号を入力（5～12桁の数字）",
+    "Automatically credited {{amount}}. No redemption needed.": "{{amount}}が自動反映されました。コードの交換は不要です。",
+    "Click here if payment did not open": "支払い画面が開かない場合はこちら",
+    "Payment successful": "支払い成功",
+    "Unable to check payment status. Retrying automatically.": "支払い状況を確認できません。自動で再試行します。",
+    "Waiting for payment confirmation": "支払い確認待ち"
   }
 }

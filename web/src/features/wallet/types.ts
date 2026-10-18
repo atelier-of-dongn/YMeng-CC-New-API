@@ -155,6 +155,13 @@ export interface CatfkQuote {
   topup_amount: number
 }
 
+export interface CatfkPaymentStatusOrder {
+  tradeNo: string
+  amount: number
+  status: string
+  paymentUrl: string | null
+}
+
 export interface CatfkOrder {
   trade_no: string
   status: string
