@@ -127,6 +127,11 @@ export function CatFKSettingsFields(props: Props) {
             'Selling prices come from live CatFK quotes. Each order buys one code.'
           )}
         </p>
+        <p className='text-muted-foreground text-sm'>
+          {t(
+            'Match each product’s expected credited balance (USD) to an amount option in General. Use the balance value, not the CNY selling price or converted display amount. Unmatched presets cannot use this payment method.'
+          )}
+        </p>
         {invalid && (
           <p role='alert'>{t('Invalid CatFK mapping configuration')}</p>
         )}

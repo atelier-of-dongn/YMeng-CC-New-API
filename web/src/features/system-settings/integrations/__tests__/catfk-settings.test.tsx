@@ -49,7 +49,7 @@ function Wrapper(props: { children: React.ReactNode }) {
 }
 afterEach(() => vi.restoreAllMocks())
 
-test('payment settings keep store configuration under General and remove the standalone provider tab', async () => {
+test('store settings have a standalone tab and preserve edited fields when switching back to General', async () => {
   render(
     <PaymentSettingsSection
       defaultValues={{
@@ -109,17 +109,31 @@ test('payment settings keep store configuration under General and remove the sta
     'aria-selected',
     'true'
   )
+  const storeTab = screen.getByRole('tab', {
+    name: 'Yunmao consignment store payments',
+  })
+  expect(storeTab).toHaveAttribute('aria-selected', 'false')
   expect(
-    screen.queryByRole('tab', { name: /CatFK|Yunmao/ })
+    screen.queryByRole('button', { name: 'Store payment settings' })
   ).not.toBeInTheDocument()
-  await userEvent.click(
-    screen.getByRole('button', { name: 'Store payment settings' })
+  await userEvent.click(storeTab)
+  expect(storeTab).toHaveAttribute('aria-selected', 'true')
+  expect(screen.getByRole('tablist')).toHaveClass('min-w-max')
+  await userEvent.keyboard('{ArrowLeft}{Enter}')
+  expect(screen.getByRole('tab', { name: 'Creem' })).toHaveAttribute(
+    'aria-selected',
+    'true'
   )
+  await userEvent.keyboard('{ArrowRight}{Enter}')
+  expect(storeTab).toHaveAttribute('aria-selected', 'true')
+  expect(screen.getByRole('switch', { name: 'Enable CatFK' })).toBeVisible()
+  await userEvent.type(screen.getByLabelText('CatFK store token'), 'my-shop')
+  await userEvent.click(screen.getByRole('tab', { name: 'General' }))
   expect(
-    screen.getByRole('dialog', { name: 'Store payment settings' })
-  ).toBeVisible()
-  await userEvent.keyboard('{Escape}')
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+    screen.queryByRole('switch', { name: 'Enable CatFK' })
+  ).not.toBeInTheDocument()
+  await userEvent.click(storeTab)
+  expect(screen.getByLabelText('CatFK store token')).toHaveValue('my-shop')
 })
 
 test('adding a store payment uses the normal payment method dialog and preserves the existing Alipay option', async () => {
@@ -130,7 +144,9 @@ test('adding a store payment uses the normal payment method dialog and preserves
   expect(
     await screen.findByRole('option', { name: /Epay: alipay/ })
   ).toBeVisible()
-  await user.click(screen.getByRole('option', { name: 'Yunmao' }))
+  await user.click(
+    screen.getByRole('option', { name: 'Yunmao consignment store payments' })
+  )
   expect(screen.getByRole('textbox', { name: 'Name' })).toHaveValue('Alipay')
   await user.click(screen.getByRole('button', { name: 'Add' }))
   expect(save).toHaveBeenCalledWith(
@@ -138,19 +154,14 @@ test('adding a store payment uses the normal payment method dialog and preserves
   )
 })
 
-test('the general payment method editor exposes store configuration without a separate gateway tab', async () => {
-  const configure = vi.fn()
-  render(
-    <PaymentMethodsVisualEditor
-      value='[]'
-      onChange={vi.fn()}
-      onConfigureStore={configure}
-    />
-  )
-  await userEvent.click(
-    screen.getByRole('button', { name: 'Store payment settings' })
-  )
-  expect(configure).toHaveBeenCalledOnce()
+test('the General payment method editor keeps store payments as a normal method without embedding gateway configuration', () => {
+  render(<PaymentMethodsVisualEditor value='[]' onChange={vi.fn()} />)
+  expect(
+    screen.queryByRole('button', { name: 'Store payment settings' })
+  ).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('switch', { name: 'Enable CatFK' })
+  ).not.toBeInTheDocument()
 })
 
 test('adding, editing and confirming deletion update the visible mapping while preserving its stable ID', async () => {

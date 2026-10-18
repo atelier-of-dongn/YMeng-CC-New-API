@@ -25,7 +25,6 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import * as z from 'zod'
 
-import { Dialog } from '@/components/dialog'
 import { JsonCodeEditor } from '@/components/json-code-editor'
 import { RiskAcknowledgementDialog } from '@/components/risk-acknowledgement-dialog'
 import {
@@ -261,7 +260,6 @@ export function PaymentSettingsSection({
     [initialFormValues]
   )
 
-  const [storeSettingsOpen, setStoreSettingsOpen] = React.useState(false)
   const [payMethodsVisualMode, setPayMethodsVisualMode] = React.useState(true)
   const [amountOptionsVisualMode, setAmountOptionsVisualMode] =
     React.useState(true)
@@ -946,11 +944,14 @@ export function PaymentSettingsSection({
           />
           <Tabs defaultValue='general' className='min-w-0'>
             <div className='overflow-x-auto pb-1'>
-              <TabsList className='grid min-w-[44rem] grid-cols-6'>
+              <TabsList className='min-w-max'>
                 <TabsTrigger value='general'>{t('General')}</TabsTrigger>
                 <TabsTrigger value='epay'>Epay</TabsTrigger>
                 <TabsTrigger value='stripe'>{t('Stripe')}</TabsTrigger>
                 <TabsTrigger value='creem'>Creem</TabsTrigger>
+                <TabsTrigger value='catfk'>
+                  {t('Yunmao consignment store payments')}
+                </TabsTrigger>
                 <TabsTrigger value='waffo-pancake'>Waffo Pancake</TabsTrigger>
                 <TabsTrigger value='waffo'>Waffo</TabsTrigger>
               </TabsList>
@@ -1051,7 +1052,6 @@ export function PaymentSettingsSection({
                           <PaymentMethodsVisualEditor
                             value={field.value}
                             onChange={field.onChange}
-                            onConfigureStore={() => setStoreSettingsOpen(true)}
                           />
                         ) : (
                           <JsonCodeEditor
@@ -1674,20 +1674,10 @@ export function PaymentSettingsSection({
               </div>
             </TabsContent>
 
-            <Dialog
-              open={storeSettingsOpen}
-              onOpenChange={setStoreSettingsOpen}
-              footer={
-                <Button
-                  type='button'
-                  variant='outline'
-                  onClick={() => setStoreSettingsOpen(false)}
-                >
-                  {t('Close')}
-                </Button>
-              }
-              title={t('Store payment settings')}
-            >
+            <TabsContent value='catfk' className={paymentTabContentClassName}>
+              <h3 className='text-lg font-medium'>
+                {t('Yunmao consignment store payments')}
+              </h3>
               <CatFKSettingsFields
                 values={{
                   CatFKEnabled: form.watch('CatFKEnabled'),
@@ -1716,7 +1706,7 @@ export function PaymentSettingsSection({
               {form.formState.errors.CatFKChannels && (
                 <p role='alert'>{t('Invalid CatFK mapping configuration')}</p>
               )}
-            </Dialog>
+            </TabsContent>
 
             <TabsContent
               value='waffo-pancake'

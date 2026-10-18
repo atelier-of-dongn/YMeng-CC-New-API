@@ -23,13 +23,17 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatLocalCurrencyAmount } from '@/lib/currency'
+import { toIntlLocale } from '@/i18n/languages'
+import {
+  formatBillingCurrencyFromUSD,
+  formatLocalCurrencyAmount,
+} from '@/lib/currency'
+import { useSystemConfigStore } from '@/stores/system-config-store'
 
 import { isValidCatfkQQ, isValidCatfkQuote } from '../../catfk-api'
 import { DEFAULT_DISCOUNT_RATE } from '../../constants'
 import {
   formatCurrency,
-  formatCreemPrice,
   getPaymentIcon,
   getTopupPromptContent,
   getTopupPromptVisibility,
@@ -71,7 +75,10 @@ export function PaymentConfirmDialog({
   catfk,
   topupLink,
 }: PaymentConfirmDialogProps) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  useSystemConfigStore((state) => state.config.currency)
+  const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
+  const invalidQQ = !!catfk && catfk.qq.length > 0 && !isValidCatfkQQ(catfk.qq)
   const hasDiscount =
     !catfk && discountRate > 0 && discountRate < 1 && paymentAmount > 0
   const originalAmount = hasDiscount ? paymentAmount / discountRate : 0
@@ -122,7 +129,12 @@ export function PaymentConfirmDialog({
           </span>
           <span className='text-lg font-semibold'>
             {catfk
-              ? formatCreemPrice(topupAmount, 'USD')
+              ? formatBillingCurrencyFromUSD(topupAmount, {
+                  digitsLarge: 2,
+                  digitsSmall: 2,
+                  abbreviate: false,
+                  locale,
+                })
               : formatLocalCurrencyAmount(topupAmount * usdExchangeRate, {
                   digitsLarge: 2,
                   digitsSmall: 2,
@@ -138,7 +150,7 @@ export function PaymentConfirmDialog({
           ) : (
             <div className='flex items-baseline gap-2'>
               <span className='text-2xl font-semibold'>
-                {formatCurrency(paymentAmount)} {catfk?.quote?.currency}
+                {formatCurrency(paymentAmount)}
               </span>
               {hasDiscount && (
                 <span className='text-muted-foreground text-sm line-through'>
@@ -180,23 +192,34 @@ export function PaymentConfirmDialog({
 
       {catfk && (
         <div className='space-y-2'>
-          <Label htmlFor='catfk-qq'>{t('QQ number')}</Label>
-          <Input
-            id='catfk-qq'
-            inputMode='numeric'
-            autoComplete='off'
-            required
-            value={catfk.qq}
-            disabled={processing || catfk.qqLocked}
-            onChange={(event) => catfk.onQQChange(event.target.value)}
-            aria-invalid={catfk.qq.length > 0 && !isValidCatfkQQ(catfk.qq)}
-            aria-describedby='catfk-qq-hint'
-          />
-          <p id='catfk-qq-hint' className='text-muted-foreground text-xs'>
-            {t(
-              'Enter ASCII digits only. QQ is used for this payment, not as your account identity.'
-            )}
-          </p>
+          <div className='flex items-center gap-3'>
+            <Label htmlFor='catfk-qq' className='shrink-0'>
+              <span className='text-destructive' aria-hidden='true'>
+                *
+              </span>
+              {t('Contact method')}
+            </Label>
+            <Input
+              id='catfk-qq'
+              className='bg-muted/50 h-11 flex-1'
+              inputMode='numeric'
+              autoComplete='off'
+              required
+              minLength={5}
+              maxLength={12}
+              placeholder={t('Enter QQ number (5-12 digits)')}
+              value={catfk.qq}
+              disabled={processing || catfk.qqLocked}
+              onChange={(event) => catfk.onQQChange(event.target.value)}
+              aria-invalid={invalidQQ}
+              aria-describedby={invalidQQ ? 'catfk-qq-hint' : undefined}
+            />
+          </div>
+          {invalidQQ && (
+            <p id='catfk-qq-hint' className='text-destructive text-xs'>
+              {t('Enter QQ number (5-12 digits)')}
+            </p>
+          )}
         </div>
       )}
       {showTopupPrompt && (

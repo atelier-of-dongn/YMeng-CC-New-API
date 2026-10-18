@@ -61,7 +61,7 @@ it('keeps the site open and closes the payment window only after server-confirme
   })
   act(() => result.current.selectChannel(channel))
   await act(() => result.current.selectProduct(product))
-  act(() => result.current.setQQ('1234'))
+  act(() => result.current.setQQ('12345'))
   await act(() => result.current.confirm())
   expect(open).toHaveBeenCalledWith('', '_blank')
   expect(popup.opener).toBeNull()
@@ -124,7 +124,7 @@ it('keeps a known payment link recoverable when popup creation is blocked withou
   const { result } = renderHook(() => useCatfkPayment(info, 1), { wrapper })
   act(() => result.current.selectChannel(channel))
   await act(() => result.current.selectProduct(product))
-  act(() => result.current.setQQ('1234'))
+  act(() => result.current.setQQ('12345'))
   await act(() => result.current.confirm())
   expect(result.current.paymentUrl).toBe('https://pay.example/same-order')
   await act(() => result.current.resume())
@@ -133,8 +133,18 @@ it('keeps a known payment link recoverable when popup creation is blocked withou
 })
 
 it('accepts only ASCII digit QQ strings and HTTPS payment URLs without credentials', () => {
-  expect(isValidCatfkQQ('0012345')).toBe(true)
-  for (const value of ['', '１２３', '12 34', '+123', '123\n']) {
+  for (const value of ['12345', '0012345', '123456789012']) {
+    expect(isValidCatfkQQ(value)).toBe(true)
+  }
+  for (const value of [
+    '',
+    '1234',
+    '1234567890123',
+    '１２３４５',
+    '12 345',
+    '+12345',
+    '12345\n',
+  ]) {
     expect(isValidCatfkQQ(value)).toBe(false)
   }
   expect(safeCatfkPaymentUrl('https://pay.example/order')).toBe(
@@ -212,15 +222,15 @@ it('allows correcting QQ after a definite server rejection without keeping the u
   const { result } = renderHook(() => useCatfkPayment(info, 1), { wrapper })
   act(() => result.current.selectChannel(channel))
   await act(() => result.current.selectProduct(product))
-  act(() => result.current.setQQ('1234'))
+  act(() => result.current.setQQ('12345'))
   await act(() => result.current.confirm())
-  expect(result.current.qq).toBe('1234')
+  expect(result.current.qq).toBe('12345')
   expect(result.current.uncertain).toBe(false)
   expect(localStorage.getItem('wallet:catfk:order:1')).toBeNull()
-  act(() => result.current.setQQ('5678'))
+  act(() => result.current.setQQ('56789'))
   await act(() => result.current.confirm())
   expect(post.mock.calls[2][1]).toMatchObject({
-    qq: '5678',
+    qq: '56789',
     product_id: 'ten',
     channel_id: 'wechat',
     quote_id: 'q1',
@@ -242,14 +252,14 @@ it.each([
     const { result } = renderHook(() => useCatfkPayment(info, 1), { wrapper })
     act(() => result.current.selectChannel(channel))
     await act(() => result.current.selectProduct(product))
-    act(() => result.current.setQQ('1234'))
+    act(() => result.current.setQQ('12345'))
     await act(() => result.current.confirm())
-    expect(result.current.qq).toBe('1234')
+    expect(result.current.qq).toBe('12345')
     expect(result.current.uncertain).toBe(true)
     expect(localStorage.getItem('wallet:catfk:order:1')).toBe(
       'creation_unknown'
     )
-    act(() => result.current.setQQ('5678'))
+    act(() => result.current.setQQ('56789'))
     await act(() => result.current.confirm())
     expect(post).toHaveBeenCalledTimes(2)
   }

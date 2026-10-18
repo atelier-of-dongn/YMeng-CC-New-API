@@ -1,7 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { createInstance } from 'i18next'
 import { useState, type ComponentProps, type ReactNode } from 'react'
+import { I18nextProvider } from 'react-i18next'
 import { afterEach, expect, it, vi } from 'vitest'
 
 import { api } from '@/lib/api'
@@ -139,7 +141,7 @@ it('uses the original preset buttons and keeps custom input visible while quotin
     screen.getByRole('spinbutton', { name: 'Custom Amount' })
   ).toBeVisible()
   await user.click(screen.getByRole('button', { name: /WeChat/ }))
-  await screen.findByRole('textbox', { name: 'QQ number' })
+  await screen.findByRole('textbox', { name: /Contact method/ })
   await waitFor(() =>
     expect(post).toHaveBeenCalledWith('/api/user/catfk/quote', {
       product_id: 'ten',
@@ -193,15 +195,17 @@ it('disables the store method for custom input even matching a tier and re-enabl
   render(<WalletAmounts />)
   const store = screen.getByRole('button', { name: /WeChat/ })
   expect(store).toBeEnabled()
-  const note = screen.getByText('Custom amounts are not supported')
-  expect(note).toHaveClass(
+  expect(
+    screen.queryByText('Custom amounts are not supported')
+  ).not.toBeInTheDocument()
+  const input = screen.getByRole('spinbutton', { name: 'Custom Amount' })
+  await user.clear(input)
+  await user.type(input, '10')
+  expect(screen.getByText('Custom amounts are not supported')).toHaveClass(
     'text-[11px]',
     'text-muted-foreground',
     'font-normal'
   )
-  const input = screen.getByRole('spinbutton', { name: 'Custom Amount' })
-  await user.clear(input)
-  await user.type(input, '10')
   expect(screen.getByRole('button', { name: /WeChat/ })).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Existing Alipay' })).toBeEnabled()
   await user.click(screen.getByRole('button', { name: 'Existing Alipay' }))
@@ -209,9 +213,46 @@ it('disables the store method for custom input even matching a tier and re-enabl
     expect.objectContaining({ type: 'alipay' })
   )
   await user.click(screen.getByRole('button', { name: /^10 Pay/ }))
+  expect(
+    screen.queryByText('Custom amounts are not supported')
+  ).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: /WeChat/ })).toBeEnabled()
   await user.click(screen.getByRole('button', { name: /WeChat/ }))
   expect(pay).toHaveBeenCalledWith(channel, product)
+})
+
+it('hides the custom amount warning before the user edits the initial amount', () => {
+  render(<RechargeFormCard {...base} selectedPreset={null} />)
+  expect(
+    screen.queryByText('Custom amounts are not supported')
+  ).not.toBeInTheDocument()
+})
+
+it('maps a shared preset to a newly configured product by credited USD amount rather than product name or ID', async () => {
+  const pay = vi.fn()
+  const added = { id: 'my-tier', name: 'New product', amount: 20 }
+  render(
+    <RechargeFormCard
+      {...base}
+      selectedPreset={20}
+      topupAmount={20}
+      topupInfo={{
+        ...topupInfo,
+        catfk: {
+          enabled: true,
+          available: true,
+          channels: [channel],
+          products: [product, added],
+        },
+      }}
+      onCatfkPaymentSelect={pay}
+    />
+  )
+  await userEvent.click(screen.getByRole('button', { name: 'WeChat' }))
+  expect(pay).toHaveBeenCalledWith(channel, added)
+  expect(
+    screen.queryByText('Custom amounts are not supported')
+  ).not.toBeInTheDocument()
 })
 
 it('disables an unmapped preset without replacing the shared amount buttons', () => {
@@ -277,6 +318,108 @@ it('preserves the configured store method name and icon when loading payment set
     screen.getByRole('img', { name: 'Configured Alipay' })
   ).toHaveAttribute('src', 'https://example.com/alipay.png')
 })
+it.each([
+  { quotaDisplayType: 'USD' as const, expected: '$10' },
+  { quotaDisplayType: 'CNY' as const, expected: '¥70' },
+  { quotaDisplayType: 'CUSTOM' as const, expected: '€ 9' },
+])(
+  'uses the site display currency for credited balance without converting the quoted payment: $quotaDisplayType',
+  (currency) => {
+    useSystemConfigStore.getState().setConfig({
+      currency: {
+        ...DEFAULT_CURRENCY_CONFIG,
+        quotaDisplayType: currency.quotaDisplayType,
+        usdExchangeRate: 7,
+        customCurrencySymbol: '€',
+        customCurrencyExchangeRate: 0.9,
+      },
+    })
+    render(
+      <PaymentConfirmDialog
+        open
+        onOpenChange={vi.fn()}
+        onConfirm={vi.fn()}
+        topupAmount={10}
+        paymentAmount={72}
+        paymentMethod={{ type: 'catfk', name: 'Alipay' }}
+        calculating={false}
+        processing={false}
+        catfk={{ quote, qq: '12345', onQQChange: vi.fn(), available: true }}
+      />
+    )
+    expect(screen.getByText(currency.expected)).toBeVisible()
+    expect(screen.getByText('72')).toBeVisible()
+    expect(screen.getByRole('alertdialog')).not.toHaveTextContent('CNY')
+  }
+)
+
+it('updates the credited balance symbol when site currency settings change while the dialog is open', () => {
+  render(
+    <PaymentConfirmDialog
+      open
+      onOpenChange={vi.fn()}
+      onConfirm={vi.fn()}
+      topupAmount={10}
+      paymentAmount={72}
+      paymentMethod={{ type: 'catfk', name: 'Alipay' }}
+      calculating={false}
+      processing={false}
+      catfk={{ quote, qq: '12345', onQQChange: vi.fn(), available: true }}
+    />
+  )
+  expect(screen.getByText('$10')).toBeVisible()
+  act(() =>
+    useSystemConfigStore.getState().setConfig({
+      currency: {
+        ...DEFAULT_CURRENCY_CONFIG,
+        quotaDisplayType: 'CNY',
+        usdExchangeRate: 7,
+      },
+    })
+  )
+  expect(screen.getByText('¥70')).toBeVisible()
+})
+
+it.each(['zhCN', 'zhTW', 'en', 'fr', 'ru', 'ja', 'vi', 'invalid_locale!'])(
+  'formats the site currency safely and follows language changes for %s',
+  async (language) => {
+    const i18n = createInstance()
+    await i18n.init({ lng: language, fallbackLng: false, resources: {} })
+    useSystemConfigStore.getState().setConfig({
+      currency: {
+        ...DEFAULT_CURRENCY_CONFIG,
+        quotaDisplayType: 'CNY',
+        usdExchangeRate: 7,
+      },
+    })
+    render(
+      <I18nextProvider i18n={i18n}>
+        <PaymentConfirmDialog
+          open
+          onOpenChange={vi.fn()}
+          onConfirm={vi.fn()}
+          topupAmount={10.25}
+          paymentAmount={72}
+          paymentMethod={{ type: 'catfk', name: 'Alipay' }}
+          calculating={false}
+          processing={false}
+          catfk={{
+            quote: { ...quote, topup_amount: 10.25 },
+            qq: '12345',
+            onQQChange: vi.fn(),
+            available: true,
+          }}
+        />
+      </I18nextProvider>
+    )
+    expect(screen.getByText(/71[.,]75/)).toBeVisible()
+    await act(() => i18n.changeLanguage('fr'))
+    expect(screen.getByText(/^71,75\s¥$/)).toBeVisible()
+    await act(() => i18n.changeLanguage('en'))
+    expect(screen.getByText('¥71.75')).toBeVisible()
+  }
+)
+
 it('requires a valid quote and ASCII QQ before confirmation and locks QQ for uncertain orders', async () => {
   const confirm = vi.fn()
   function Payment() {
@@ -298,14 +441,30 @@ it('requires a valid quote and ASCII QQ before confirmation and locks QQ for unc
   const user = userEvent.setup()
   render(<Payment />)
   const button = screen.getByRole('button', { name: 'Confirm Payment' })
-  const input = screen.getByRole('textbox', { name: 'QQ number' })
+  const input = screen.getByRole('textbox', { name: /Contact method/ })
   expect(button).toBeDisabled()
+  expect(input).toBeRequired()
+  expect(input).toHaveAttribute('placeholder', 'Enter QQ number (5-12 digits)')
+  expect(input).toHaveAttribute('inputmode', 'numeric')
+  expect(input).toHaveClass('bg-muted/50', 'h-11')
+  expect(input).toHaveAttribute('minlength', '5')
+  expect(input).toHaveAttribute('maxlength', '12')
+  await user.type(input, '1234')
+  expect(input).toHaveAttribute('aria-invalid', 'true')
+  expect(button).toBeDisabled()
+  await user.clear(input)
   await user.type(input, '１２３')
   expect(input).toHaveAttribute('aria-invalid', 'true')
   expect(button).toBeDisabled()
   await user.clear(input)
   await user.type(input, '001234')
+  expect(input).toHaveFocus()
   expect(input).toHaveAttribute('aria-invalid', 'false')
+  expect(
+    screen.queryByText(
+      'Enter ASCII digits only. QQ is used for this payment, not as your account identity.'
+    )
+  ).not.toBeInTheDocument()
   expect(button).toBeEnabled()
   await user.click(button)
   expect(confirm).toHaveBeenCalledOnce()
@@ -340,7 +499,9 @@ it.each([
     expect(
       screen.getByRole('button', { name: 'Confirm Payment' })
     ).toBeDisabled()
-    expect(screen.getByRole('textbox', { name: 'QQ number' })).toBeDisabled()
+    expect(
+      screen.getByRole('textbox', { name: /Contact method/ })
+    ).toBeDisabled()
   }
 )
 it('formats Catfk history quota once and recovers an order through the server without local storage', async () => {

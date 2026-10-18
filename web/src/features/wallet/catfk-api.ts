@@ -89,5 +89,5 @@ export function isValidCatfkQuote(
 }
 
 export function isValidCatfkQQ(value: string): boolean {
-  return /^[0-9]+$/.test(value)
+  return value.length >= 5 && value.length <= 12 && !/[^0-9]/.test(value)
 }

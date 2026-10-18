@@ -78,7 +78,6 @@ export type PaymentMethodData = {
 type PaymentMethodDialogProps = {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onConfigureStore?: () => void
   onSave: (data: PaymentMethodData) => void
   editData?: PaymentMethodData | null
 }
@@ -97,7 +96,6 @@ export function PaymentMethodDialog({
   open,
   onOpenChange,
   onSave,
-  onConfigureStore,
   editData,
 }: PaymentMethodDialogProps) {
   const { t } = useTranslation()
@@ -112,7 +110,7 @@ export function PaymentMethodDialog({
     },
     {
       iconName: 'SiAlipay',
-      label: t('Yunmao'),
+      label: t('Yunmao consignment store payments'),
       name: t('Alipay'),
       value: 'catfk',
     },
@@ -311,11 +309,6 @@ export function PaymentMethodDialog({
             )}
           />
 
-          {form.watch('type') === 'catfk' && onConfigureStore && (
-            <Button type='button' variant='outline' onClick={onConfigureStore}>
-              {t('Store payment settings')}
-            </Button>
-          )}
           <FormField
             control={form.control}
             name='icon'

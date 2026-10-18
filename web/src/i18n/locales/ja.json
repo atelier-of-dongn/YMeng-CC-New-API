@@ -35,6 +35,7 @@
     "Failed to refresh user information": "ユーザー情報の更新に失敗しました",
     "Invalid CatFK mapping configuration": "Yunmao マッピング設定が無効です",
     "Leave blank to keep the saved store token. Never enter a user session key.": "空欄の場合は保存済みのストアトークンを保持します。ユーザーのセッションキーは入力しないでください。",
+    "Match each product’s expected credited balance (USD) to an amount option in General. Use the balance value, not the CNY selling price or converted display amount. Unmatched presets cannot use this payment method.": "各商品の入金予定残高（USD）を「全般」のプリセット金額と一致させてください。人民元の販売価格や換算後の表示額ではなく、残高の値を入力します。対応する商品がない金額では、この決済方法を利用できません。",
     "No CatFK channels returned": "Yunmao チャネルが返されませんでした",
     "No CatFK products configured": "Yunmao 商品が未設定です",
     "Online Payment": "オンライン決済",
@@ -7385,6 +7386,7 @@
     "Your Turnstile secret key": "あなたのTurnstileシークレットキー",
     "Your Turnstile site key": "あなたのTurnstileサイトキー",
     "Yunmao": "Yunmao",
+    "Yunmao consignment store payments": "Yunmao 委託販売ストア決済",
     "Zero retention": "データ保持なし",
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
@@ -7702,6 +7704,8 @@
     "Unable to contact the update service.": "更新サービスに接続できません。",
     "Update state: {{state}}": "更新状態: {{state}}",
     "Install update": "更新をインストール",
-    "Prepare the new version while existing requests finish on the current version.": "既存のリクエストを現在のバージョンで完了させながら新しいバージョンを準備します。"
+    "Prepare the new version while existing requests finish on the current version.": "既存のリクエストを現在のバージョンで完了させながら新しいバージョンを準備します。",
+    "Contact method": "連絡先",
+    "Enter QQ number (5-12 digits)": "QQ番号を入力（5～12桁の数字）"
   }
 }

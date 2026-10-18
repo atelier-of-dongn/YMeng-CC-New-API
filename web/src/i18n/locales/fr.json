@@ -35,6 +35,7 @@
     "Failed to refresh user information": "Échec de l’actualisation du profil",
     "Invalid CatFK mapping configuration": "Configuration des correspondances Yunmao invalide",
     "Leave blank to keep the saved store token. Never enter a user session key.": "Laissez vide pour conserver le jeton enregistré. Ne saisissez jamais de clé de session utilisateur.",
+    "Match each product’s expected credited balance (USD) to an amount option in General. Use the balance value, not the CNY selling price or converted display amount. Unmatched presets cannot use this payment method.": "Faites correspondre le solde crédité prévu (USD) de chaque produit à un montant prédéfini dans Général. Utilisez le solde, et non le prix en CNY ni le montant affiché après conversion. Les montants sans produit correspondant ne peuvent pas utiliser ce moyen de paiement.",
     "No CatFK channels returned": "Aucun canal Yunmao retourné",
     "No CatFK products configured": "Aucun produit Yunmao configuré",
     "Online Payment": "Paiement en ligne",
@@ -7385,6 +7386,7 @@
     "Your Turnstile secret key": "Votre clé secrète Turnstile",
     "Your Turnstile site key": "Votre clé de site Turnstile",
     "Yunmao": "Yunmao",
+    "Yunmao consignment store payments": "Paiements de la boutique en consignation Yunmao",
     "Zero retention": "Aucune rétention",
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
@@ -7702,6 +7704,8 @@
     "Unable to contact the update service.": "Impossible de joindre le service de mise à jour.",
     "Update state: {{state}}": "État de la mise à jour : {{state}}",
     "Install update": "Installer la mise à jour",
-    "Prepare the new version while existing requests finish on the current version.": "Préparer la nouvelle version pendant que les requêtes existantes terminent sur la version actuelle."
+    "Prepare the new version while existing requests finish on the current version.": "Préparer la nouvelle version pendant que les requêtes existantes terminent sur la version actuelle.",
+    "Contact method": "Coordonnées",
+    "Enter QQ number (5-12 digits)": "Numéro QQ (5 à 12 chiffres)"
   }
 }

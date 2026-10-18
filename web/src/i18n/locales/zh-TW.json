@@ -35,6 +35,7 @@
     "Failed to refresh user information": "重新整理使用者資訊失敗",
     "Invalid CatFK mapping configuration": "雲貓 對應設定無效",
     "Leave blank to keep the saved store token. Never enter a user session key.": "留空保留已儲存的商店權杖。請勿輸入使用者工作階段金鑰。",
+    "Match each product’s expected credited balance (USD) to an amount option in General. Use the balance value, not the CNY selling price or converted display amount. Unmatched presets cannot use this payment method.": "將每個商品的「預計入帳餘額（美元）」設為與「一般」中的某個預設金額相同。填寫餘額數值，而非人民幣售價或換算後的顯示金額。未對應商品的預設金額無法使用此付款方式。",
     "No CatFK channels returned": "未傳回 雲貓 管道",
     "No CatFK products configured": "尚未設定 雲貓 商品",
     "Online Payment": "線上付款",
@@ -7385,6 +7386,7 @@
     "Your Turnstile secret key": "您的 Turnstile 金鑰",
     "Your Turnstile site key": "您的 Turnstile 站點金鑰",
     "Yunmao": "雲貓",
+    "Yunmao consignment store payments": "雲貓寄售店鋪支付",
     "Zero retention": "零數據保留",
     "Zhipu": "智譜",
     "Zhipu GLM": "智譜GLM",
@@ -7702,6 +7704,8 @@
     "Unable to contact the update service.": "無法連接更新服務。",
     "Update state: {{state}}": "更新狀態：{{state}}",
     "Install update": "安裝更新",
-    "Prepare the new version while existing requests finish on the current version.": "在現有請求繼續由目前版本處理時準備新版本。"
+    "Prepare the new version while existing requests finish on the current version.": "在現有請求繼續由目前版本處理時準備新版本。",
+    "Contact method": "聯絡方式",
+    "Enter QQ number (5-12 digits)": "請輸入QQ號（5-12位數字）"
   }
 }

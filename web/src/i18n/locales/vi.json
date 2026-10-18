@@ -35,6 +35,7 @@
     "Failed to refresh user information": "Không thể làm mới thông tin người dùng",
     "Invalid CatFK mapping configuration": "Cấu hình ánh xạ Yunmao không hợp lệ",
     "Leave blank to keep the saved store token. Never enter a user session key.": "Để trống để giữ token cửa hàng đã lưu. Không nhập khóa phiên người dùng.",
+    "Match each product’s expected credited balance (USD) to an amount option in General. Use the balance value, not the CNY selling price or converted display amount. Unmatched presets cannot use this payment method.": "Đặt số dư dự kiến được cộng (USD) của mỗi sản phẩm bằng một mức tiền có sẵn trong mục Chung. Nhập giá trị số dư, không phải giá bán CNY hay số tiền hiển thị sau quy đổi. Mức tiền không khớp sản phẩm sẽ không dùng được phương thức này.",
     "No CatFK channels returned": "Không có kênh Yunmao được trả về",
     "No CatFK products configured": "Chưa cấu hình sản phẩm Yunmao",
     "Online Payment": "Thanh toán trực tuyến",
@@ -7385,6 +7386,7 @@
     "Your Turnstile secret key": "Khóa bí mật Turnstile của bạn",
     "Your Turnstile site key": "Khóa site Turnstile của bạn",
     "Yunmao": "Yunmao",
+    "Yunmao consignment store payments": "Thanh toán cửa hàng ký gửi Yunmao",
     "Zero retention": "Không lưu dữ liệu",
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
@@ -7702,6 +7704,8 @@
     "Unable to contact the update service.": "Không thể kết nối dịch vụ cập nhật.",
     "Update state: {{state}}": "Trạng thái cập nhật: {{state}}",
     "Install update": "Cài đặt bản cập nhật",
-    "Prepare the new version while existing requests finish on the current version.": "Chuẩn bị phiên bản mới trong khi các yêu cầu hiện tại hoàn tất trên phiên bản hiện tại."
+    "Prepare the new version while existing requests finish on the current version.": "Chuẩn bị phiên bản mới trong khi các yêu cầu hiện tại hoàn tất trên phiên bản hiện tại.",
+    "Contact method": "Liên hệ",
+    "Enter QQ number (5-12 digits)": "Nhập số QQ (5-12 chữ số)"
   }
 }

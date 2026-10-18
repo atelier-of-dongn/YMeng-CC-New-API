@@ -35,6 +35,7 @@
     "Failed to refresh user information": "Не удалось обновить данные пользователя",
     "Invalid CatFK mapping configuration": "Недопустимая конфигурация сопоставлений Yunmao",
     "Leave blank to keep the saved store token. Never enter a user session key.": "Оставьте пустым для сохранения токена магазина. Никогда не вводите ключ пользовательской сессии.",
+    "Match each product’s expected credited balance (USD) to an amount option in General. Use the balance value, not the CNY selling price or converted display amount. Unmatched presets cannot use this payment method.": "Ожидаемый зачисленный баланс (USD) каждого товара должен совпадать с одной из готовых сумм в разделе «Общие». Указывайте баланс, а не цену в CNY или пересчитанную сумму на экране. Для сумм без соответствующего товара этот способ оплаты недоступен.",
     "No CatFK channels returned": "Каналы Yunmao не получены",
     "No CatFK products configured": "Товары Yunmao не настроены",
     "Online Payment": "Онлайн-оплата",
@@ -7385,6 +7386,7 @@
     "Your Turnstile secret key": "Секретный ключ Turnstile",
     "Your Turnstile site key": "Ключ сайта Turnstile",
     "Yunmao": "Yunmao",
+    "Yunmao consignment store payments": "Оплата комиссионного магазина Yunmao",
     "Zero retention": "Без хранения данных",
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
@@ -7702,6 +7704,8 @@
     "Unable to contact the update service.": "Не удалось связаться со службой обновлений.",
     "Update state: {{state}}": "Состояние обновления: {{state}}",
     "Install update": "Установить обновление",
-    "Prepare the new version while existing requests finish on the current version.": "Подготовить новую версию, пока текущая версия завершает существующие запросы."
+    "Prepare the new version while existing requests finish on the current version.": "Подготовить новую версию, пока текущая версия завершает существующие запросы.",
+    "Contact method": "Контактные данные",
+    "Enter QQ number (5-12 digits)": "Введите номер QQ (5–12 цифр)"
   }
 }

@@ -35,6 +35,7 @@
     "Failed to refresh user information": "Failed to refresh user information",
     "Invalid CatFK mapping configuration": "Invalid Yunmao mapping configuration",
     "Leave blank to keep the saved store token. Never enter a user session key.": "Leave blank to keep the saved store token. Never enter a user session key.",
+    "Match each product’s expected credited balance (USD) to an amount option in General. Use the balance value, not the CNY selling price or converted display amount. Unmatched presets cannot use this payment method.": "Match each product’s expected credited balance (USD) to an amount option in General. Use the balance value, not the CNY selling price or converted display amount. Unmatched presets cannot use this payment method.",
     "No CatFK channels returned": "No Yunmao channels returned",
     "No CatFK products configured": "No Yunmao products configured",
     "Online Payment": "Online Payment",
@@ -7385,6 +7386,7 @@
     "Your Turnstile secret key": "Your Turnstile secret key",
     "Your Turnstile site key": "Your Turnstile site key",
     "Yunmao": "Yunmao",
+    "Yunmao consignment store payments": "Yunmao consignment store payments",
     "Zero retention": "Zero retention",
     "Zhipu": "Zhipu",
     "Zhipu GLM": "Zhipu GLM",
@@ -7702,6 +7704,8 @@
     "Unable to contact the update service.": "Unable to contact the update service.",
     "Update state: {{state}}": "Update state: {{state}}",
     "Install update": "Install update",
-    "Prepare the new version while existing requests finish on the current version.": "Prepare the new version while existing requests finish on the current version."
+    "Prepare the new version while existing requests finish on the current version.": "Prepare the new version while existing requests finish on the current version.",
+    "Contact method": "Contact method",
+    "Enter QQ number (5-12 digits)": "Enter QQ number (5-12 digits)"
   }
 }

@@ -27,7 +27,11 @@ it.each(Object.entries(resources))(
       'Read CatFK channels',
       'Expected credited balance (USD)',
       'CatFK product IDs must be unique',
+      'Contact method',
+      'Enter QQ number (5-12 digits)',
       'Custom amounts are not supported',
+      'Yunmao consignment store payments',
+      'Match each product’s expected credited balance (USD) to an amount option in General. Use the balance value, not the CNY selling price or converted display amount. Unmatched presets cannot use this payment method.',
     ]) {
       expect(i18n.exists(key, { lng: language })).toBe(true)
       expect(i18n.t(key)).not.toContain('CatFK')
@@ -39,8 +43,13 @@ it.each(Object.entries(resources))(
 it('shows the requested Chinese custom amount note and switches gateway labels with the language', async () => {
   const i18n = createInstance()
   await i18n.init({ lng: 'zh', fallbackLng: 'en', resources })
+  expect(i18n.t('Contact method')).toBe('联系方式')
+  expect(i18n.t('Enter QQ number (5-12 digits)')).toBe(
+    '请输入QQ号（5-12位数字）'
+  )
   expect(i18n.t('Custom amounts are not supported')).toBe('不支持自定义金额')
   expect(i18n.t('Enable CatFK')).toBe('启用云猫支付')
+  expect(i18n.t('Yunmao consignment store payments')).toBe('云猫寄售店铺支付')
   await i18n.changeLanguage('en')
   expect(i18n.t('Enable CatFK')).toBe('Enable Yunmao payments')
   await i18n.changeLanguage('zh-TW')
