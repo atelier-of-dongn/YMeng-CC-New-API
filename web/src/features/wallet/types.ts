@@ -119,7 +119,53 @@ export interface WaffoPayMethod {
 /**
  * Topup configuration information
  */
+export interface CatfkProduct {
+  id: string
+  name: string
+  /** USD credit added to the wallet; one fixed product per order. */
+  amount: number
+}
+
+export interface CatfkChannel {
+  id: string
+  name: string
+  icon?: string
+}
+
+export interface CatfkInfo {
+  enabled: boolean
+  available: boolean
+  unavailable_reason?: string
+  products: CatfkProduct[]
+  channels: CatfkChannel[]
+}
+
+export interface CatfkQuote {
+  quote_id: string
+  amount: number
+  currency: string
+  topup_amount: number
+}
+
+export interface CatfkOrder {
+  trade_no: string
+  status: string
+  payment_url?: string
+}
+
+export interface CatfkQuoteRequest {
+  product_id: string
+  channel_id: string
+}
+
+export interface CatfkPayRequest extends CatfkQuoteRequest {
+  quote_id: string
+  qq: string
+  idempotency_key: string
+}
+
 export interface TopupInfo {
+  catfk?: CatfkInfo
   /** Whether online topup is enabled */
   enable_online_topup: boolean
   /** Whether Stripe topup is enabled */
@@ -265,6 +311,7 @@ export interface TopupRecord {
   trade_no: string
   /** Payment method type */
   payment_method: string
+  payment_provider?: string
   /** Creation timestamp */
   create_time: number
   /** Completion timestamp */

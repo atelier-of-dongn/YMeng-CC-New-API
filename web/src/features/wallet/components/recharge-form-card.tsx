@@ -39,6 +39,7 @@ import { cn } from '@/lib/utils'
 
 import {
   formatCurrency,
+  formatCreemPrice,
   getDiscountLabel,
   getPaymentIcon,
   getMinTopupAmount,
@@ -50,7 +51,10 @@ import type {
   TopupInfo,
   CreemProduct,
   WaffoPayMethod,
+  CatfkChannel,
+  CatfkProduct,
 } from '../types'
+import { CatfkOrderStatus } from './catfk-order-status'
 import { CreemProductsSection } from './creem-products-section'
 
 interface RechargeFormCardProps {
@@ -80,6 +84,15 @@ interface RechargeFormCardProps {
   waffoPayMethods?: WaffoPayMethod[]
   waffoMinTopup?: number
   onWaffoMethodSelect?: (method: WaffoPayMethod, index: number) => void
+  catfkChannel?: CatfkChannel | null
+  catfkProductId?: string
+  onCatfkChannelSelect?: (channel: CatfkChannel | null) => void
+  onCatfkProductSelect?: (product: CatfkProduct) => void
+  pendingCatfkTrade?: string | null
+  onResumeCatfk?: () => void
+  catfkBusy?: boolean
+  catfkBlocked?: boolean
+  catfkOrderStatus?: string | null
   enableWaffoPancakeTopup?: boolean
 }
 
@@ -111,6 +124,15 @@ export function RechargeFormCard({
   waffoMinTopup,
   onWaffoMethodSelect,
   enableWaffoPancakeTopup,
+  catfkChannel,
+  catfkProductId,
+  onCatfkChannelSelect,
+  onCatfkProductSelect,
+  pendingCatfkTrade,
+  onResumeCatfk,
+  catfkBusy,
+  catfkBlocked,
+  catfkOrderStatus,
 }: RechargeFormCardProps) {
   const { t } = useTranslation()
   const [localAmount, setLocalAmount] = useState(topupAmount.toString())
@@ -135,7 +157,8 @@ export function RechargeFormCard({
     topupInfo?.enable_stripe_topup ||
     enableWaffoTopup ||
     enableWaffoPancakeTopup
-  const hasAnyTopup = hasConfigurableTopup || enableCreemTopup
+  const hasAnyTopup =
+    hasConfigurableTopup || enableCreemTopup || topupInfo?.catfk?.enabled
   const hasStandardPaymentMethods =
     Array.isArray(topupInfo?.pay_methods) && topupInfo.pay_methods.length > 0
   const hasWaffoPaymentMethods =
@@ -219,109 +242,143 @@ export function RechargeFormCard({
       {/* Online Topup Section */}
       {hasAnyTopup ? (
         <div className='space-y-4 sm:space-y-6'>
-          {hasConfigurableTopup && (
+          {(hasConfigurableTopup || topupInfo?.catfk?.enabled) && (
             <>
-              {presetAmounts.length > 0 && (
-                <div className='space-y-2.5 sm:space-y-3'>
-                  <Label className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
-                    {t('Amount')}
-                  </Label>
+              {catfkChannel ? (
+                <div className='space-y-3'>
+                  <Label>{t('Amount')}</Label>
                   <div className='grid grid-cols-2 gap-1.5 sm:gap-3 md:grid-cols-4'>
-                    {presetAmounts.map((preset) => {
-                      const discount =
-                        preset.discount ||
-                        topupInfo?.discount?.[preset.value] ||
-                        1.0
-                      const {
-                        displayValue,
-                        actualPrice,
-                        savedAmount,
-                        hasDiscount,
-                      } = calculatePresetPricing(
-                        preset.value,
-                        priceRatio,
-                        discount,
-                        usdExchangeRate
-                      )
-                      return (
-                        <Button
-                          key={preset.value}
-                          variant='outline'
-                          className={cn(
-                            'flex min-h-16 flex-col items-start rounded-lg px-3 py-2.5 text-left whitespace-normal sm:min-h-[72px] sm:p-4',
-                            selectedPreset === preset.value
-                              ? 'border-foreground bg-foreground/5 dark:border-foreground dark:bg-foreground/10'
-                              : 'border-muted'
-                          )}
-                          onClick={() => onSelectPreset(preset)}
-                        >
-                          <div className='flex w-full items-center justify-between'>
-                            <div className='text-base font-semibold sm:text-lg'>
-                              {formatNumber(displayValue)}
-                            </div>
-                            {hasDiscount && (
-                              <div className='text-xs font-medium text-green-600'>
-                                {getDiscountLabel(discount, t)}
+                    {topupInfo?.catfk?.products.map((product) => (
+                      <Button
+                        key={product.id}
+                        variant='outline'
+                        aria-pressed={catfkProductId === product.id}
+                        disabled={
+                          !topupInfo.catfk?.available ||
+                          catfkBusy ||
+                          catfkBlocked
+                        }
+                        className='flex min-h-16 flex-col items-start text-left whitespace-normal'
+                        onClick={() => onCatfkProductSelect?.(product)}
+                      >
+                        <span className='max-w-full break-words'>
+                          {product.name}
+                        </span>
+                        <span>{formatCreemPrice(product.amount, 'USD')}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                hasConfigurableTopup &&
+                presetAmounts.length > 0 && (
+                  <div className='space-y-2.5 sm:space-y-3'>
+                    <Label className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
+                      {t('Amount')}
+                    </Label>
+                    <div className='grid grid-cols-2 gap-1.5 sm:gap-3 md:grid-cols-4'>
+                      {presetAmounts.map((preset) => {
+                        const discount =
+                          preset.discount ||
+                          topupInfo?.discount?.[preset.value] ||
+                          1.0
+                        const {
+                          displayValue,
+                          actualPrice,
+                          savedAmount,
+                          hasDiscount,
+                        } = calculatePresetPricing(
+                          preset.value,
+                          priceRatio,
+                          discount,
+                          usdExchangeRate
+                        )
+                        return (
+                          <Button
+                            key={preset.value}
+                            variant='outline'
+                            className={cn(
+                              'flex min-h-16 flex-col items-start rounded-lg px-3 py-2.5 text-left whitespace-normal sm:min-h-[72px] sm:p-4',
+                              selectedPreset === preset.value
+                                ? 'border-foreground bg-foreground/5 dark:border-foreground dark:bg-foreground/10'
+                                : 'border-muted'
+                            )}
+                            onClick={() => onSelectPreset(preset)}
+                          >
+                            <div className='flex w-full items-center justify-between'>
+                              <div className='text-base font-semibold sm:text-lg'>
+                                {formatNumber(displayValue)}
                               </div>
-                            )}
-                          </div>
-                          <div className='text-muted-foreground mt-1.5 w-full text-xs sm:mt-2'>
-                            {hasDiscount && savedAmount > 0 ? (
-                              <Trans
-                                t={t}
-                                i18nKey='Pay {{amount}} <savings>• Save {{saved}}</savings>'
-                                values={{
+                              {hasDiscount && (
+                                <div className='text-xs font-medium text-green-600'>
+                                  {getDiscountLabel(discount, t)}
+                                </div>
+                              )}
+                            </div>
+                            <div className='text-muted-foreground mt-1.5 w-full text-xs sm:mt-2'>
+                              {hasDiscount && savedAmount > 0 ? (
+                                <Trans
+                                  t={t}
+                                  i18nKey='Pay {{amount}} <savings>• Save {{saved}}</savings>'
+                                  values={{
+                                    amount: formatCurrency(actualPrice),
+                                    saved: formatCurrency(savedAmount),
+                                  }}
+                                  components={{
+                                    savings: (
+                                      <span className='text-green-600' />
+                                    ),
+                                  }}
+                                />
+                              ) : (
+                                t('Pay {{amount}}', {
                                   amount: formatCurrency(actualPrice),
-                                  saved: formatCurrency(savedAmount),
-                                }}
-                                components={{
-                                  savings: <span className='text-green-600' />,
-                                }}
-                              />
-                            ) : (
-                              t('Pay {{amount}}', {
-                                amount: formatCurrency(actualPrice),
-                              })
-                            )}
-                          </div>
-                        </Button>
-                      )
-                    })}
+                                })
+                              )}
+                            </div>
+                          </Button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              )}
+
+              {!catfkChannel && hasConfigurableTopup && (
+                <div className='space-y-2.5 sm:space-y-3'>
+                  <Label
+                    htmlFor='topup-amount'
+                    className='text-muted-foreground text-xs font-medium tracking-wider uppercase'
+                  >
+                    {t('Custom Amount')}
+                  </Label>
+                  <div className='grid grid-cols-[minmax(0,1fr)_minmax(110px,0.55fr)] gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center'>
+                    <Input
+                      id='topup-amount'
+                      type='number'
+                      value={localAmount}
+                      onChange={(e) => handleAmountChange(e.target.value)}
+                      min={minTopup}
+                      placeholder={t('Minimum {{amount}}', {
+                        amount: minTopup,
+                      })}
+                      className='h-9 text-base sm:h-10 sm:text-lg'
+                    />
+                    <div className='bg-muted/30 flex min-h-9 items-center justify-between gap-2 rounded-md border px-3 lg:min-w-52'>
+                      <span className='text-muted-foreground truncate text-xs'>
+                        {t('Amount to pay:')}
+                      </span>
+                      {calculating ? (
+                        <Skeleton className='h-5 w-16' />
+                      ) : (
+                        <span className='text-sm font-semibold'>
+                          {formatCurrency(paymentAmount)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
-
-              <div className='space-y-2.5 sm:space-y-3'>
-                <Label
-                  htmlFor='topup-amount'
-                  className='text-muted-foreground text-xs font-medium tracking-wider uppercase'
-                >
-                  {t('Custom Amount')}
-                </Label>
-                <div className='grid grid-cols-[minmax(0,1fr)_minmax(110px,0.55fr)] gap-2 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center'>
-                  <Input
-                    id='topup-amount'
-                    type='number'
-                    value={localAmount}
-                    onChange={(e) => handleAmountChange(e.target.value)}
-                    min={minTopup}
-                    placeholder={t('Minimum {{amount}}', { amount: minTopup })}
-                    className='h-9 text-base sm:h-10 sm:text-lg'
-                  />
-                  <div className='bg-muted/30 flex min-h-9 items-center justify-between gap-2 rounded-md border px-3 lg:min-w-52'>
-                    <span className='text-muted-foreground truncate text-xs'>
-                      {t('Amount to pay:')}
-                    </span>
-                    {calculating ? (
-                      <Skeleton className='h-5 w-16' />
-                    ) : (
-                      <span className='text-sm font-semibold'>
-                        {formatCurrency(paymentAmount)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
 
               <div className='space-y-2.5 sm:space-y-3'>
                 <Label className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
@@ -394,16 +451,72 @@ export function RechargeFormCard({
                     })}
                   </div>
                 ) : null}
-                {!hasStandardPaymentMethods && !hasWaffoPaymentMethods && (
-                  <Alert>
-                    <AlertDescription>
-                      {t(
-                        'No payment methods available. Please contact administrator.'
-                      )}
-                    </AlertDescription>
-                  </Alert>
-                )}
+                {!hasStandardPaymentMethods &&
+                  !hasWaffoPaymentMethods &&
+                  !topupInfo?.catfk?.enabled && (
+                    <Alert>
+                      <AlertDescription>
+                        {t(
+                          'No payment methods available. Please contact administrator.'
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
               </div>
+
+              {topupInfo?.catfk?.enabled && (
+                <div className='space-y-3'>
+                  <Label>{t('Catfk Payment')}</Label>
+                  {!topupInfo.catfk.available && (
+                    <Alert>
+                      <AlertDescription>
+                        {t(
+                          topupInfo.catfk.unavailable_reason ||
+                            'Catfk payment is unavailable.'
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                  <div className='grid grid-cols-2 gap-2 lg:grid-cols-3'>
+                    {topupInfo.catfk.channels.map((channel) => (
+                      <Button
+                        key={channel.id}
+                        variant='outline'
+                        aria-pressed={catfkChannel?.id === channel.id}
+                        disabled={catfkBusy}
+                        onClick={() => onCatfkChannelSelect?.(channel)}
+                      >
+                        {getPaymentIcon(
+                          'catfk',
+                          'h-4 w-4',
+                          channel.icon,
+                          channel.name
+                        )}
+                        {channel.name}
+                      </Button>
+                    ))}
+                    {catfkChannel && hasConfigurableTopup && (
+                      <Button
+                        variant='outline'
+                        disabled={catfkBusy}
+                        onClick={() => onCatfkChannelSelect?.(null)}
+                      >
+                        {t('Custom Amount')}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
+              <CatfkOrderStatus status={catfkOrderStatus ?? null} />
+              {pendingCatfkTrade && (
+                <Button
+                  variant='outline'
+                  disabled={catfkBusy}
+                  onClick={onResumeCatfk}
+                >
+                  {t('Resume Catfk payment')}
+                </Button>
+              )}
 
               {enableWaffoTopup &&
                 hasWaffoPaymentMethods &&

@@ -330,6 +330,10 @@ export type BillingSettings = {
   CreemWebhookSecret: string
   CreemTestMode: boolean
   CreemProducts: string
+  'catfk_setting.enabled': boolean
+  'catfk_setting.store_token': string
+  'catfk_setting.products': string
+  'catfk_setting.channels': string
   WaffoEnabled: boolean
   WaffoApiKey: string
   WaffoPrivateKey: string

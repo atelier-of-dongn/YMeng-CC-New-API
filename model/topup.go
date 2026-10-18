@@ -26,6 +26,7 @@ type TopUp struct {
 }
 
 const (
+	PaymentMethodCatFK        = "catfk"
 	PaymentMethodStripe       = "stripe"
 	PaymentMethodCreem        = "creem"
 	PaymentMethodWaffo        = "waffo"
@@ -34,6 +35,7 @@ const (
 )
 
 const (
+	PaymentProviderCatFK        = "catfk"
 	PaymentProviderEpay         = "epay"
 	PaymentProviderStripe       = "stripe"
 	PaymentProviderCreem        = "creem"
@@ -467,6 +469,10 @@ func ManualCompleteTopUp(tradeNo string, callerIp string) error {
 		// 行级锁，避免并发补单
 		if err := lockForUpdate(tx).Where(refCol+" = ?", tradeNo).First(topUp).Error; err != nil {
 			return common.NewMessage("Top-up order does not exist")
+		}
+
+		if topUp.PaymentProvider == PaymentProviderCatFK || topUp.PaymentMethod == PaymentMethodCatFK {
+			return common.NewMessage("CatFK orders require verified redemption and cannot be completed manually")
 		}
 
 		// 幂等处理：已成功直接返回

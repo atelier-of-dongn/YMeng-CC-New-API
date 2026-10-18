@@ -62,6 +62,8 @@ import { useUpdateOption } from '../hooks/use-update-option'
 import { safeNumberFieldProps } from '../utils/numeric-field'
 import { AmountDiscountVisualEditor } from './amount-discount-visual-editor'
 import { AmountOptionsVisualEditor } from './amount-options-visual-editor'
+import { parseCatFKProducts, parseCatFKChannels } from './catfk-schema'
+import { CatFKSettingsFields } from './catfk-settings-fields'
 import { CreemProductsVisualEditor } from './creem-products-visual-editor'
 import { PaymentMethodsVisualEditor } from './payment-methods-visual-editor'
 import {
@@ -161,6 +163,24 @@ const paymentSchema = z.object({
       })
     }
   }),
+  CatFKEnabled: z.boolean(),
+  CatFKStoreToken: z.string().max(4096),
+  CatFKProducts: z.string().refine((value) => {
+    try {
+      parseCatFKProducts(value)
+      return true
+    } catch {
+      return false
+    }
+  }, 'Invalid CatFK mapping configuration'),
+  CatFKChannels: z.string().refine((value) => {
+    try {
+      parseCatFKChannels(value)
+      return true
+    } catch {
+      return false
+    }
+  }, 'Invalid CatFK mapping configuration'),
   WaffoEnabled: z.boolean(),
   WaffoApiKey: z.string(),
   WaffoPrivateKey: z.string(),
@@ -439,6 +459,10 @@ export function PaymentSettingsSection({
       CreemWebhookSecret: values.CreemWebhookSecret.trim(),
       CreemTestMode: values.CreemTestMode,
       CreemProducts: values.CreemProducts.trim(),
+      CatFKEnabled: values.CatFKEnabled,
+      CatFKStoreToken: values.CatFKStoreToken.trim(),
+      CatFKProducts: values.CatFKProducts,
+      CatFKChannels: values.CatFKChannels,
       WaffoEnabled: values.WaffoEnabled,
       WaffoSandbox: values.WaffoSandbox,
       WaffoMerchantId: values.WaffoMerchantId.trim(),
@@ -484,6 +508,10 @@ export function PaymentSettingsSection({
       CreemWebhookSecret: initialRef.current.CreemWebhookSecret.trim(),
       CreemTestMode: initialRef.current.CreemTestMode,
       CreemProducts: initialRef.current.CreemProducts.trim(),
+      CatFKEnabled: initialRef.current.CatFKEnabled,
+      CatFKStoreToken: initialRef.current.CatFKStoreToken.trim(),
+      CatFKProducts: initialRef.current.CatFKProducts,
+      CatFKChannels: initialRef.current.CatFKChannels,
       WaffoEnabled: initialRef.current.WaffoEnabled,
       WaffoSandbox: initialRef.current.WaffoSandbox,
       WaffoMerchantId: initialRef.current.WaffoMerchantId.trim(),
@@ -703,6 +731,40 @@ export function PaymentSettingsSection({
       updates.push({ key: 'WaffoPayMethods', value: sanitized.WaffoPayMethods })
     }
 
+    if (
+      sanitized.CatFKStoreToken &&
+      sanitized.CatFKStoreToken !== initial.CatFKStoreToken
+    ) {
+      updates.push({
+        key: 'catfk_setting.store_token',
+        value: sanitized.CatFKStoreToken,
+      })
+    }
+    if (
+      normalizeJsonForComparison(sanitized.CatFKProducts) !==
+      normalizeJsonForComparison(initial.CatFKProducts)
+    ) {
+      updates.push({
+        key: 'catfk_setting.products',
+        value: sanitized.CatFKProducts,
+      })
+    }
+    if (
+      normalizeJsonForComparison(sanitized.CatFKChannels) !==
+      normalizeJsonForComparison(initial.CatFKChannels)
+    ) {
+      updates.push({
+        key: 'catfk_setting.channels',
+        value: sanitized.CatFKChannels,
+      })
+    }
+    if (sanitized.CatFKEnabled !== initial.CatFKEnabled) {
+      updates.push({
+        key: 'catfk_setting.enabled',
+        value: sanitized.CatFKEnabled,
+      })
+    }
+
     const hasWaffoPancakeChanges =
       sanitized.WaffoPancakeMerchantID !== initial.WaffoPancakeMerchantID ||
       sanitized.WaffoPancakePrivateKey.length > 0 ||
@@ -882,11 +944,12 @@ export function PaymentSettingsSection({
           />
           <Tabs defaultValue='general' className='min-w-0'>
             <div className='overflow-x-auto pb-1'>
-              <TabsList className='grid min-w-[44rem] grid-cols-6'>
+              <TabsList className='grid min-w-[50rem] grid-cols-7'>
                 <TabsTrigger value='general'>{t('General')}</TabsTrigger>
                 <TabsTrigger value='epay'>Epay</TabsTrigger>
                 <TabsTrigger value='stripe'>{t('Stripe')}</TabsTrigger>
                 <TabsTrigger value='creem'>Creem</TabsTrigger>
+                <TabsTrigger value='catfk'>CatFK</TabsTrigger>
                 <TabsTrigger value='waffo-pancake'>Waffo Pancake</TabsTrigger>
                 <TabsTrigger value='waffo'>Waffo</TabsTrigger>
               </TabsList>
@@ -1607,6 +1670,37 @@ export function PaymentSettingsSection({
                   )}
                 />
               </div>
+            </TabsContent>
+
+            <TabsContent value='catfk' className={paymentTabContentClassName}>
+              <CatFKSettingsFields
+                values={{
+                  CatFKEnabled: form.watch('CatFKEnabled'),
+                  CatFKStoreToken: form.watch('CatFKStoreToken'),
+                  CatFKProducts: form.watch('CatFKProducts'),
+                  CatFKChannels: form.watch('CatFKChannels'),
+                }}
+                complianceConfirmed={complianceConfirmed}
+                onChange={(key, value) => {
+                  if (key === 'CatFKEnabled') {
+                    form.setValue(key, Boolean(value), {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    })
+                  } else {
+                    form.setValue(key, String(value), {
+                      shouldDirty: true,
+                      shouldValidate: true,
+                    })
+                  }
+                }}
+              />
+              {form.formState.errors.CatFKProducts && (
+                <p role='alert'>{t('Invalid CatFK mapping configuration')}</p>
+              )}
+              {form.formState.errors.CatFKChannels && (
+                <p role='alert'>{t('Invalid CatFK mapping configuration')}</p>
+              )}
             </TabsContent>
 
             <TabsContent

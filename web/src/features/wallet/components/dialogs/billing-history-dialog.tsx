@@ -45,7 +45,7 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
-import { formatCurrencyFromUSD } from '@/lib/currency'
+import { formatCurrencyFromUSD, formatQuotaWithCurrency } from '@/lib/currency'
 import { formatNumber } from '@/lib/format'
 
 import { useBillingHistory } from '../../hooks/use-billing-history'
@@ -54,15 +54,18 @@ import {
   getPaymentMethodName,
   formatTimestamp,
 } from '../../lib/billing'
+import { CatfkOrderAction } from '../catfk-order-action'
 
 interface BillingHistoryDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  onCatfkCompleted?: () => Promise<void>
 }
 
 export function BillingHistoryDialog({
   open,
   onOpenChange,
+  onCatfkCompleted,
 }: BillingHistoryDialogProps) {
   const { t } = useTranslation()
   const {
@@ -248,7 +251,9 @@ export function BillingHistoryDialog({
                             {t('Amount')}
                           </Label>
                           <div className='text-sm font-semibold'>
-                            {formatCurrencyFromUSD(record.amount, {
+                            {(record.payment_provider === 'catfk'
+                              ? formatQuotaWithCurrency
+                              : formatCurrencyFromUSD)(record.amount, {
                               digitsLarge: 2,
                               digitsSmall: 2,
                               abbreviate: false,
@@ -265,19 +270,28 @@ export function BillingHistoryDialog({
                         </div>
                       </div>
 
-                      {/* Admin Actions */}
-                      {isAdmin && record.status === 'pending' && (
-                        <div className='mt-4 flex justify-end'>
-                          <Button
-                            size='sm'
-                            variant='outline'
-                            onClick={() => setConfirmTradeNo(record.trade_no)}
-                            disabled={completing}
-                          >
-                            {t('Complete Order')}
-                          </Button>
-                        </div>
+                      {record.payment_provider === 'catfk' && (
+                        <CatfkOrderAction
+                          tradeNo={record.trade_no}
+                          onCompleted={onCatfkCompleted}
+                        />
                       )}
+
+                      {/* Admin Actions */}
+                      {isAdmin &&
+                        record.payment_provider !== 'catfk' &&
+                        record.status === 'pending' && (
+                          <div className='mt-4 flex justify-end'>
+                            <Button
+                              size='sm'
+                              variant='outline'
+                              onClick={() => setConfirmTradeNo(record.trade_no)}
+                              disabled={completing}
+                            >
+                              {t('Complete Order')}
+                            </Button>
+                          </div>
+                        )}
                     </div>
                   )
                 })}

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/Calcium-Ion/go-epay/epay"
+	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
@@ -281,5 +282,71 @@ func TestEpayCallbacksVerifyBeforeSettlement(t *testing.T) {
 				})
 			}
 		}
+	}
+}
+
+func TestCatFKSettingsRejectInvalidMappings(t *testing.T) {
+	for _, tc := range []struct{ key, value string }{
+		{"enabled", "yes"},
+		{"products", `[{"id":"a","name":"Credit","goods_key":"goods","amount":-1}]`},
+		{"products", `[{"id":"a","name":"Credit","goods_key":"goods","amount":1},{"id":"a","name":"Other","goods_key":"other","amount":2}]`},
+		{"channels", `[{"id":"alipay","name":"Ali"},{"id":"alipay","name":"Other"}]`},
+		{"store_token", "invalid\nheader"},
+	} {
+		t.Run(tc.key+tc.value, func(t *testing.T) {
+			require.Error(t, operation_setting.ValidateCatFKOption("catfk_setting."+tc.key, tc.value))
+		})
+	}
+	require.NoError(t, operation_setting.ValidateCatFKOption("catfk_setting.products", `[{"id":"tier","name":"Credit","goods_key":"goods","amount":1.5}]`))
+}
+
+func TestCatFKStoreTokenIsNotReturnedByOptions(t *testing.T) {
+	const key = "catfk_setting.store_token"
+	common.OptionMapRWMutex.Lock()
+	previous := common.OptionMap
+	common.OptionMap = make(map[string]string, len(previous)+1)
+	for optionKey, value := range previous {
+		common.OptionMap[optionKey] = value
+	}
+	common.OptionMap[key] = "catfk-test-private-store-token"
+	common.OptionMapRWMutex.Unlock()
+	t.Cleanup(func() {
+		common.OptionMapRWMutex.Lock()
+		defer common.OptionMapRWMutex.Unlock()
+		common.OptionMap = previous
+	})
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/api/option/", nil)
+	GetOptions(ctx)
+	assert.NotContains(t, recorder.Body.String(), "catfk-test-private-store-token")
+	assert.NotContains(t, recorder.Body.String(), key)
+}
+
+func TestCatFKUnverifiedProtocolRejectsPaymentEndpoints(t *testing.T) {
+	confirmPaymentComplianceForTest(t)
+	for _, tc := range []struct {
+		name, body string
+		handler    gin.HandlerFunc
+	}{
+		{"quote", `{"product_id":"tier","channel_id":"alipay"}`, RequestCatFKQuote},
+		{"pay", `{"product_id":"tier","channel_id":"alipay","qq":"12345","idempotency_key":"abcdefghijklmnop"}`, RequestCatFKPay},
+		{"channels", `{"store_token":"public-shop-token"}`, ListCatFKPaymentChannels},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			ctx, _ := gin.CreateTestContext(recorder)
+			ctx.Set("id", 123)
+			ctx.Request = httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tc.body))
+			ctx.Request.Header.Set("Content-Type", "application/json")
+			tc.handler(ctx)
+			var response struct {
+				Success    bool   `json:"success"`
+				MessageKey string `json:"message_key"`
+			}
+			require.NoError(t, common.Unmarshal(recorder.Body.Bytes(), &response))
+			assert.False(t, response.Success)
+			assert.Equal(t, "CatFK protocol is not verified", response.MessageKey)
+		})
 	}
 }

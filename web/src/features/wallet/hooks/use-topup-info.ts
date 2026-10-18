@@ -80,7 +80,10 @@ function parsePaymentMethods(
             : normalizedMinTopup,
       }
     })
-    .filter((item) => item.name && item.type && item.type !== 'waffo')
+    .filter(
+      (item) =>
+        item.name && item.type && item.type !== 'waffo' && item.type !== 'catfk'
+    )
 }
 
 function parseWaffoPayMethods(data: unknown): WaffoPayMethod[] {

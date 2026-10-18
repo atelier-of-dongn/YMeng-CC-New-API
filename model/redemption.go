@@ -8,6 +8,15 @@ import (
 	"github.com/QuantumNous/new-api/logger"
 
 	"gorm.io/gorm"
+	gormlogger "gorm.io/gorm/logger"
+)
+
+var (
+	ErrRedemptionInvalid       = errors.New("invalid redemption code")
+	ErrRedemptionUsed          = errors.New("redemption code already used")
+	ErrRedemptionExpired       = errors.New("redemption code expired")
+	ErrRedemptionQuotaMismatch = errors.New("redemption quota mismatch")
+	ErrRedemptionDatabase      = errors.New("redemption database operation failed")
 )
 
 type Redemption struct {
@@ -142,39 +151,11 @@ func Redeem(key string, userId int) (quota int, err error) {
 	}
 	redemption := &Redemption{}
 
-	keyCol := "`key`"
-	if common.UsingMainDatabase(common.DatabaseTypePostgreSQL) {
-		keyCol = `"key"`
-	}
 	common.RandomSleep()
 	err = DB.Transaction(func(tx *gorm.DB) error {
-		err := lockForUpdate(tx).Where(keyCol+" = ?", key).First(redemption).Error
-		if err != nil {
-			return errors.New("invalid redemption code")
-		}
-		if redemption.Status != common.RedemptionCodeStatusEnabled {
-			return errors.New("redemption code already used")
-		}
-		if redemption.ExpiredTime != 0 && redemption.ExpiredTime < common.GetTimestamp() {
-			return errors.New("redemption code expired")
-		}
-		// Compare-and-swap on status: only the transaction that flips
-		// enabled -> used may credit quota, so a concurrent redeem of the
-		// same code loses here even without a row lock (e.g. on SQLite).
-		result := tx.Model(&Redemption{}).
-			Where("id = ? AND status = ?", redemption.Id, common.RedemptionCodeStatusEnabled).
-			Updates(map[string]any{
-				"redeemed_time": common.GetTimestamp(),
-				"status":        common.RedemptionCodeStatusUsed,
-				"used_user_id":  userId,
-			})
-		if result.Error != nil {
-			return result.Error
-		}
-		if result.RowsAffected == 0 {
-			return errors.New("redemption code already used")
-		}
-		return creditTopUpQuota(tx, userId, redemption.Quota, nil)
+		var redeemErr error
+		redemption, redeemErr = redeemInTransaction(tx, key, userId, 0)
+		return redeemErr
 	})
 	if err != nil {
 		common.SysError(common.LogText("redemption failed: %s", err.Error()))
@@ -183,6 +164,45 @@ func Redeem(key string, userId int) (quota int, err error) {
 	syncCreditUserQuotaCache(userId, redemption.Quota, common.LogText("redemption"))
 	RecordLog(userId, LogTypeTopup, common.NewMessage("Topped up {{quota}} with a redemption code, code ID {{id}}", map[string]any{"quota": logger.FormatQuota(redemption.Quota), "id": redemption.Id}))
 	return redemption.Quota, nil
+}
+
+// redeemInTransaction consumes one local code and credits its bound account in
+// the caller's transaction. expectedQuota=0 preserves ordinary Redeem behavior;
+// payment integrations must supply their immutable expected quota.
+func redeemInTransaction(tx *gorm.DB, key string, userID int, expectedQuota int) (*Redemption, error) {
+	if key == "" || userID <= 0 {
+		return nil, errors.New("invalid redemption input")
+	}
+	redemption := &Redemption{}
+	if err := lockForUpdate(tx.Session(&gorm.Session{Logger: tx.Logger.LogMode(gormlogger.Silent)})).Where(commonKeyCol+" = ?", key).First(redemption).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			return nil, ErrRedemptionInvalid
+		}
+		// Driver errors may embed interpolated SQL containing the raw code.
+		return nil, ErrRedemptionDatabase
+	}
+	if redemption.Status != common.RedemptionCodeStatusEnabled {
+		return nil, ErrRedemptionUsed
+	}
+	if redemption.ExpiredTime != 0 && redemption.ExpiredTime < common.GetTimestamp() {
+		return nil, ErrRedemptionExpired
+	}
+	if expectedQuota != 0 && redemption.Quota != expectedQuota {
+		return nil, ErrRedemptionQuotaMismatch
+	}
+	result := tx.Model(&Redemption{}).
+		Where("id = ? AND status = ?", redemption.Id, common.RedemptionCodeStatusEnabled).
+		Updates(map[string]any{"redeemed_time": common.GetTimestamp(), "status": common.RedemptionCodeStatusUsed, "used_user_id": userID})
+	if result.Error != nil {
+		return nil, result.Error
+	}
+	if result.RowsAffected != 1 {
+		return nil, ErrRedemptionUsed
+	}
+	if err := creditTopUpQuota(tx, userID, redemption.Quota, nil); err != nil {
+		return nil, err
+	}
+	return redemption, nil
 }
 
 func (redemption *Redemption) Insert() error {

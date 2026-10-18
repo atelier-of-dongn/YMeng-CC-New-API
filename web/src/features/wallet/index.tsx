@@ -42,6 +42,7 @@ import {
   useWaffoPayment,
   useWaffoPancakePayment,
 } from './hooks'
+import { useCatfkPayment } from './hooks/use-catfk-payment'
 import {
   getDefaultPaymentType,
   getMinTopupAmount,
@@ -84,6 +85,8 @@ export function Wallet(props: WalletProps) {
   const { currency } = useSystemConfig()
   const { topupInfo, presetAmounts, loading: topupLoading } = useTopupInfo()
 
+  const paymentSelectionVersion = useRef(0)
+
   // Calculate effective exchange rate - when display type is USD, use rate of 1
   const effectiveUsdExchangeRate = useMemo(() => {
     return currency?.quotaDisplayType === 'USD'
@@ -125,6 +128,8 @@ export function Wallet(props: WalletProps) {
     }
   }, [])
 
+  const catfk = useCatfkPayment(topupInfo?.catfk, user?.id, fetchUser)
+
   useEffect(() => {
     fetchUser()
   }, [fetchUser])
@@ -146,7 +151,14 @@ export function Wallet(props: WalletProps) {
 
       // Calculate initial payment amount with default payment type
       const defaultPaymentType = getDefaultPaymentType(topupInfo)
-      calculatePaymentAmount(minTopup, defaultPaymentType)
+      if (
+        topupInfo.enable_online_topup ||
+        topupInfo.enable_stripe_topup ||
+        topupInfo.enable_waffo_topup ||
+        topupInfo.enable_waffo_pancake_topup
+      ) {
+        calculatePaymentAmount(minTopup, defaultPaymentType)
+      }
     }
   }, [topupInfo, calculatePaymentAmount])
 
@@ -171,6 +183,9 @@ export function Wallet(props: WalletProps) {
 
   // Handle payment method selection
   const handlePaymentMethodSelect = async (method: PaymentMethod) => {
+    paymentSelectionVersion.current++
+    const version = paymentSelectionVersion.current
+    catfk.selectChannel(null)
     setSelectedPaymentMethod(method)
     setSelectedWaffoMethodIndex(null)
     setPaymentLoading(method.type)
@@ -184,7 +199,9 @@ export function Wallet(props: WalletProps) {
 
       // Calculate payment amount and show confirmation dialog
       await calculatePaymentAmount(topupAmount, method.type)
-      setConfirmDialogOpen(true)
+      if (version === paymentSelectionVersion.current) {
+        setConfirmDialogOpen(true)
+      }
     } finally {
       setPaymentLoading(null)
     }
@@ -253,6 +270,9 @@ export function Wallet(props: WalletProps) {
     method: WaffoPayMethod,
     index: number
   ) => {
+    paymentSelectionVersion.current++
+    const version = paymentSelectionVersion.current
+    catfk.selectChannel(null)
     const loadingKey = `waffo-${index}`
     setSelectedPaymentMethod({
       name: method.name,
@@ -264,7 +284,9 @@ export function Wallet(props: WalletProps) {
 
     try {
       await calculatePaymentAmount(topupAmount, PAYMENT_TYPES.WAFFO)
-      setConfirmDialogOpen(true)
+      if (version === paymentSelectionVersion.current) {
+        setConfirmDialogOpen(true)
+      }
     } finally {
       setPaymentLoading(null)
     }
@@ -299,6 +321,20 @@ export function Wallet(props: WalletProps) {
             >
               <div id='wallet-add-funds' className='scroll-mt-4'>
                 <RechargeFormCard
+                  catfkChannel={catfk.channel}
+                  catfkProductId={catfk.product?.id}
+                  onCatfkChannelSelect={(channel) => {
+                    paymentSelectionVersion.current++
+                    setConfirmDialogOpen(false)
+                    setSelectedPaymentMethod(undefined)
+                    catfk.selectChannel(channel)
+                  }}
+                  onCatfkProductSelect={catfk.selectProduct}
+                  pendingCatfkTrade={catfk.pendingTrade}
+                  onResumeCatfk={catfk.resume}
+                  catfkBusy={catfk.processing || catfk.resuming}
+                  catfkBlocked={catfk.blocked}
+                  catfkOrderStatus={catfk.orderStatus}
                   topupInfo={topupInfo}
                   presetAmounts={presetAmounts}
                   selectedPreset={selectedPreset}
@@ -365,6 +401,34 @@ export function Wallet(props: WalletProps) {
         usdExchangeRate={effectiveUsdExchangeRate}
       />
 
+      <PaymentConfirmDialog
+        open={catfk.open}
+        onOpenChange={(open) => {
+          if (!open) catfk.reset()
+        }}
+        onConfirm={catfk.confirm}
+        topupAmount={catfk.product?.amount ?? 0}
+        paymentAmount={catfk.quote?.amount ?? 0}
+        paymentMethod={
+          catfk.channel
+            ? {
+                type: 'catfk',
+                name: catfk.channel.name,
+                icon: catfk.channel.icon,
+              }
+            : undefined
+        }
+        calculating={catfk.calculating}
+        processing={catfk.processing}
+        catfk={{
+          quote: catfk.quote,
+          qq: catfk.qq,
+          onQQChange: catfk.setQQ,
+          available: !!topupInfo?.catfk?.available,
+          qqLocked: catfk.uncertain,
+        }}
+      />
+
       <TransferDialog
         open={transferDialogOpen}
         onOpenChange={setTransferDialogOpen}
@@ -376,6 +440,7 @@ export function Wallet(props: WalletProps) {
       <BillingHistoryDialog
         open={billingDialogOpen}
         onOpenChange={setBillingDialogOpen}
+        onCatfkCompleted={fetchUser}
       />
 
       <CreemConfirmDialog

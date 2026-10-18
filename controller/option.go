@@ -89,7 +89,7 @@ func GetOptions(c *gin.Context) {
 			continue
 		}
 		value := common.Interface2String(v)
-		isSensitiveKey := strings.HasSuffix(k, "Token") ||
+		isSensitiveKey := k == "catfk_setting.store_token" || strings.HasSuffix(k, "Token") ||
 			strings.HasSuffix(k, "Secret") ||
 			strings.HasSuffix(k, "Key") ||
 			strings.HasSuffix(k, "secret") ||
@@ -205,6 +205,22 @@ func UpdateOption(c *gin.Context) {
 	default:
 		if isPaymentComplianceOptionKey(option.Key) {
 			common.ApiErrorT(c, "Compliance confirmation fields cannot be changed through the general settings API")
+			return
+		}
+	}
+	if strings.HasPrefix(option.Key, "catfk_setting.") {
+		value := option.Value.(string)
+		if err := operation_setting.ValidateCatFKOption(option.Key, value); err != nil {
+			common.ApiError(c, err)
+			return
+		}
+		// Blank credentials mean unchanged; secrets are never returned by GetOptions.
+		if option.Key == "catfk_setting.store_token" && strings.TrimSpace(value) == "" {
+			common.ApiSuccess(c, nil)
+			return
+		}
+		if option.Key == "catfk_setting.enabled" && value == "true" && !operation_setting.IsPaymentComplianceConfirmed() {
+			common.ApiErrorT(c, "Payment, redemption, subscription, and invitation reward features are disabled. The administrator must confirm compliance terms before enabling them.")
 			return
 		}
 	}

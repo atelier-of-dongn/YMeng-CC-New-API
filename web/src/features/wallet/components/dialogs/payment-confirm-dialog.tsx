@@ -19,22 +19,16 @@ For commercial licensing, please contact support@quantumnous.com
 import { Loader2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
+import { ConfirmDialog } from '@/components/confirm-dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatLocalCurrencyAmount } from '@/lib/currency'
 
+import { isValidCatfkQQ, isValidCatfkQuote } from '../../catfk-api'
 import { DEFAULT_DISCOUNT_RATE } from '../../constants'
-import { formatCurrency, getPaymentIcon } from '../../lib'
-import type { PaymentMethod } from '../../types'
+import { formatCurrency, formatCreemPrice, getPaymentIcon } from '../../lib'
+import type { PaymentMethod, CatfkQuote } from '../../types'
 
 interface PaymentConfirmDialogProps {
   open: boolean
@@ -47,6 +41,13 @@ interface PaymentConfirmDialogProps {
   processing: boolean
   discountRate?: number
   usdExchangeRate?: number
+  catfk?: {
+    quote: CatfkQuote | null
+    qq: string
+    onQQChange: (value: string) => void
+    available: boolean
+    qqLocked?: boolean
+  }
 }
 
 export function PaymentConfirmDialog({
@@ -60,97 +61,127 @@ export function PaymentConfirmDialog({
   processing,
   discountRate = DEFAULT_DISCOUNT_RATE,
   usdExchangeRate = 1,
+  catfk,
 }: PaymentConfirmDialogProps) {
   const { t } = useTranslation()
-  const hasDiscount = discountRate > 0 && discountRate < 1 && paymentAmount > 0
+  const hasDiscount =
+    !catfk && discountRate > 0 && discountRate < 1 && paymentAmount > 0
   const originalAmount = hasDiscount ? paymentAmount / discountRate : 0
   const discountAmount = hasDiscount ? originalAmount - paymentAmount : 0
 
   return (
-    <AlertDialog open={open} onOpenChange={onOpenChange}>
-      <AlertDialogContent className='max-sm:w-[calc(100vw-1.5rem)] sm:max-w-md'>
-        <AlertDialogHeader>
-          <AlertDialogTitle className='text-xl font-semibold'>
-            {t('Confirm Payment')}
-          </AlertDialogTitle>
-          <AlertDialogDescription>
-            {t('Review your payment details')}
-          </AlertDialogDescription>
-        </AlertDialogHeader>
+    <ConfirmDialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!processing) onOpenChange(next)
+      }}
+      title={t('Confirm Payment')}
+      desc={t('Review your payment details')}
+      handleConfirm={onConfirm}
+      isLoading={processing}
+      disabled={
+        calculating ||
+        !Number.isFinite(paymentAmount) ||
+        paymentAmount <= 0 ||
+        !!(
+          catfk &&
+          (!catfk.available ||
+            !isValidCatfkQQ(catfk.qq) ||
+            !isValidCatfkQuote(catfk.quote, topupAmount))
+        )
+      }
+      confirmText={
+        <>
+          {processing && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
+          {t('Confirm Payment')}
+        </>
+      }
+      className='max-sm:w-[calc(100vw-1.5rem)] sm:max-w-md'
+    >
+      <div className='space-y-3 py-3 sm:space-y-4 sm:py-4'>
+        <div className='flex items-center justify-between'>
+          <span className='text-muted-foreground text-sm'>
+            {t('Topup Amount')}
+          </span>
+          <span className='text-lg font-semibold'>
+            {catfk
+              ? formatCreemPrice(topupAmount, 'USD')
+              : formatLocalCurrencyAmount(topupAmount * usdExchangeRate, {
+                  digitsLarge: 2,
+                  digitsSmall: 2,
+                  abbreviate: false,
+                })}
+          </span>
+        </div>
 
-        <div className='space-y-3 py-3 sm:space-y-4 sm:py-4'>
-          <div className='flex items-center justify-between'>
-            <span className='text-muted-foreground text-sm'>
-              {t('Topup Amount')}
-            </span>
-            <span className='text-lg font-semibold'>
-              {formatLocalCurrencyAmount(topupAmount * usdExchangeRate, {
-                digitsLarge: 2,
-                digitsSmall: 2,
-                abbreviate: false,
-              })}
-            </span>
-          </div>
-
-          <div className='flex items-center justify-between'>
-            <span className='text-muted-foreground text-sm'>
-              {t('You Pay')}
-            </span>
-            {calculating ? (
-              <Skeleton className='h-6 w-24' />
-            ) : (
-              <div className='flex items-baseline gap-2'>
-                <span className='text-2xl font-semibold'>
-                  {formatCurrency(paymentAmount)}
+        <div className='flex items-center justify-between'>
+          <span className='text-muted-foreground text-sm'>{t('You Pay')}</span>
+          {calculating ? (
+            <Skeleton className='h-6 w-24' />
+          ) : (
+            <div className='flex items-baseline gap-2'>
+              <span className='text-2xl font-semibold'>
+                {formatCurrency(paymentAmount)} {catfk?.quote?.currency}
+              </span>
+              {hasDiscount && (
+                <span className='text-muted-foreground text-sm line-through'>
+                  {formatCurrency(originalAmount)}
                 </span>
-                {hasDiscount && (
-                  <span className='text-muted-foreground text-sm line-through'>
-                    {formatCurrency(originalAmount)}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
-
-          {hasDiscount && !calculating && (
-            <div className='bg-muted/50 rounded-lg p-3'>
-              <div className='flex items-center justify-between text-sm'>
-                <span className='text-muted-foreground'>{t('You save')}</span>
-                <span className='font-semibold text-green-600'>
-                  {formatCurrency(discountAmount)}
-                </span>
-              </div>
+              )}
             </div>
           )}
+        </div>
 
-          <div className='border-t pt-4'>
-            <div className='flex items-center justify-between'>
-              <span className='text-muted-foreground text-sm'>
-                {t('Payment Method')}
+        {hasDiscount && !calculating && (
+          <div className='bg-muted/50 rounded-lg p-3'>
+            <div className='flex items-center justify-between text-sm'>
+              <span className='text-muted-foreground'>{t('You save')}</span>
+              <span className='font-semibold text-green-600'>
+                {formatCurrency(discountAmount)}
               </span>
-              <div className='flex items-center gap-2'>
-                {getPaymentIcon(
-                  paymentMethod?.type,
-                  'h-4 w-4',
-                  paymentMethod?.icon,
-                  paymentMethod?.name
-                )}
-                <span className='font-medium'>{paymentMethod?.name}</span>
-              </div>
+            </div>
+          </div>
+        )}
+
+        <div className='border-t pt-4'>
+          <div className='flex items-center justify-between'>
+            <span className='text-muted-foreground text-sm'>
+              {t('Payment Method')}
+            </span>
+            <div className='flex items-center gap-2'>
+              {getPaymentIcon(
+                paymentMethod?.type,
+                'h-4 w-4',
+                paymentMethod?.icon,
+                paymentMethod?.name
+              )}
+              <span className='font-medium'>{paymentMethod?.name}</span>
             </div>
           </div>
         </div>
+      </div>
 
-        <AlertDialogFooter className='grid grid-cols-2 gap-2 sm:flex'>
-          <AlertDialogCancel disabled={processing}>
-            {t('Cancel')}
-          </AlertDialogCancel>
-          <AlertDialogAction onClick={onConfirm} disabled={processing}>
-            {processing && <Loader2 className='mr-2 h-4 w-4 animate-spin' />}
-            {t('Confirm Payment')}
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+      {catfk && (
+        <div className='space-y-2'>
+          <Label htmlFor='catfk-qq'>{t('QQ number')}</Label>
+          <Input
+            id='catfk-qq'
+            inputMode='numeric'
+            autoComplete='off'
+            required
+            value={catfk.qq}
+            disabled={processing || catfk.qqLocked}
+            onChange={(event) => catfk.onQQChange(event.target.value)}
+            aria-invalid={catfk.qq.length > 0 && !isValidCatfkQQ(catfk.qq)}
+            aria-describedby='catfk-qq-hint'
+          />
+          <p id='catfk-qq-hint' className='text-muted-foreground text-xs'>
+            {t(
+              'Enter ASCII digits only. QQ is used for this payment, not as your account identity.'
+            )}
+          </p>
+        </div>
+      )}
+    </ConfirmDialog>
   )
 }

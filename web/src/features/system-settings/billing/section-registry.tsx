@@ -153,6 +153,10 @@ const BILLING_SECTIONS = [
           CreemWebhookSecret: settings.CreemWebhookSecret,
           CreemTestMode: settings.CreemTestMode,
           CreemProducts: settings.CreemProducts,
+          CatFKEnabled: settings['catfk_setting.enabled'],
+          CatFKStoreToken: settings['catfk_setting.store_token'],
+          CatFKProducts: settings['catfk_setting.products'],
+          CatFKChannels: settings['catfk_setting.channels'],
         }}
         waffoDefaultValues={{
           WaffoEnabled: settings.WaffoEnabled ?? false,
