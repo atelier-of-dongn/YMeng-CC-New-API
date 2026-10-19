@@ -29,6 +29,7 @@ var (
 	ErrCatFKInvalidQuote       error = common.NewMessage("CatFK quote is invalid or expired")
 	ErrCatFKOrderUnavailable   error = common.NewMessage("CatFK order is unavailable")
 	ErrCatFKVerification       error = common.NewMessage("CatFK payment requires attention")
+	ErrCatFKRedemptionPending  error = common.NewMessage("Redemption code is not available yet")
 )
 
 type CatFKQuote struct {
@@ -45,10 +46,15 @@ type CatFKPaymentRequest struct {
 	IdempotencyKey string `json:"idempotency_key"`
 }
 type CatFKPayment struct {
-	TradeNo     string `json:"trade_no"`
-	Status      string `json:"status"`
-	PaymentURL  string `json:"payment_url,omitempty"`
-	FailureCode string `json:"failure_code,omitempty"`
+	TradeNo       string `json:"trade_no"`
+	Status        string `json:"status"`
+	PaymentQRCode string `json:"payment_qr_code,omitempty"`
+	FailureCode   string `json:"failure_code,omitempty"`
+}
+type CatFKRedemption struct {
+	Key          string `json:"key"`
+	Quota        int    `json:"quota"`
+	RedeemedTime int64  `json:"redeemed_time"`
 }
 type CatFKPublicProduct struct {
 	ID     string  `json:"id"`
@@ -93,6 +99,8 @@ type CatFKCreatedOrder struct {
 	Evidence        CatFKOrderEvidence
 	UpstreamOrderID string
 	PaymentURL      string
+	// PaymentQRCode is read silently from the payment page; empty if unknown.
+	PaymentQRCode string
 	// Optional refreshed recovery credentials, encrypted before persistence.
 	Credentials *CatFKCredentials
 }
@@ -227,6 +235,22 @@ func GetUserCatFKPayment(userID int, tradeNo string) (*CatFKPayment, error) {
 	}
 	return catFKSafePayment(order), nil
 }
+
+// GetUserCatFKRedemption returns the code a completed order of this user
+// redeemed. The code is already used, so showing it grants nothing new.
+func GetUserCatFKRedemption(userID int, tradeNo string) (*CatFKRedemption, error) {
+	if userID <= 0 || tradeNo == "" {
+		return nil, ErrCatFKInvalidRequest
+	}
+	redemption, err := model.GetCatFKRedemptionForUser(userID, tradeNo)
+	if errors.Is(err, model.ErrCatFKOrderConflict) {
+		return nil, ErrCatFKRedemptionPending
+	}
+	if err != nil {
+		return nil, ErrCatFKOrderUnavailable
+	}
+	return &CatFKRedemption{Key: redemption.Key, Quota: redemption.Quota, RedeemedTime: redemption.RedeemedTime}, nil
+}
 func ListCatFKChannels(ctx context.Context, token string) ([]operation_setting.CatFKChannel, error) {
 	if !CatFKProtocolReady() {
 		return nil, ErrCatFKProtocolUnverified
@@ -241,7 +265,12 @@ func catFKSafePayment(o *model.CatFKOrder) *CatFKPayment {
 		p.FailureCode = o.FailureCode
 	}
 	if o.Status == model.CatFKOrderStatusPending {
-		p.PaymentURL = o.PaymentURL
+		// The payment page itself is never handed out; it redirects to catfk
+		// after payment. Without a scraped code, its URL is the QR content.
+		p.PaymentQRCode = o.PaymentQRCode
+		if p.PaymentQRCode == "" {
+			p.PaymentQRCode = o.PaymentURL
+		}
 	}
 	return p
 }
@@ -457,7 +486,7 @@ func (s *catFKService) create(ctx context.Context, userID int, req CatFKPaymentR
 	if claimed.Status != model.CatFKOrderStatusSubmitting {
 		return catFKSafePayment(claimed), nil
 	}
-	createCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	createCtx, cancel := context.WithTimeout(ctx, 60*time.Second)
 	result, createErr := s.adapter.Create(createCtx, claimed, credentials, req.QQ)
 	cancel()
 	update := model.CatFKOrderUpdate{Status: model.CatFKOrderStatusCreationUnknown, FailureCode: "creation_unknown", NextQueryAt: s.now().Add(time.Minute).Unix()}
@@ -489,6 +518,9 @@ func (s *catFKService) create(ctx context.Context, userID int, req CatFKPaymentR
 			update.FailureCode = ""
 			update.UpstreamOrderID = &result.UpstreamOrderID
 			update.PaymentURL = &result.PaymentURL
+			if len(result.PaymentQRCode) <= 2048 && catFKValidPaymentURL(result.PaymentQRCode) {
+				update.PaymentQRCode = &result.PaymentQRCode
+			}
 			update.NextQueryAt = s.now().Add(15 * time.Second).Unix()
 		} else {
 			update.Status = model.CatFKOrderStatusNeedsAttention
@@ -514,7 +546,7 @@ func catFKPublicError(err error) error {
 		return nil
 	}
 	switch err {
-	case ErrCatFKProtocolUnverified, ErrCatFKDisabled, ErrCatFKEncryptionKey, ErrCatFKInvalidRequest, ErrCatFKInvalidQuote, ErrCatFKVerification, ErrCatFKOrderUnavailable:
+	case ErrCatFKProtocolUnverified, ErrCatFKDisabled, ErrCatFKEncryptionKey, ErrCatFKInvalidRequest, ErrCatFKInvalidQuote, ErrCatFKVerification, ErrCatFKOrderUnavailable, ErrCatFKRedemptionPending:
 		return err
 	}
 	return ErrCatFKOrderUnavailable

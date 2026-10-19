@@ -139,6 +139,7 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.POST("/catfk/quote", middleware.CriticalRateLimit(), controller.RequestCatFKQuote)
 				selfRoute.POST("/catfk/pay", middleware.CriticalRateLimit(), controller.RequestCatFKPay)
 				selfRoute.GET("/catfk/orders/:trade_no", middleware.DisableCache(), controller.GetCatFKPayment)
+				selfRoute.GET("/catfk/orders/:trade_no/redemption", middleware.CriticalRateLimit(), middleware.DisableCache(), controller.GetCatFKRedemption)
 				selfRoute.POST("/aff_transfer", middleware.UserCriticalRateLimit("aff-transfer"), controller.TransferAffQuota)
 				selfRoute.PUT("/setting", controller.UpdateUserSetting)
 

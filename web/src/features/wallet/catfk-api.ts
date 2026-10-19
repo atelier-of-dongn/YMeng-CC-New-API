@@ -7,6 +7,7 @@ import type {
   CatfkPayRequest,
   CatfkQuote,
   CatfkQuoteRequest,
+  CatfkRedemption,
 } from './types'
 
 export async function quoteCatfk(
@@ -60,8 +61,18 @@ export async function getCatfkOrder(tradeNo: string): Promise<CatfkOrder> {
   return data.data
 }
 
-export function safeCatfkPaymentUrl(value: unknown): string | null {
-  if (typeof value !== 'string') return null
+export async function getCatfkRedemption(
+  tradeNo: string
+): Promise<CatfkRedemption> {
+  const { data } = await api.get<ApiResponse<CatfkRedemption>>(
+    `/api/user/catfk/orders/${encodeURIComponent(tradeNo)}/redemption`
+  )
+  if (data.success !== true || !data.data) throw createServerError(data)
+  return data.data
+}
+
+export function safeCatfkQrCode(value: unknown): string | null {
+  if (typeof value !== 'string' || value.length > 2048) return null
   try {
     const url = new URL(value)
     return url.protocol === 'https:' && !url.username && !url.password

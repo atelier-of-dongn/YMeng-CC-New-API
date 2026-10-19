@@ -159,13 +159,20 @@ export interface CatfkPaymentStatusOrder {
   tradeNo: string
   amount: number
   status: string
-  paymentUrl: string | null
+  paymentQrCode: string | null
 }
 
 export interface CatfkOrder {
   trade_no: string
   status: string
-  payment_url?: string
+  /** Scanned to pay; the payment page itself is never opened in the browser. */
+  payment_qr_code?: string
+}
+
+export interface CatfkRedemption {
+  key: string
+  quota: number
+  redeemed_time: number
 }
 
 export interface CatfkQuoteRequest {

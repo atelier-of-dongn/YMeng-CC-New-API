@@ -24,7 +24,6 @@
     "Catfk Payment": "雲貓 付款",
     "Catfk payment is unavailable.": "雲貓 付款暫時無法使用。",
     "Choose the payment provider. Store payments use the configured product tiers.": "選擇付款服務，商店付款使用已設定的商品級距。",
-    "Copy payment link": "複製付款連結",
     "Custom amounts are not supported": "不支援自訂金額",
     "Delete CatFK product {{name}}": "刪除 雲貓 商品 {{name}}",
     "Disabling CatFK stops new orders only. Existing orders can still be processed.": "停用 雲貓 僅停止新訂單，既有訂單仍可繼續處理。",
@@ -39,7 +38,6 @@
     "No CatFK channels returned": "未傳回 雲貓 管道",
     "No CatFK products configured": "尚未設定 雲貓 商品",
     "Online Payment": "線上付款",
-    "Open payment page": "開啟付款頁面",
     "Order created": "訂單已建立",
     "Order creation is uncertain. Contact support before creating another order.": "下單結果尚未確認，請先聯絡客服，勿重新下單。",
     "Order expired": "訂單已過期",
@@ -5335,7 +5333,6 @@
     "Reset all model prices?": "重置所有模型價格嗎？",
     "Reset all model ratios?": "重置所有模型比例嗎？",
     "Resume drag demo": "繼續拖曳示範",
-    "Resume payment": "繼續付款",
     "Review the affected Passkeys and confirm the domain removal. If the settings or impact have changed, confirmation is required again.": "請核對受影響的通行金鑰並確認刪除網域。設定或影響範圍變更後，需要重新確認。",
     "Reset all settings to default values": "將所有設定重置為預設值",
     "Reset at:": "重設於：",
@@ -7708,10 +7705,16 @@
     "Contact method": "聯絡方式",
     "Enter QQ number (5-12 digits)": "請輸入QQ號（5-12位數字）",
     "Automatically credited {{amount}}. No redemption needed.": "自動入帳{{amount}}，無需兌換",
-    "Click here if payment did not open": "若未跳轉付款請點擊",
     "Payment successful": "付款成功",
     "Unable to check payment status. Retrying automatically.": "暫時無法查詢付款狀態，正在自動重試。",
     "Waiting for payment confirmation": "等待付款確認",
-    "Check status": "查詢狀態"
+    "Payment QR code": "付款 QR 碼",
+    "Scan with Alipay to pay": "請使用支付寶掃碼付款",
+    "View redemption code": "查看兌換碼",
+    "The code redeemed for this order": "此訂單實際兌換的兌換碼",
+    "Redemption code unavailable": "無法取得兌換碼",
+    "Redemption code is not available yet": "訂單完成後才能查看兌換碼",
+    "Cancel payment": "取消付款",
+    "Open Alipay to pay": "開啟支付寶付款"
   }
 }

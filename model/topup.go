@@ -333,14 +333,14 @@ func GetUserTopUps(userId int, pageInfo *common.PageInfo) (topups []*TopUp, tota
 	cutoff := topUpQueryCutoff()
 
 	// Get total count within transaction
-	err = tx.Model(&TopUp{}).Where("user_id = ? AND create_time >= ? AND (payment_provider IS NULL OR payment_provider <> ?)", userId, cutoff, PaymentProviderRedemption).Count(&total).Error
+	err = tx.Model(&TopUp{}).Where("user_id = ? AND create_time >= ?", userId, cutoff).Count(&total).Error
 	if err != nil {
 		tx.Rollback()
 		return nil, 0, err
 	}
 
 	// Get paginated topups within same transaction
-	err = tx.Where("user_id = ? AND create_time >= ? AND (payment_provider IS NULL OR payment_provider <> ?)", userId, cutoff, PaymentProviderRedemption).Order("id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&topups).Error
+	err = tx.Where("user_id = ? AND create_time >= ?", userId, cutoff).Order("id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&topups).Error
 	if err != nil {
 		tx.Rollback()
 		return nil, 0, err
@@ -366,12 +366,12 @@ func GetAllTopUps(pageInfo *common.PageInfo) (topups []*TopUp, total int64, err 
 		}
 	}()
 
-	if err = tx.Model(&TopUp{}).Where("payment_provider IS NULL OR payment_provider <> ?", PaymentProviderRedemption).Count(&total).Error; err != nil {
+	if err = tx.Model(&TopUp{}).Count(&total).Error; err != nil {
 		tx.Rollback()
 		return nil, 0, err
 	}
 
-	if err = tx.Where("payment_provider IS NULL OR payment_provider <> ?", PaymentProviderRedemption).Order("id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&topups).Error; err != nil {
+	if err = tx.Order("id desc").Limit(pageInfo.GetPageSize()).Offset(pageInfo.GetStartIdx()).Find(&topups).Error; err != nil {
 		tx.Rollback()
 		return nil, 0, err
 	}
@@ -399,7 +399,7 @@ func SearchUserTopUps(userId int, keyword string, pageInfo *common.PageInfo) (to
 		}
 	}()
 
-	query := tx.Model(&TopUp{}).Where("user_id = ? AND create_time >= ? AND (payment_provider IS NULL OR payment_provider <> ?)", userId, topUpQueryCutoff(), PaymentProviderRedemption)
+	query := tx.Model(&TopUp{}).Where("user_id = ? AND create_time >= ?", userId, topUpQueryCutoff())
 	if keyword != "" {
 		pattern, perr := sanitizeLikePattern(keyword)
 		if perr != nil {
@@ -439,7 +439,7 @@ func SearchAllTopUps(keyword string, pageInfo *common.PageInfo) (topups []*TopUp
 		}
 	}()
 
-	query := tx.Model(&TopUp{}).Where("payment_provider IS NULL OR payment_provider <> ?", PaymentProviderRedemption)
+	query := tx.Model(&TopUp{})
 	if keyword != "" {
 		pattern, perr := sanitizeLikePattern(keyword)
 		if perr != nil {

@@ -124,6 +124,9 @@ func (f *catFKTestStore) Update(_ int, v int64, u model.CatFKOrderUpdate) (bool,
 	if u.PaymentURL != nil {
 		f.order.PaymentURL = *u.PaymentURL
 	}
+	if u.PaymentQRCode != nil {
+		f.order.PaymentQRCode = *u.PaymentQRCode
+	}
 	if u.CredentialCiphertext != nil {
 		f.order.CredentialCiphertext = *u.CredentialCiphertext
 	}
@@ -288,7 +291,7 @@ func TestCatFKCreateOnceAndCredentialRecovery(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, catFKOpen(restartedKey, purpose, store.order.CredentialCiphertext, &credentials))
 	store.order.Status = model.CatFKOrderStatusCompleted
-	assert.Empty(t, catFKSafePayment(store.order).PaymentURL)
+	assert.Empty(t, catFKSafePayment(store.order).PaymentQRCode)
 }
 
 func TestCatFKAmbiguousCreationNeverResubmits(t *testing.T) {
@@ -301,7 +304,7 @@ func TestCatFKAmbiguousCreationNeverResubmits(t *testing.T) {
 	payment, err := s.create(context.Background(), 7, req)
 	require.NoError(t, err)
 	assert.Equal(t, model.CatFKOrderStatusCreationUnknown, payment.Status)
-	assert.Empty(t, payment.PaymentURL)
+	assert.Empty(t, payment.PaymentQRCode)
 	_, err = s.create(context.Background(), 7, req)
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, a.creates.Load())
@@ -346,7 +349,7 @@ func TestCatFKPartialCreationRetainsRecoveryIdentity(t *testing.T) {
 	assert.Equal(t, model.CatFKOrderStatusCreationUnknown, payment.Status)
 	require.NotNil(t, store.order.UpstreamOrderID)
 	assert.Equal(t, "known-upstream", *store.order.UpstreamOrderID)
-	assert.Empty(t, payment.PaymentURL)
+	assert.Empty(t, payment.PaymentQRCode)
 	_, err = s.create(context.Background(), 7, req)
 	require.NoError(t, err)
 	assert.EqualValues(t, 1, a.creates.Load())
@@ -363,8 +366,34 @@ func TestCatFKCreationSnapshotMismatch(t *testing.T) {
 	p, err := s.create(context.Background(), 7, req)
 	require.NoError(t, err)
 	assert.Equal(t, model.CatFKOrderStatusNeedsAttention, p.Status)
-	assert.Empty(t, p.PaymentURL)
+	assert.Empty(t, p.PaymentQRCode)
 	assert.Zero(t, store.completed)
+}
+
+func TestCatFKPendingOrderExposesOnlyTheScrapedQRCode(t *testing.T) {
+	for _, tc := range []struct{ name, scraped, want string }{
+		{"scraped", "https://qr.alipay.com/upx-code", "https://qr.alipay.com/upx-code"},
+		{"unsafe-scrape", "javascript:alert(1)", "https://payments.example/pay"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s, a, store, _ := catFKFixture(t)
+			req := catFKRequest(t, s)
+			a.createFn = func(o *model.CatFKOrder, _ CatFKCredentials) (*CatFKCreatedOrder, error) {
+				e := catFKTestEvidence(o)
+				e.Paid, e.Delivered, e.RedemptionKey = false, false, ""
+				return &CatFKCreatedOrder{UpstreamOrderID: "upstream", PaymentURL: "https://payments.example/pay", PaymentQRCode: tc.scraped, Evidence: e}, nil
+			}
+			payment, err := s.create(context.Background(), 7, req)
+			require.NoError(t, err)
+			assert.Equal(t, model.CatFKOrderStatusPending, payment.Status)
+			assert.Equal(t, tc.want, payment.PaymentQRCode)
+			public, err := common.Marshal(payment)
+			require.NoError(t, err)
+			assert.NotContains(t, string(public), "payment_url")
+			store.order.Status = model.CatFKOrderStatusExpired
+			assert.Empty(t, catFKSafePayment(store.order).PaymentQRCode)
+		})
+	}
 }
 
 func TestCatFKDocumentedReceiptCanSettleOnlyTheBoundPurchase(t *testing.T) {
@@ -379,7 +408,7 @@ func TestCatFKDocumentedReceiptCanSettleOnlyTheBoundPurchase(t *testing.T) {
 	payment, err := s.create(context.Background(), 7, req)
 	require.NoError(t, err)
 	assert.Equal(t, model.CatFKOrderStatusPending, payment.Status)
-	assert.NotEmpty(t, payment.PaymentURL)
+	assert.Equal(t, "https://payments.example/pay", payment.PaymentQRCode, "without a scraped code the payment URL is the QR content")
 	assert.Zero(t, store.completed)
 	a.queryFn = func(o *model.CatFKOrder, _ CatFKCredentials) (*CatFKOrderEvidence, error) {
 		e := catFKTestEvidence(o)

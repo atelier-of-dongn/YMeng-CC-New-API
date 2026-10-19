@@ -58,6 +58,15 @@ func GetCatFKPayment(c *gin.Context) {
 	common.ApiSuccess(c, payment)
 }
 
+func GetCatFKRedemption(c *gin.Context) {
+	redemption, err := service.GetUserCatFKRedemption(c.GetInt("id"), c.Param("trade_no"))
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, redemption)
+}
+
 func ListCatFKPaymentChannels(c *gin.Context) {
 	var req struct {
 		StoreToken string `json:"store_token"`

@@ -24,7 +24,6 @@
     "Catfk Payment": "Thanh toán Yunmao",
     "Catfk payment is unavailable.": "Thanh toán Yunmao hiện không khả dụng.",
     "Choose the payment provider. Store payments use the configured product tiers.": "Chọn nhà cung cấp thanh toán. Thanh toán cửa hàng dùng các sản phẩm đã cấu hình.",
-    "Copy payment link": "Sao chép liên kết thanh toán",
     "Custom amounts are not supported": "Không hỗ trợ số tiền tùy chỉnh",
     "Delete CatFK product {{name}}": "Xóa sản phẩm Yunmao {{name}}",
     "Disabling CatFK stops new orders only. Existing orders can still be processed.": "Tắt Yunmao chỉ dừng đơn mới. Các đơn hiện có vẫn có thể được xử lý.",
@@ -39,7 +38,6 @@
     "No CatFK channels returned": "Không có kênh Yunmao được trả về",
     "No CatFK products configured": "Chưa cấu hình sản phẩm Yunmao",
     "Online Payment": "Thanh toán trực tuyến",
-    "Open payment page": "Mở trang thanh toán",
     "Order created": "Đã tạo đơn hàng",
     "Order creation is uncertain. Contact support before creating another order.": "Chưa rõ kết quả tạo đơn. Hãy liên hệ hỗ trợ trước khi tạo đơn khác.",
     "Order expired": "Đơn hàng đã hết hạn",
@@ -5335,7 +5333,6 @@
     "Reset all model prices?": "Đặt lại tất cả giá mô hình?",
     "Reset all model ratios?": "Đặt lại tất cả tỷ lệ mô hình?",
     "Resume drag demo": "Tiếp tục minh họa kéo thả",
-    "Resume payment": "Tiếp tục thanh toán",
     "Review the affected Passkeys and confirm the domain removal. If the settings or impact have changed, confirmation is required again.": "Hãy xem lại các Passkey bị ảnh hưởng và xác nhận xóa tên miền. Nếu cài đặt hoặc phạm vi ảnh hưởng thay đổi, cần xác nhận lại.",
     "Reset all settings to default values": "Đặt lại tất cả cài đặt về giá trị mặc định",
     "Reset at:": "Đặt lại lúc:",
@@ -7708,10 +7705,16 @@
     "Contact method": "Liên hệ",
     "Enter QQ number (5-12 digits)": "Nhập số QQ (5-12 chữ số)",
     "Automatically credited {{amount}}. No redemption needed.": "Đã tự động cộng {{amount}}. Không cần đổi mã.",
-    "Click here if payment did not open": "Nhấn vào đây nếu trang thanh toán chưa mở",
     "Payment successful": "Thanh toán thành công",
     "Unable to check payment status. Retrying automatically.": "Chưa thể kiểm tra thanh toán. Đang tự động thử lại.",
     "Waiting for payment confirmation": "Đang chờ xác nhận thanh toán",
-    "Check status": "Kiểm tra trạng thái"
+    "Payment QR code": "Mã QR thanh toán",
+    "Scan with Alipay to pay": "Quét bằng Alipay để thanh toán",
+    "View redemption code": "Xem mã đổi thưởng",
+    "The code redeemed for this order": "Mã đã đổi cho đơn hàng này",
+    "Redemption code unavailable": "Không có mã đổi thưởng",
+    "Redemption code is not available yet": "Mã đổi thưởng chưa khả dụng",
+    "Cancel payment": "Hủy thanh toán",
+    "Open Alipay to pay": "Mở Alipay để thanh toán"
   }
 }

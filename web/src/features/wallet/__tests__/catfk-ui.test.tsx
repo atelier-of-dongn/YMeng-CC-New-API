@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { act, render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
 import { useState, type ComponentProps, type ReactNode } from 'react'
@@ -12,7 +12,6 @@ import {
   useSystemConfigStore,
 } from '@/stores/system-config-store'
 
-import { CatfkOrderAction } from '../components/catfk-order-action'
 import { BillingHistoryDialog } from '../components/dialogs/billing-history-dialog'
 import { PaymentConfirmDialog } from '../components/dialogs/payment-confirm-dialog'
 import { RechargeFormCard } from '../components/recharge-form-card'
@@ -448,7 +447,7 @@ it.each(['zhCN', 'zhTW', 'en', 'fr', 'ru', 'ja', 'vi', 'invalid_locale!'])(
   }
 )
 
-it('requires a valid quote and ASCII QQ before confirmation and locks QQ for uncertain orders', async () => {
+it('requires a valid quote and ASCII QQ before confirmation', async () => {
   const confirm = vi.fn()
   function Payment() {
     const [qq, setQQ] = useState('')
@@ -520,89 +519,28 @@ it.each([
           qq: '1234',
           onQQChange: vi.fn(),
           available: state.available,
-          qqLocked: true,
         }}
       />
     )
     expect(
       screen.getByRole('button', { name: 'Confirm Payment' })
     ).toBeDisabled()
-    expect(
-      screen.getByRole('textbox', { name: /Contact method/ })
-    ).toBeDisabled()
   }
 )
-it('hides history query and payment-link controls when a pending order completes after a status check', async () => {
-  const get = vi
-    .spyOn(api, 'get')
-    .mockResolvedValueOnce({
-      data: {
-        success: true,
-        data: {
-          trade_no: 'history-order',
-          status: 'pending',
-          payment_url: 'https://pay.example/existing-order',
-        },
-      },
-    })
-    .mockResolvedValueOnce({
-      data: {
-        success: true,
-        data: {
-          trade_no: 'history-order',
-          status: 'completed',
-        },
-      },
-    })
-  const completed = vi.fn().mockResolvedValue(undefined)
-  render(<CatfkOrderAction tradeNo='history-order' onCompleted={completed} />, {
-    wrapper,
-  })
-  const user = userEvent.setup()
-  await user.click(screen.getByRole('button', { name: 'Check status' }))
+it('shows neither a resume button, an order status nor a QR code on the recharge card', () => {
+  render(<RechargeFormCard {...base} />, { wrapper })
   expect(
-    await screen.findByRole('button', { name: 'Open payment page' })
-  ).toHaveAttribute('href', 'https://pay.example/existing-order')
-  await user.click(screen.getByRole('button', { name: 'Check status' }))
-  await waitFor(() =>
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Wallet credit completed'
-    )
-  )
-  expect(
-    screen.queryByRole('button', { name: 'Check status' })
+    screen.queryByRole('button', { name: 'Resume payment' })
   ).not.toBeInTheDocument()
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
   expect(
-    screen.queryByRole('button', { name: 'Open payment page' })
+    screen.queryByRole('img', { name: 'Payment QR code' })
   ).not.toBeInTheDocument()
-  expect(completed).toHaveBeenCalledOnce()
-  expect(get).toHaveBeenLastCalledWith('/api/user/catfk/orders/history-order')
 })
 
-it('keeps the history status query available after a failed request', async () => {
-  vi.spyOn(api, 'get').mockRejectedValue(new Error('Network unavailable'))
-  render(<CatfkOrderAction tradeNo='failed-order' />, { wrapper })
-  await userEvent.click(screen.getByRole('button', { name: 'Check status' }))
-  await waitFor(() =>
-    expect(screen.getByRole('button', { name: 'Check status' })).toBeEnabled()
-  )
-  expect(screen.queryByRole('link')).not.toBeInTheDocument()
-  expect(screen.queryByText('Wallet credit completed')).not.toBeInTheDocument()
-})
-
-it('formats Catfk history quota once and recovers an order through the server without local storage', async () => {
-  useSystemConfigStore.getState().setConfig({
-    currency: { ...DEFAULT_CURRENCY_CONFIG, quotaPerUnit: 500000 },
-  })
-  const get = vi.spyOn(api, 'get').mockImplementation(async (url) => {
-    if (String(url).includes('/catfk/orders/')) {
-      return {
-        data: {
-          success: true,
-          data: { trade_no: 'catfk-order', status: 'paid' },
-        },
-      }
-    }
+function mockCatfkHistory(redemption: unknown) {
+  return vi.spyOn(api, 'get').mockImplementation(async (url) => {
+    if (String(url).endsWith('/redemption')) return { data: redemption }
     return {
       data: {
         success: true,
@@ -643,27 +581,97 @@ it('formats Catfk history quota once and recovers an order through the server wi
       },
     }
   })
-  const onCompleted = vi.fn()
-  render(
-    <BillingHistoryDialog
-      open
-      onOpenChange={vi.fn()}
-      onCatfkCompleted={onCompleted}
-    />,
-    { wrapper }
-  )
+}
+
+it('offers a redemption code button on every Catfk history order and no status query', async () => {
+  useSystemConfigStore.getState().setConfig({
+    currency: { ...DEFAULT_CURRENCY_CONFIG, quotaPerUnit: 500000 },
+  })
+  mockCatfkHistory({ success: true, data: {} })
+  render(<BillingHistoryDialog open onOpenChange={vi.fn()} />, { wrapper })
   await screen.findByText('catfk-order')
   expect(screen.getAllByText('$10')).toHaveLength(3)
-  expect(screen.getAllByRole('button', { name: 'Check status' })).toHaveLength(
-    1
+  expect(
+    screen.getAllByRole('button', { name: 'View redemption code' })
+  ).toHaveLength(2)
+  expect(
+    screen.queryByRole('button', { name: 'Check status' })
+  ).not.toBeInTheDocument()
+})
+
+it('shows the redeemed code of a completed Catfk order when its button is clicked', async () => {
+  const get = mockCatfkHistory({
+    success: true,
+    data: {
+      key: '0123456789abcdef0123456789abcdef',
+      quota: 5000000,
+      redeemed_time: 1,
+    },
+  })
+  render(<BillingHistoryDialog open onOpenChange={vi.fn()} />, { wrapper })
+  await screen.findByText('completed-catfk-order')
+  await userEvent.click(
+    screen.getAllByRole('button', { name: 'View redemption code' })[0]
   )
-  await userEvent.click(screen.getByRole('button', { name: 'Check status' }))
-  await waitFor(() =>
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Payment received. Wallet credit is pending.'
-    )
+  const dialog = await screen.findByRole('dialog', { name: 'Redemption Code' })
+  expect(
+    await within(dialog).findByText('0123456789abcdef0123456789abcdef')
+  ).toBeVisible()
+  expect(
+    within(dialog).getByRole('button', { name: 'Copy redemption code' })
+  ).toBeVisible()
+  expect(get).toHaveBeenCalledWith(
+    '/api/user/catfk/orders/completed-catfk-order/redemption'
   )
-  expect(get).toHaveBeenCalledWith('/api/user/catfk/orders/catfk-order')
-  expect(onCompleted).not.toHaveBeenCalled()
-  expect(localStorage.getItem('wallet:catfk:order:1')).toBeNull()
+})
+
+it('explains that an unfinished Catfk order has no redemption code yet', async () => {
+  mockCatfkHistory({
+    success: false,
+    message: 'Redemption code is not available yet',
+    message_key: 'Redemption code is not available yet',
+  })
+  render(<BillingHistoryDialog open onOpenChange={vi.fn()} />, { wrapper })
+  await screen.findByText('catfk-order')
+  await userEvent.click(
+    screen.getAllByRole('button', { name: 'View redemption code' })[1]
+  )
+  const dialog = await screen.findByRole('dialog', { name: 'Redemption Code' })
+  expect(
+    await within(dialog).findByText('Redemption code is not available yet')
+  ).toBeVisible()
+})
+
+it('lists a wallet redemption in order history with its credited quota and no paid amount', async () => {
+  useSystemConfigStore.getState().setConfig({
+    currency: { ...DEFAULT_CURRENCY_CONFIG, quotaPerUnit: 500000 },
+  })
+  vi.spyOn(api, 'get').mockResolvedValue({
+    data: {
+      success: true,
+      data: {
+        total: 1,
+        items: [
+          {
+            id: 9,
+            amount: 5000000,
+            money: 0,
+            trade_no: 'redemption:42',
+            payment_method: 'redemption',
+            payment_provider: 'redemption',
+            status: 'success',
+            create_time: 1,
+          },
+        ],
+      },
+    },
+  })
+  render(<BillingHistoryDialog open onOpenChange={vi.fn()} />, { wrapper })
+  await screen.findByText('redemption:42')
+  expect(screen.getByText('Redemption Code')).toBeVisible()
+  expect(screen.getByText('$10')).toBeVisible()
+  expect(screen.getByText('-')).toBeVisible()
+  expect(
+    screen.queryByRole('button', { name: 'View redemption code' })
+  ).not.toBeInTheDocument()
 })

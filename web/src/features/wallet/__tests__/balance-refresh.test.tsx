@@ -7,6 +7,7 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { render, screen, waitFor, within } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import { SummaryCards } from '@/features/dashboard/components/overview/summary-cards'
@@ -36,9 +37,36 @@ afterEach(() => {
   useSystemConfigStore.setState(useSystemConfigStore.getInitialState(), true)
 })
 
-it('refreshes both the wallet balance and the shared dashboard balance after a saved store order completes', async () => {
-  localStorage.setItem('wallet:catfk:order:1', 'settled-order')
+it('refreshes both the wallet balance and the shared dashboard balance after a store order completes', async () => {
   let settled = false
+  vi.spyOn(api, 'post').mockImplementation(async (url) => {
+    if (url === '/api/user/catfk/quote') {
+      return {
+        data: {
+          success: true,
+          data: {
+            quote_id: 'q1',
+            amount: 72,
+            currency: 'CNY',
+            topup_amount: 10,
+          },
+        },
+      }
+    }
+    if (url === '/api/user/catfk/pay') {
+      return {
+        data: {
+          success: true,
+          data: {
+            trade_no: 'settled-order',
+            status: 'pending',
+            payment_qr_code: 'https://qr.alipay.com/upx-code',
+          },
+        },
+      }
+    }
+    throw new Error(`Unexpected POST ${url}`)
+  })
   vi.spyOn(api, 'get').mockImplementation(async (url) => {
     let data: unknown
     switch (url) {
@@ -55,10 +83,23 @@ it('refreshes both the wallet balance and the shared dashboard balance after a s
         break
       case '/api/user/catfk/orders/settled-order':
         settled = true
-        data = { trade_no: 'settled-order', status: 'completed' }
+        data = {
+          trade_no: 'settled-order',
+          status: 'completed',
+        }
         break
       case '/api/user/topup/info':
-        data = { min_topup: 1, pay_methods: [], amount_options: [] }
+        data = {
+          min_topup: 1,
+          pay_methods: [],
+          amount_options: [10],
+          catfk: {
+            enabled: true,
+            available: true,
+            products: [{ id: 'ten', name: 'Ten dollars', amount: 10 }],
+            channels: [{ id: '1', name: 'Alipay' }],
+          },
+        }
         break
       case '/api/user/affiliate/summary':
         data = {
@@ -120,13 +161,25 @@ it('refreshes both the wallet balance and the shared dashboard balance after a s
     </QueryClientProvider>
   )
 
+  const user = userEvent.setup()
+  await user.click(await screen.findByRole('button', { name: /^10 Pay/ }))
+  await user.click(screen.getByRole('button', { name: /Alipay/ }))
+  await user.type(
+    await screen.findByRole('textbox', { name: /Contact method/ }),
+    '12345'
+  )
+  await user.click(screen.getByRole('button', { name: 'Confirm Payment' }))
   await waitFor(() =>
     expect(screen.getAllByText(formatQuota(6000000))).toHaveLength(2)
   )
+  const success = screen.getByRole('dialog', { name: 'Payment successful' })
+  await user.click(within(success).getByRole('button', { name: 'Close' }))
   expect(
     within(screen.getByRole('region', { name: 'Dashboard balance' })).getByText(
       formatQuota(6000000)
     )
   ).toBeVisible()
-  expect(localStorage.getItem('wallet:catfk:order:1')).toBeNull()
+  expect(
+    Object.keys(localStorage).filter((key) => key.startsWith('wallet:catfk'))
+  ).toEqual([])
 })

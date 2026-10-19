@@ -60,6 +60,7 @@ export function getStatusConfig(status: TopupStatus): StatusConfig {
  */
 export const PAYMENT_METHOD_NAMES: Record<string, string> = {
   catfk: 'Online Payment',
+  redemption: 'Redemption Code',
   stripe: 'Stripe',
   alipay: 'Alipay',
   wxpay: 'WeChat Pay',

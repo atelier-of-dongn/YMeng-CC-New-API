@@ -267,7 +267,7 @@ func BackfillRedemptionInvoiceTopUps() error {
 					TradeNo:         tradeNo,
 					PaymentMethod:   PaymentProviderRedemption,
 					PaymentProvider: PaymentProviderRedemption,
-					CreateTime:      redemption.CreatedTime,
+					CreateTime:      completedAt,
 					CompleteTime:    completedAt,
 					Status:          common.TopUpStatusSuccess,
 					CreditedQuota:   int64(redemption.Quota),

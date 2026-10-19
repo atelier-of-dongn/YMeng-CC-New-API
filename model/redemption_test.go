@@ -136,6 +136,8 @@ func setupRedeemFixture(t *testing.T, quota int) (userId int, key string) {
 
 func TestRedeemCreditsQuotaExactlyOnce(t *testing.T) {
 	userId, key := setupRedeemFixture(t, 500)
+	// A code issued long before it is redeemed is still a recent top-up.
+	require.NoError(t, DB.Model(&Redemption{}).Where("name = ?", "redeem-test").Update("created_time", common.GetTimestamp()-60*24*60*60).Error)
 
 	quota, err := Redeem(key, userId)
 	require.NoError(t, err)
@@ -158,6 +160,15 @@ func TestRedeemCreditsQuotaExactlyOnce(t *testing.T) {
 	wantInvoiceAmount, invoiceErr := InvoiceAmountFromQuota(500)
 	require.NoError(t, invoiceErr)
 	assert.Equal(t, wantInvoiceAmount, topUp.InvoiceAmount)
+	assert.Equal(t, redemption.RedeemedTime, topUp.CreateTime)
+	history, total, err := GetUserTopUps(userId, &common.PageInfo{Page: 1, PageSize: 10})
+	require.NoError(t, err)
+	require.EqualValues(t, 1, total, "ordinary redemptions appear in the user's order history")
+	assert.Equal(t, topUp.TradeNo, history[0].TradeNo)
+	found, total, err := SearchUserTopUps(userId, topUp.TradeNo, &common.PageInfo{Page: 1, PageSize: 10})
+	require.NoError(t, err)
+	require.EqualValues(t, 1, total)
+	assert.Equal(t, topUp.TradeNo, found[0].TradeNo)
 	assert.Equal(t, redemption.RedeemedTime, topUp.CompleteTime)
 	assert.Positive(t, topUp.CompleteTime)
 
@@ -307,7 +318,8 @@ func markCatFKOrderPaid(t *testing.T, order *CatFKOrder) *CatFKOrder {
 	require.True(t, ok)
 	order, err = GetCatFKOrderByTradeNo(order.TradeNo)
 	require.NoError(t, err)
-	ok, err = UpdateCatFKOrder(order.ID, order.Version, CatFKOrderUpdate{Status: CatFKOrderStatusPaid, NextQueryAt: common.GetTimestamp()})
+	qrCode := "https://qr.alipay.com/upx-code"
+	ok, err = UpdateCatFKOrder(order.ID, order.Version, CatFKOrderUpdate{Status: CatFKOrderStatusPaid, PaymentQRCode: &qrCode, NextQueryAt: common.GetTimestamp()})
 	require.NoError(t, err)
 	require.True(t, ok)
 	order, err = GetCatFKOrderByTradeNo(order.TradeNo)
@@ -375,6 +387,9 @@ func TestCatFKCompletionIsAtomicAndIdempotent(t *testing.T) {
 	_, err := CompleteVerifiedCatFKOrder(order.ID, order.Version, key, "")
 	require.ErrorIs(t, err, ErrCatFKOrderConflict)
 	order = markCatFKOrderPaid(t, order)
+	assert.Equal(t, "https://qr.alipay.com/upx-code", order.PaymentQRCode)
+	_, err = GetCatFKRedemptionForUser(userID, order.TradeNo)
+	require.ErrorIs(t, err, ErrCatFKOrderConflict, "a code is shown only after completion")
 	_, err = CompleteVerifiedCatFKOrder(order.ID, order.Version-1, key, "")
 	require.ErrorIs(t, err, ErrCatFKOrderConflict)
 	already, err := CompleteVerifiedCatFKOrder(order.ID, order.Version, key, "")
@@ -392,6 +407,12 @@ func TestCatFKCompletionIsAtomicAndIdempotent(t *testing.T) {
 	require.NoError(t, DB.First(&redemption, "id = ?", *stored.RedemptionID).Error)
 	assert.Equal(t, userID, redemption.UsedUserId)
 	assert.Equal(t, common.RedemptionCodeStatusUsed, redemption.Status)
+	require.NoError(t, DB.Delete(&Redemption{}, "id = ?", redemption.Id).Error)
+	shown, err := GetCatFKRedemptionForUser(userID, order.TradeNo)
+	require.NoError(t, err, "a soft-deleted code remains the purchase record")
+	assert.Equal(t, key, shown.Key)
+	_, err = GetCatFKRedemptionForUser(userID+1, order.TradeNo)
+	assert.ErrorIs(t, err, gorm.ErrRecordNotFound)
 	assert.Equal(t, common.TopUpStatusSuccess, GetTopUpById(order.TopUpID).Status)
 	var topUpCount int64
 	require.NoError(t, DB.Model(&TopUp{}).Where("user_id = ?", userID).Count(&topUpCount).Error)

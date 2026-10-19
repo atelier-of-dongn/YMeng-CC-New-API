@@ -27,9 +27,15 @@ it.each(Object.entries(resources))(
       'Read CatFK channels',
       'Expected credited balance (USD)',
       'CatFK product IDs must be unique',
-      'Check status',
+      'Cancel payment',
+      'Open Alipay to pay',
       'Waiting for payment confirmation',
-      'Click here if payment did not open',
+      'Payment QR code',
+      'Scan with Alipay to pay',
+      'View redemption code',
+      'The code redeemed for this order',
+      'Redemption code unavailable',
+      'Redemption code is not available yet',
       'Payment successful',
       'Automatically credited {{amount}}. No redemption needed.',
       'Unable to check payment status. Retrying automatically.',
@@ -49,11 +55,11 @@ it.each(Object.entries(resources))(
 it('shows the requested Chinese custom amount note and switches gateway labels with the language', async () => {
   const i18n = createInstance()
   await i18n.init({ lng: 'zh', fallbackLng: 'en', resources })
-  expect(i18n.t('Check status')).toBe('查询状态')
+  expect(i18n.t('Cancel payment')).toBe('取消支付')
+  expect(i18n.t('Open Alipay to pay')).toBe('打开支付宝付款')
   expect(i18n.t('Waiting for payment confirmation')).toBe('等待付款确认')
-  expect(i18n.t('Click here if payment did not open')).toBe(
-    '若未跳转支付请点击'
-  )
+  expect(i18n.t('Scan with Alipay to pay')).toBe('请使用支付宝扫码支付')
+  expect(i18n.t('View redemption code')).toBe('查看兑换码')
   expect(i18n.t('Payment successful')).toBe('支付成功')
   expect(
     i18n.t('Automatically credited {{amount}}. No redemption needed.', {

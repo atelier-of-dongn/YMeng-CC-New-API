@@ -56,7 +56,6 @@ interface PaymentConfirmDialogProps {
     qq: string
     onQQChange: (value: string) => void
     available: boolean
-    qqLocked?: boolean
   }
   topupLink?: string
 }
@@ -209,7 +208,7 @@ export function PaymentConfirmDialog({
               maxLength={12}
               placeholder={t('Enter QQ number (5-12 digits)')}
               value={catfk.qq}
-              disabled={processing || catfk.qqLocked}
+              disabled={processing}
               onChange={(event) => catfk.onQQChange(event.target.value)}
               aria-invalid={invalidQQ}
               aria-describedby={invalidQQ ? 'catfk-qq-hint' : undefined}

@@ -54,18 +54,19 @@ import {
   getPaymentMethodName,
   formatTimestamp,
 } from '../../lib/billing'
-import { CatfkOrderAction } from '../catfk-order-action'
+import { CatfkRedemptionDialog } from './catfk-redemption-dialog'
+
+// These providers store the credited wallet quota rather than a USD amount.
+const quotaAmountProviders = new Set(['catfk', 'redemption'])
 
 interface BillingHistoryDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onCatfkCompleted?: () => Promise<void>
 }
 
 export function BillingHistoryDialog({
   open,
   onOpenChange,
-  onCatfkCompleted,
 }: BillingHistoryDialogProps) {
   const { t } = useTranslation()
   const {
@@ -84,6 +85,9 @@ export function BillingHistoryDialog({
   } = useBillingHistory()
 
   const [confirmTradeNo, setConfirmTradeNo] = useState<string | null>(null)
+  const [redemptionTradeNo, setRedemptionTradeNo] = useState<string | null>(
+    null
+  )
   const { copyToClipboard, copiedText } = useCopyToClipboard({ notify: false })
 
   const totalPages = Math.ceil(total / pageSize)
@@ -251,7 +255,9 @@ export function BillingHistoryDialog({
                             {t('Amount')}
                           </Label>
                           <div className='text-sm font-semibold'>
-                            {(record.payment_provider === 'catfk'
+                            {(quotaAmountProviders.has(
+                              record.payment_provider ?? ''
+                            )
                               ? formatQuotaWithCurrency
                               : formatCurrencyFromUSD)(record.amount, {
                               digitsLarge: 2,
@@ -265,18 +271,26 @@ export function BillingHistoryDialog({
                             {t('Payment')}
                           </Label>
                           <div className='text-sm font-semibold text-red-600'>
-                            {formatNumber(record.money)}
+                            {record.payment_provider === 'redemption'
+                              ? '-'
+                              : formatNumber(record.money)}
                           </div>
                         </div>
                       </div>
 
-                      {record.payment_provider === 'catfk' &&
-                        record.status !== 'success' && (
-                          <CatfkOrderAction
-                            tradeNo={record.trade_no}
-                            onCompleted={onCatfkCompleted}
-                          />
-                        )}
+                      {record.payment_provider === 'catfk' && (
+                        <div className='mt-3 flex justify-end'>
+                          <Button
+                            size='sm'
+                            variant='outline'
+                            onClick={() =>
+                              setRedemptionTradeNo(record.trade_no)
+                            }
+                          >
+                            {t('View redemption code')}
+                          </Button>
+                        </div>
+                      )}
 
                       {/* Admin Actions */}
                       {isAdmin &&
@@ -336,6 +350,15 @@ export function BillingHistoryDialog({
           )}
         </div>
       </Dialog>
+
+      {redemptionTradeNo && (
+        <CatfkRedemptionDialog
+          tradeNo={redemptionTradeNo}
+          onOpenChange={(next) => {
+            if (!next) setRedemptionTradeNo(null)
+          }}
+        />
+      )}
 
       {/* Confirm Complete Order Dialog */}
       <AlertDialog

@@ -24,7 +24,6 @@
     "Catfk Payment": "Yunmao Payment",
     "Catfk payment is unavailable.": "Yunmao payment is unavailable.",
     "Choose the payment provider. Store payments use the configured product tiers.": "Choose the payment provider. Store payments use the configured product tiers.",
-    "Copy payment link": "Copy payment link",
     "Custom amounts are not supported": "Custom amounts are not supported",
     "Delete CatFK product {{name}}": "Delete Yunmao product {{name}}",
     "Disabling CatFK stops new orders only. Existing orders can still be processed.": "Disabling Yunmao stops new orders only. Existing orders can still be processed.",
@@ -39,7 +38,6 @@
     "No CatFK channels returned": "No Yunmao channels returned",
     "No CatFK products configured": "No Yunmao products configured",
     "Online Payment": "Online Payment",
-    "Open payment page": "Open payment page",
     "Order created": "Order created",
     "Order creation is uncertain. Contact support before creating another order.": "Order creation is uncertain. Contact support before creating another order.",
     "Order expired": "Order expired",
@@ -5335,7 +5333,6 @@
     "Reset all model prices?": "Reset all model prices?",
     "Reset all model ratios?": "Reset all model ratios?",
     "Resume drag demo": "Resume drag demo",
-    "Resume payment": "Resume payment",
     "Review the affected Passkeys and confirm the domain removal. If the settings or impact have changed, confirmation is required again.": "Review the affected Passkeys and confirm the domain removal. If the settings or impact have changed, confirmation is required again.",
     "Reset all settings to default values": "Reset all settings to default values",
     "Reset at:": "Reset at:",
@@ -7708,10 +7705,16 @@
     "Contact method": "Contact method",
     "Enter QQ number (5-12 digits)": "Enter QQ number (5-12 digits)",
     "Automatically credited {{amount}}. No redemption needed.": "Automatically credited {{amount}}. No redemption needed.",
-    "Click here if payment did not open": "Click here if payment did not open",
     "Payment successful": "Payment successful",
     "Unable to check payment status. Retrying automatically.": "Unable to check payment status. Retrying automatically.",
     "Waiting for payment confirmation": "Waiting for payment confirmation",
-    "Check status": "Check status"
+    "Payment QR code": "Payment QR code",
+    "Scan with Alipay to pay": "Scan with Alipay to pay",
+    "View redemption code": "View redemption code",
+    "The code redeemed for this order": "The code redeemed for this order",
+    "Redemption code unavailable": "Redemption code unavailable",
+    "Redemption code is not available yet": "Redemption code is not available yet",
+    "Cancel payment": "Cancel payment",
+    "Open Alipay to pay": "Open Alipay to pay"
   }
 }

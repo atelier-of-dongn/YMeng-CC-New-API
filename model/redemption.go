@@ -159,8 +159,9 @@ func Redeem(key string, userId int) (quota int, err error) {
 		if redeemErr != nil {
 			return redeemErr
 		}
-		// Ordinary redemption creates its own invoice snapshot. CatFK uses the
-		// shared transaction helper and completes its existing TopUp instead.
+		// Ordinary redemption creates its own invoice snapshot, which is also its
+		// order history entry, dated when the user redeemed the code. CatFK uses
+		// the shared transaction helper and completes its existing TopUp instead.
 		invoiceAmount, err := InvoiceAmountFromQuota(redemption.Quota)
 		if err != nil {
 			common.SysError(fmt.Sprintf("failed to create redemption invoice snapshot: redemption_id=%d: %v", redemption.Id, err))
@@ -170,7 +171,7 @@ func Redeem(key string, userId int) (quota int, err error) {
 			UserId: userId, Amount: int64(redemption.Quota),
 			TradeNo:       fmt.Sprintf("redemption:%d", redemption.Id),
 			PaymentMethod: PaymentProviderRedemption, PaymentProvider: PaymentProviderRedemption,
-			CreateTime: redemption.CreatedTime, CompleteTime: redemption.RedeemedTime,
+			CreateTime: redemption.RedeemedTime, CompleteTime: redemption.RedeemedTime,
 			Status: common.TopUpStatusSuccess, CreditedQuota: int64(redemption.Quota),
 			InvoiceAmount: invoiceAmount,
 		}).Error

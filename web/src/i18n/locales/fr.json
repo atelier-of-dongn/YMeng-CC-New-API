@@ -24,7 +24,6 @@
     "Catfk Payment": "Paiement Yunmao",
     "Catfk payment is unavailable.": "Le paiement Yunmao est indisponible.",
     "Choose the payment provider. Store payments use the configured product tiers.": "Choisissez le prestataire. Le paiement boutique utilise les produits configurés.",
-    "Copy payment link": "Copier le lien de paiement",
     "Custom amounts are not supported": "Montants personnalisés non pris en charge",
     "Delete CatFK product {{name}}": "Supprimer le produit Yunmao {{name}}",
     "Disabling CatFK stops new orders only. Existing orders can still be processed.": "Désactiver Yunmao bloque uniquement les nouvelles commandes. Les commandes existantes peuvent toujours être traitées.",
@@ -39,7 +38,6 @@
     "No CatFK channels returned": "Aucun canal Yunmao retourné",
     "No CatFK products configured": "Aucun produit Yunmao configuré",
     "Online Payment": "Paiement en ligne",
-    "Open payment page": "Ouvrir le paiement",
     "Order created": "Commande créée",
     "Order creation is uncertain. Contact support before creating another order.": "Création incertaine. Contactez le support avant une nouvelle commande.",
     "Order expired": "Commande expirée",
@@ -5335,7 +5333,6 @@
     "Reset all model prices?": "Réinitialiser tous les prix des modèles ?",
     "Reset all model ratios?": "Réinitialiser tous les ratios de modèle ?",
     "Resume drag demo": "Reprendre la démo",
-    "Resume payment": "Reprendre le paiement",
     "Review the affected Passkeys and confirm the domain removal. If the settings or impact have changed, confirmation is required again.": "Vérifiez les Passkeys concernées et confirmez la suppression du domaine. Si les paramètres ou l'impact ont changé, une nouvelle confirmation est requise.",
     "Reset all settings to default values": "Réinitialiser tous les paramètres aux valeurs par défaut",
     "Reset at:": "Réinitialisation à :",
@@ -7708,10 +7705,16 @@
     "Contact method": "Coordonnées",
     "Enter QQ number (5-12 digits)": "Numéro QQ (5 à 12 chiffres)",
     "Automatically credited {{amount}}. No redemption needed.": "{{amount}} crédités automatiquement. Aucun échange nécessaire.",
-    "Click here if payment did not open": "Cliquez ici si le paiement ne s’ouvre pas",
     "Payment successful": "Paiement réussi",
     "Unable to check payment status. Retrying automatically.": "État du paiement indisponible. Nouvelle tentative automatique.",
     "Waiting for payment confirmation": "En attente de confirmation du paiement",
-    "Check status": "Vérifier le statut"
+    "Payment QR code": "QR code de paiement",
+    "Scan with Alipay to pay": "Scannez avec Alipay pour payer",
+    "View redemption code": "Voir le code d'échange",
+    "The code redeemed for this order": "Le code échangé pour cette commande",
+    "Redemption code unavailable": "Code d'échange indisponible",
+    "Redemption code is not available yet": "Le code d'échange n'est pas encore disponible",
+    "Cancel payment": "Annuler le paiement",
+    "Open Alipay to pay": "Ouvrir Alipay pour payer"
   }
 }

@@ -44,6 +44,7 @@ type CatFKOrder struct {
 	ShopURL              string  `json:"-" gorm:"type:text"`
 	PaymentMethod        string  `json:"payment_method" gorm:"type:varchar(50)"`
 	PaymentURL           string  `json:"payment_url" gorm:"type:text"`
+	PaymentQRCode        string  `json:"-" gorm:"type:text"`
 	UpstreamOrderID      *string `json:"-" gorm:"type:varchar(128);uniqueIndex:idx_catfk_shop_upstream,priority:2"`
 	RedemptionID         *int    `json:"-" gorm:"uniqueIndex"`
 	Status               string  `json:"status" gorm:"type:varchar(32);index:idx_catfk_due,priority:1;not null"`
@@ -120,6 +121,21 @@ func GetCatFKOrderForUser(userID int, tradeNo string) (*CatFKOrder, error) {
 	return order, err
 }
 
+// GetCatFKRedemptionForUser returns the redemption a completed order of this
+// user consumed. Soft-deleted codes stay readable as purchase records.
+func GetCatFKRedemptionForUser(userID int, tradeNo string) (*Redemption, error) {
+	order, err := GetCatFKOrderForUser(userID, tradeNo)
+	if err != nil {
+		return nil, err
+	}
+	if order.Status != CatFKOrderStatusCompleted || order.RedemptionID == nil {
+		return nil, ErrCatFKOrderConflict
+	}
+	redemption := &Redemption{}
+	err = DB.Unscoped().Where("id = ? AND used_user_id = ?", *order.RedemptionID, userID).First(redemption).Error
+	return redemption, err
+}
+
 // FindCatFKOrderForRequest recovers a persisted purchase before revalidating a
 // quote or current settings. A retry must not create a different purchase.
 func FindCatFKOrderForRequest(userID int, idempotencyKey string) (*CatFKOrder, error) {
@@ -177,6 +193,7 @@ type CatFKOrderUpdate struct {
 	Status               string
 	UpstreamOrderID      *string
 	PaymentURL           *string
+	PaymentQRCode        *string
 	CredentialCiphertext *string
 	NextQueryAt          int64
 	FailureCode          string
@@ -222,6 +239,9 @@ func UpdateCatFKOrder(id int, version int64, update CatFKOrderUpdate) (bool, err
 	}
 	if update.PaymentURL != nil {
 		fields["payment_url"] = *update.PaymentURL
+	}
+	if update.PaymentQRCode != nil {
+		fields["payment_qr_code"] = *update.PaymentQRCode
 	}
 	if update.CredentialCiphertext != nil {
 		fields["credential_ciphertext"] = *update.CredentialCiphertext

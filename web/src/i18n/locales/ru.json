@@ -24,7 +24,6 @@
     "Catfk Payment": "Оплата через Yunmao",
     "Catfk payment is unavailable.": "Оплата через Yunmao недоступна.",
     "Choose the payment provider. Store payments use the configured product tiers.": "Выберите платёжный сервис. Оплата магазина использует настроенные товары.",
-    "Copy payment link": "Копировать ссылку оплаты",
     "Custom amounts are not supported": "Произвольная сумма не поддерживается",
     "Delete CatFK product {{name}}": "Удалить товар Yunmao {{name}}",
     "Disabling CatFK stops new orders only. Existing orders can still be processed.": "Отключение Yunmao блокирует только новые заказы. Существующие заказы можно обрабатывать.",
@@ -39,7 +38,6 @@
     "No CatFK channels returned": "Каналы Yunmao не получены",
     "No CatFK products configured": "Товары Yunmao не настроены",
     "Online Payment": "Онлайн-оплата",
-    "Open payment page": "Открыть страницу оплаты",
     "Order created": "Заказ создан",
     "Order creation is uncertain. Contact support before creating another order.": "Результат создания неизвестен. Перед новым заказом обратитесь в поддержку.",
     "Order expired": "Заказ истёк",
@@ -5335,7 +5333,6 @@
     "Reset all model prices?": "Сбросить все цены моделей?",
     "Reset all model ratios?": "Сбросить все соотношения моделей?",
     "Resume drag demo": "Продолжить демонстрацию",
-    "Resume payment": "Продолжить оплату",
     "Review the affected Passkeys and confirm the domain removal. If the settings or impact have changed, confirmation is required again.": "Проверьте затронутые Passkey и подтвердите удаление домена. Если настройки или последствия изменились, потребуется повторное подтверждение.",
     "Reset all settings to default values": "Сбросить все настройки до значений по умолчанию",
     "Reset at:": "Сброс в:",
@@ -7708,10 +7705,16 @@
     "Contact method": "Контактные данные",
     "Enter QQ number (5-12 digits)": "Введите номер QQ (5–12 цифр)",
     "Automatically credited {{amount}}. No redemption needed.": "{{amount}} зачислено автоматически. Активировать код не нужно.",
-    "Click here if payment did not open": "Нажмите, если страница оплаты не открылась",
     "Payment successful": "Оплата прошла успешно",
     "Unable to check payment status. Retrying automatically.": "Не удалось проверить оплату. Повторяем автоматически.",
     "Waiting for payment confirmation": "Ожидание подтверждения оплаты",
-    "Check status": "Проверить статус"
+    "Payment QR code": "QR-код для оплаты",
+    "Scan with Alipay to pay": "Отсканируйте в Alipay для оплаты",
+    "View redemption code": "Показать код активации",
+    "The code redeemed for this order": "Код активации, использованный для этого заказа",
+    "Redemption code unavailable": "Код активации недоступен",
+    "Redemption code is not available yet": "Код активации пока недоступен",
+    "Cancel payment": "Отменить оплату",
+    "Open Alipay to pay": "Открыть Alipay для оплаты"
   }
 }

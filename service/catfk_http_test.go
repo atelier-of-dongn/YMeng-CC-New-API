@@ -70,6 +70,70 @@ func TestCatFKHTTPQuoteUsesStockOwnershipAndFeeInclusivePrice(t *testing.T) {
 	}
 }
 
+// The chain mirrors a captured Alipay desktop payment: a catfk redirect, an
+// auto-submitted gateway form, gateway redirects, then the cashier page.
+func TestCatFKHTTPPaymentQRCodeFollowsTheCashierChain(t *testing.T) {
+	for _, condition := range []string{"cashier", "foreign-form", "redirect-loop", "no-code", "unsafe-code"} {
+		t.Run(condition, func(t *testing.T) {
+			var posted string
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/shopApi/Pay/payment":
+					http.Redirect(w, r, "/payApi/AlipayPc/pay.html?trade_no=CAT1", http.StatusFound)
+				case "/payApi/AlipayPc/pay.html":
+					action := "/gateway.do?charset=UTF-8"
+					if condition == "foreign-form" {
+						action = "https://gateway.example/gateway.do"
+					}
+					_, _ = w.Write([]byte(`<form id='alipaysubmit' action='` + action + `' method='POST'><input type='hidden' name='method' value='alipay.trade.page.pay'/><input type='hidden' name='biz_content' value='{"out_trade_no":"CAT1"}'/><input type='submit' value='ok' style='display:none;'></form><script>document.forms['alipaysubmit'].submit();</script>`))
+				case "/gateway.do":
+					require.NoError(t, r.ParseForm())
+					posted = r.PostForm.Get("biz_content")
+					http.Redirect(w, r, "/appAssign.htm", http.StatusFound)
+				case "/appAssign.htm":
+					target := "/standard/auth.htm?payOrderId=1"
+					if condition == "redirect-loop" {
+						target = "/appAssign.htm"
+					}
+					http.Redirect(w, r, target, http.StatusFound)
+				case "/standard/auth.htm":
+					code := "https://qr.alipay.com/upx-code"
+					if condition == "unsafe-code" {
+						code = "javascript:alert(1)"
+					}
+					page := `<html><body><div id="hidden-input-area" class="fn-hide"><input name="qrCode" type="hidden" value="` + code + `" id="J_qrCode" /><input name="qrImgUrl" type="hidden" value="https://mobilecodec.alipay.com/show.htm?code=upx-code" /></div></body></html>`
+					if condition == "no-code" {
+						page = `<html><body>cashier unavailable</body></html>`
+					}
+					_, _ = w.Write([]byte(page))
+				default:
+					t.Errorf("unexpected endpoint %s", r.URL.Path)
+				}
+			}))
+			defer server.Close()
+			adapter := newCatFKHTTPAdapter()
+			adapter.baseURL = server.URL
+			code, err := adapter.paymentQRCode(context.Background(), server.URL+"/shopApi/Pay/payment?trade_no=CAT1")
+			if condition != "cashier" {
+				require.ErrorIs(t, err, ErrCatFKVerification)
+				assert.Empty(t, code)
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, "https://qr.alipay.com/upx-code", code)
+			assert.Equal(t, `{"out_trade_no":"CAT1"}`, posted)
+		})
+	}
+}
+
+func TestCatFKHTTPPaymentQRCodeVisitsOnlyCatFKAndAlipay(t *testing.T) {
+	adapter := newCatFKHTTPAdapter()
+	for _, payURL := range []string{"https://payments.example/pay", "http://catfk.com/pay", "https://user@catfk.com/pay", "https://alipay.com.example/pay", "https://excashier.alipay.com:8443/pay", "http://excashier.alipay.com/pay"} {
+		_, err := adapter.paymentQRCode(context.Background(), payURL)
+		require.ErrorIs(t, err, ErrCatFKVerification, payURL)
+	}
+}
+
 func TestCatFKHTTPCreatePreservesIdentityAndCookiesWithoutResubmitting(t *testing.T) {
 	var creates atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -16,6 +16,8 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/shopspring/decimal"
+	"golang.org/x/net/html"
+	"golang.org/x/net/html/atom"
 )
 
 const catFKResponseLimit = 2 << 20
@@ -330,6 +332,10 @@ func (a *catFKHTTPAdapter) Create(ctx context.Context, order *model.CatFKOrder, 
 	if evidence != nil {
 		result.Evidence = *evidence
 	}
+	if err == nil {
+		// The QR code is optional; callers fall back to the payment URL.
+		result.PaymentQRCode, _ = a.paymentQRCode(ctx, wire.PayURL)
+	}
 	// Capture cookies from both creation and its immediate verification query.
 	cookies, sealErr = common.Marshal(client.Jar.Cookies(origin))
 	if sealErr != nil {
@@ -337,6 +343,114 @@ func (a *catFKHTTPAdapter) Create(ctx context.Context, order *model.CatFKOrder, 
 	}
 	credentials.Cookie = string(cookies)
 	return result, err
+}
+
+// paymentQRCode silently opens the payment page, as a browser would, and reads
+// the QR code of the Alipay desktop cashier: catfk redirects to a page that
+// auto-submits a form to the Alipay gateway, which redirects to the cashier
+// holding the code in <input name="qrCode">. Only catfk and Alipay are visited.
+func (a *catFKHTTPAdapter) paymentQRCode(ctx context.Context, payURL string) (string, error) {
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	origin, err := url.Parse(a.baseURL)
+	if err != nil {
+		return "", ErrCatFKOrderUnavailable
+	}
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		return "", ErrCatFKOrderUnavailable
+	}
+	client := &http.Client{Timeout: 15 * time.Second, Jar: jar, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	method, target, form := http.MethodGet, payURL, url.Values(nil)
+	for range 8 {
+		u, err := url.Parse(target)
+		if err != nil || u.User != nil || !(u.Scheme == origin.Scheme && u.Host == origin.Host || u.Scheme == "https" && strings.HasSuffix(u.Hostname(), ".alipay.com") && u.Port() == "") {
+			return "", ErrCatFKVerification
+		}
+		var body io.Reader
+		if method == http.MethodPost {
+			body = strings.NewReader(form.Encode())
+		}
+		req, err := http.NewRequestWithContext(ctx, method, u.String(), body)
+		if err != nil {
+			return "", ErrCatFKOrderUnavailable
+		}
+		req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36")
+		req.Header.Set("Accept", "text/html,application/xhtml+xml")
+		if method == http.MethodPost {
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		}
+		response, err := client.Do(req)
+		if err != nil {
+			return "", ErrCatFKOrderUnavailable
+		}
+		data, err := io.ReadAll(io.LimitReader(response.Body, catFKResponseLimit+1))
+		response.Body.Close()
+		if err != nil || len(data) > catFKResponseLimit {
+			return "", ErrCatFKOrderUnavailable
+		}
+		if response.StatusCode >= 300 && response.StatusCode < 400 {
+			next, err := u.Parse(response.Header.Get("Location"))
+			if err != nil || response.Header.Get("Location") == "" {
+				return "", ErrCatFKVerification
+			}
+			method, target, form = http.MethodGet, next.String(), nil
+			continue
+		}
+		if response.StatusCode != http.StatusOK {
+			return "", ErrCatFKOrderUnavailable
+		}
+		doc, err := html.Parse(bytes.NewReader(data))
+		if err != nil {
+			return "", ErrCatFKVerification
+		}
+		var formNode *html.Node
+		for n := range doc.Descendants() {
+			if n.Type != html.ElementNode {
+				continue
+			}
+			if n.DataAtom == atom.Input && catFKHTMLAttr(n, "name") == "qrCode" {
+				code := strings.TrimSpace(catFKHTMLAttr(n, "value"))
+				if len(code) > 2048 || !catFKValidPaymentURL(code) {
+					return "", ErrCatFKVerification
+				}
+				return code, nil
+			}
+			if n.DataAtom == atom.Form && formNode == nil {
+				formNode = n
+			}
+		}
+		if formNode == nil {
+			return "", ErrCatFKVerification
+		}
+		next, err := u.Parse(catFKHTMLAttr(formNode, "action"))
+		if err != nil {
+			return "", ErrCatFKVerification
+		}
+		form = url.Values{}
+		for n := range formNode.Descendants() {
+			if n.Type == html.ElementNode && n.DataAtom == atom.Input && catFKHTMLAttr(n, "name") != "" && catFKHTMLAttr(n, "type") != "submit" {
+				form.Add(catFKHTMLAttr(n, "name"), catFKHTMLAttr(n, "value"))
+			}
+		}
+		method, target = http.MethodGet, next.String()
+		if strings.EqualFold(catFKHTMLAttr(formNode, "method"), http.MethodPost) {
+			method = http.MethodPost
+		} else {
+			next.RawQuery = form.Encode()
+			target, form = next.String(), nil
+		}
+	}
+	return "", ErrCatFKVerification
+}
+
+func catFKHTMLAttr(n *html.Node, key string) string {
+	for _, attr := range n.Attr {
+		if attr.Key == key {
+			return attr.Val
+		}
+	}
+	return ""
 }
 
 func (a *catFKHTTPAdapter) Query(ctx context.Context, order *model.CatFKOrder, credentials CatFKCredentials) (*CatFKOrderEvidence, error) {

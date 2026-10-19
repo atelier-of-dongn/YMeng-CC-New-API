@@ -20,7 +20,6 @@ import { Gift, ExternalLink, Loader2, Receipt, WalletCards } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 
-import { CopyButton } from '@/components/copy-button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
@@ -54,7 +53,6 @@ import type {
   CatfkChannel,
   CatfkProduct,
 } from '../types'
-import { CatfkOrderStatus } from './catfk-order-status'
 import { CreemProductsSection } from './creem-products-section'
 
 interface RechargeFormCardProps {
@@ -86,12 +84,7 @@ interface RechargeFormCardProps {
   onWaffoMethodSelect?: (method: WaffoPayMethod, index: number) => void
   catfkChannel?: CatfkChannel | null
   onCatfkPaymentSelect?: (channel: CatfkChannel, product: CatfkProduct) => void
-  catfkPaymentUrl?: string | null
-  pendingCatfkTrade?: string | null
-  onResumeCatfk?: () => void
   catfkBusy?: boolean
-  catfkBlocked?: boolean
-  catfkOrderStatus?: string | null
   enableWaffoPancakeTopup?: boolean
 }
 
@@ -125,12 +118,7 @@ export function RechargeFormCard({
   enableWaffoPancakeTopup,
   catfkChannel,
   onCatfkPaymentSelect,
-  catfkPaymentUrl,
-  pendingCatfkTrade,
-  onResumeCatfk,
   catfkBusy,
-  catfkBlocked,
-  catfkOrderStatus,
 }: RechargeFormCardProps) {
   const { t } = useTranslation()
   const [localAmount, setLocalAmount] = useState(topupAmount.toString())
@@ -390,10 +378,7 @@ export function RechargeFormCard({
                           disabledReason = disabledLabel
                         } else if (!selectedCatfkProduct) {
                           disabledReason = t('Invalid top-up amount')
-                        } else if (
-                          !topupInfo?.catfk?.available ||
-                          catfkBlocked
-                        ) {
+                        } else if (!topupInfo?.catfk?.available) {
                           disabledReason = t(
                             topupInfo?.catfk?.unavailable_reason ||
                               'Payment request failed'
@@ -493,40 +478,6 @@ export function RechargeFormCard({
                     )}
                   </AlertDescription>
                 </Alert>
-              )}
-              {catfkPaymentUrl && (
-                <div className='flex flex-wrap gap-2'>
-                  <Button
-                    variant='outline'
-                    render={
-                      <a
-                        href={catfkPaymentUrl}
-                        target='_blank'
-                        rel='noopener noreferrer'
-                      />
-                    }
-                  >
-                    {t('Open payment page')}
-                  </Button>
-                  <CopyButton
-                    value={catfkPaymentUrl}
-                    size='default'
-                    variant='outline'
-                    aria-label={t('Copy payment link')}
-                  >
-                    {t('Copy payment link')}
-                  </CopyButton>
-                </div>
-              )}
-              <CatfkOrderStatus status={catfkOrderStatus ?? null} />
-              {pendingCatfkTrade && (
-                <Button
-                  variant='outline'
-                  disabled={catfkBusy}
-                  onClick={onResumeCatfk}
-                >
-                  {t('Resume payment')}
-                </Button>
               )}
 
               {enableWaffoTopup &&

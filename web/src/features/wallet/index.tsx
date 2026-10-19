@@ -363,12 +363,7 @@ export function Wallet(props: WalletProps) {
                     setSelectedPaymentMethod(undefined)
                     void catfk.selectProduct(product, channel)
                   }}
-                  catfkPaymentUrl={catfk.paymentUrl}
-                  pendingCatfkTrade={catfk.pendingTrade}
-                  onResumeCatfk={catfk.resume}
-                  catfkBusy={catfk.processing || catfk.resuming}
-                  catfkBlocked={catfk.blocked}
-                  catfkOrderStatus={catfk.orderStatus}
+                  catfkBusy={catfk.processing}
                   topupInfo={topupInfo}
                   presetAmounts={presetAmounts}
                   selectedPreset={selectedPreset}
@@ -462,17 +457,16 @@ export function Wallet(props: WalletProps) {
           qq: catfk.qq,
           onQQChange: catfk.setQQ,
           available: !!topupInfo?.catfk?.available,
-          qqLocked: catfk.uncertain,
         }}
       />
 
       <CatfkPaymentStatusDialog
-        open={catfk.statusDialogOpen}
-        onOpenChange={catfk.setStatusDialogOpen}
+        open={!!catfk.statusOrder}
+        onOpenChange={(open) => {
+          if (!open) catfk.closeStatus()
+        }}
         order={catfk.statusOrder}
-        checking={catfk.resuming}
         queryFailed={catfk.statusQueryFailed}
-        onCheck={catfk.resume}
       />
 
       <TransferDialog
@@ -486,7 +480,6 @@ export function Wallet(props: WalletProps) {
       <BillingHistoryDialog
         open={billingDialogOpen}
         onOpenChange={setBillingDialogOpen}
-        onCatfkCompleted={fetchUser}
       />
 
       <CreemConfirmDialog
