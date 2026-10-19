@@ -7704,7 +7704,6 @@
     "Prepare the new version while existing requests finish on the current version.": "在现有请求继续由当前版本处理时准备新版本。",
     "Contact method": "联系方式",
     "Enter QQ number (5-12 digits)": "请输入QQ号（5-12位数字）",
-    "Automatically credited {{amount}}. No redemption needed.": "自动到账{{amount}}，无需兑换",
     "Payment successful": "支付成功",
     "Unable to check payment status. Retrying automatically.": "暂时无法查询支付状态，正在自动重试。",
     "Waiting for payment confirmation": "等待付款确认",
@@ -7715,6 +7714,7 @@
     "Redemption code unavailable": "无法获取兑换码",
     "Redemption code is not available yet": "订单完成后才能查看兑换码",
     "Cancel payment": "取消支付",
-    "Open Alipay to pay": "打开支付宝付款"
+    "Open Alipay to pay": "打开支付宝付款",
+    "Includes a {{rate}}% fee ({{fee}})": "含 {{rate}}% 手续费（{{fee}}）"
   }
 }

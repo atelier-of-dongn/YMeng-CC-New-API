@@ -7704,7 +7704,6 @@
     "Prepare the new version while existing requests finish on the current version.": "既存のリクエストを現在のバージョンで完了させながら新しいバージョンを準備します。",
     "Contact method": "連絡先",
     "Enter QQ number (5-12 digits)": "QQ番号を入力（5～12桁の数字）",
-    "Automatically credited {{amount}}. No redemption needed.": "{{amount}}が自動反映されました。コードの交換は不要です。",
     "Payment successful": "支払い成功",
     "Unable to check payment status. Retrying automatically.": "支払い状況を確認できません。自動で再試行します。",
     "Waiting for payment confirmation": "支払い確認待ち",
@@ -7715,6 +7714,7 @@
     "Redemption code unavailable": "引き換えコードを取得できません",
     "Redemption code is not available yet": "引き換えコードはまだ利用できません",
     "Cancel payment": "支払いをキャンセル",
-    "Open Alipay to pay": "Alipayを開いて支払う"
+    "Open Alipay to pay": "Alipayを開いて支払う",
+    "Includes a {{rate}}% fee ({{fee}})": "手数料 {{rate}}%（{{fee}}）を含む"
   }
 }

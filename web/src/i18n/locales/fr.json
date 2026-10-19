@@ -7704,7 +7704,6 @@
     "Prepare the new version while existing requests finish on the current version.": "Préparer la nouvelle version pendant que les requêtes existantes terminent sur la version actuelle.",
     "Contact method": "Coordonnées",
     "Enter QQ number (5-12 digits)": "Numéro QQ (5 à 12 chiffres)",
-    "Automatically credited {{amount}}. No redemption needed.": "{{amount}} crédités automatiquement. Aucun échange nécessaire.",
     "Payment successful": "Paiement réussi",
     "Unable to check payment status. Retrying automatically.": "État du paiement indisponible. Nouvelle tentative automatique.",
     "Waiting for payment confirmation": "En attente de confirmation du paiement",
@@ -7715,6 +7714,7 @@
     "Redemption code unavailable": "Code d'échange indisponible",
     "Redemption code is not available yet": "Le code d'échange n'est pas encore disponible",
     "Cancel payment": "Annuler le paiement",
-    "Open Alipay to pay": "Ouvrir Alipay pour payer"
+    "Open Alipay to pay": "Ouvrir Alipay pour payer",
+    "Includes a {{rate}}% fee ({{fee}})": "Dont {{rate}} % de frais ({{fee}})"
   }
 }

@@ -39,6 +39,7 @@ import {
   getTopupPromptVisibility,
 } from '../../lib'
 import type { PaymentMethod, CatfkQuote } from '../../types'
+import { CatfkFeeNote } from '../catfk-fee-note'
 
 interface PaymentConfirmDialogProps {
   open: boolean
@@ -147,14 +148,22 @@ export function PaymentConfirmDialog({
           {calculating ? (
             <Skeleton className='h-6 w-24' />
           ) : (
-            <div className='flex items-baseline gap-2'>
-              <span className='text-2xl font-semibold'>
-                {formatCurrency(paymentAmount)}
-              </span>
-              {hasDiscount && (
-                <span className='text-muted-foreground text-sm line-through'>
-                  {formatCurrency(originalAmount)}
+            <div className='flex flex-col items-end'>
+              <div className='flex items-baseline gap-2'>
+                <span className='text-2xl font-semibold'>
+                  {formatCurrency(paymentAmount)}
                 </span>
+                {hasDiscount && (
+                  <span className='text-muted-foreground text-sm line-through'>
+                    {formatCurrency(originalAmount)}
+                  </span>
+                )}
+              </div>
+              {catfk?.quote && (
+                <CatfkFeeNote
+                  fee={catfk.quote.fee}
+                  feeRate={catfk.quote.fee_rate}
+                />
               )}
             </div>
           )}

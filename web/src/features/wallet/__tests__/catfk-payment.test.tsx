@@ -80,6 +80,7 @@ it('shows the QR code dialog without opening a window and refreshes the wallet o
     amount: 10,
     status: 'pending',
     paymentQrCode: 'https://qr.alipay.com/upx-code',
+    payment: { amount: 72, fee: undefined, fee_rate: undefined },
   })
   read.mockResolvedValue(orderRead('trade1', 'completed'))
   act(() => window.dispatchEvent(new Event('focus')))

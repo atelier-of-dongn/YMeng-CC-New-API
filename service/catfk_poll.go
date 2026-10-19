@@ -54,52 +54,77 @@ func (s *catFKService) poll(ctx context.Context) error {
 		if !claimed {
 			continue
 		}
-		// Polling may claim a never-submitted row after the creating worker died.
-		// It deliberately never submits: no replay can cause a second purchase.
-		if candidate.Status == model.CatFKOrderStatusNew || order.Status == model.CatFKOrderStatusSubmitting {
-			_, err = s.store.Update(order.ID, order.Version, model.CatFKOrderUpdate{Status: model.CatFKOrderStatusCreationUnknown, FailureCode: "creation_unknown", NextQueryAt: s.now().Add(time.Minute).Unix()})
-			if err != nil {
-				return err
-			}
-			continue
-		}
-		var credentials CatFKCredentials
-		if err = catFKOpen(key, fmt.Sprintf("catfk/order/v1/%d/%s", order.UserID, order.TradeNo), order.CredentialCiphertext, &credentials); err != nil {
-			_, err = s.store.Update(order.ID, order.Version, model.CatFKOrderUpdate{Status: model.CatFKOrderStatusNeedsAttention, FailureCode: "credential_unavailable"})
-			if err != nil {
-				return err
-			}
-			continue
-		}
-		queryCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
-		evidence, queryErr := s.adapter.Query(queryCtx, order, credentials)
-		cancel()
-		if errors.Is(queryErr, ErrCatFKVerification) {
-			_, err = s.store.Update(order.ID, order.Version, model.CatFKOrderUpdate{Status: model.CatFKOrderStatusNeedsAttention, FailureCode: "verification_mismatch"})
-			if err != nil {
-				return err
-			}
-			continue
-		}
-		if queryErr != nil || evidence == nil {
-			// A known order may be paid after a long wait. Its CAS version also
-			// grows on successful unpaid reads, so it cannot count query failures.
-			delay := min(int64(900), int64(15)<<min(max(order.Version/2, 0), 6))
-			if order.Status == model.CatFKOrderStatusPending || order.Status == model.CatFKOrderStatusPaid {
-				delay = min(delay, 60)
-			}
-			_, err = s.store.Retry(order.ID, order.Version, s.now().Unix()+delay)
-			if err != nil {
-				return err
-			}
-			continue
-		}
-		err = s.applyEvidence(order, evidence)
-		if err != nil {
+		if err = s.processClaimed(ctx, key, order, candidate.Status == model.CatFKOrderStatusNew); err != nil {
 			return err
 		}
 	}
 	return nil
+}
+
+// processClaimed checks one leased order with CatFK and records the result.
+func (s *catFKService) processClaimed(ctx context.Context, key []byte, order *model.CatFKOrder, wasNew bool) error {
+	// Polling may claim a never-submitted row after the creating worker died.
+	// It deliberately never submits: no replay can cause a second purchase.
+	if wasNew || order.Status == model.CatFKOrderStatusSubmitting {
+		_, err := s.store.Update(order.ID, order.Version, model.CatFKOrderUpdate{Status: model.CatFKOrderStatusCreationUnknown, FailureCode: "creation_unknown", NextQueryAt: s.now().Add(time.Minute).Unix()})
+		return err
+	}
+	var credentials CatFKCredentials
+	if err := catFKOpen(key, fmt.Sprintf("catfk/order/v1/%d/%s", order.UserID, order.TradeNo), order.CredentialCiphertext, &credentials); err != nil {
+		_, err = s.store.Update(order.ID, order.Version, model.CatFKOrderUpdate{Status: model.CatFKOrderStatusNeedsAttention, FailureCode: "credential_unavailable"})
+		return err
+	}
+	queryCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	evidence, queryErr := s.adapter.Query(queryCtx, order, credentials)
+	cancel()
+	if errors.Is(queryErr, ErrCatFKVerification) {
+		_, err := s.store.Update(order.ID, order.Version, model.CatFKOrderUpdate{Status: model.CatFKOrderStatusNeedsAttention, FailureCode: "verification_mismatch"})
+		return err
+	}
+	if queryErr != nil || evidence == nil {
+		// A known order may be paid after a long wait. Its CAS version also
+		// grows on successful unpaid reads, so it cannot count query failures.
+		delay := min(int64(900), int64(15)<<min(max(order.Version/2, 0), 6))
+		if order.Status == model.CatFKOrderStatusPending || order.Status == model.CatFKOrderStatusPaid {
+			delay = min(delay, 60)
+		}
+		_, err := s.store.Retry(order.ID, order.Version, s.now().Unix()+delay)
+		return err
+	}
+	return s.applyEvidence(order, evidence)
+}
+
+// refresh checks a pending or paid order with CatFK right away while its
+// buyer watches the payment dialog, rather than waiting for the background
+// poll. Reads are throttled per order; any failure leaves the stored state.
+func (s *catFKService) refresh(ctx context.Context, userID int, tradeNo string) (*model.CatFKOrder, error) {
+	order, err := s.store.Get(userID, tradeNo)
+	if err != nil {
+		return nil, err
+	}
+	now := s.now().Unix()
+	waiting := order.Status == model.CatFKOrderStatusPending || order.Status == model.CatFKOrderStatusPaid
+	if !waiting || !s.adapter.Ready() || order.LeaseUntil > now || order.UpdatedAt > now-2 {
+		return order, nil
+	}
+	key, err := s.key()
+	if err != nil {
+		return order, nil
+	}
+	if ok, err := s.store.Retry(order.ID, order.Version, now); err != nil || !ok {
+		return order, nil
+	}
+	claimed, ok, err := s.store.Claim(order.ID, now, 120)
+	if err != nil || !ok {
+		return order, nil
+	}
+	if err = s.processClaimed(ctx, key, claimed, false); err != nil {
+		return order, nil
+	}
+	if fresh, err := s.store.Get(userID, tradeNo); err == nil {
+		return fresh, nil
+	}
+	return order, nil
 }
 
 func (s *catFKService) applyEvidence(order *model.CatFKOrder, e *CatFKOrderEvidence) error {

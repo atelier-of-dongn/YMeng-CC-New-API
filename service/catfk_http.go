@@ -283,7 +283,9 @@ func (a *catFKHTTPAdapter) Quote(ctx context.Context, token, goodsKey, channelID
 		return nil, ErrCatFKVerification
 	}
 	var price struct {
-		TotalAmount *decimal.Decimal `json:"total_amount"`
+		OriginalAmount *decimal.Decimal `json:"original_amount"`
+		Fee            *decimal.Decimal `json:"fee"`
+		TotalAmount    *decimal.Decimal `json:"total_amount"`
 	}
 	if err = a.post(ctx, client, "", "/shopApi/Shop/getGoodsPrice", map[string]any{"goods_key": goodsKey, "quantity": 1, "coupon_code": "", "channel_id": id}, &price); err != nil {
 		return nil, err
@@ -291,7 +293,12 @@ func (a *catFKHTTPAdapter) Quote(ctx context.Context, token, goodsKey, channelID
 	if price.TotalAmount == nil || !price.TotalAmount.IsPositive() || price.TotalAmount.GreaterThan(decimal.NewFromInt(1000000000)) {
 		return nil, ErrCatFKVerification
 	}
-	return &CatFKOffer{ShopID: token, ShopName: shop.Nickname, ShopURL: shop.Link, ProductID: goodsKey, ChannelID: channelID, Amount: price.TotalAmount.String(), Currency: "CNY", Quantity: 1, InStock: inStock}, nil
+	offer := &CatFKOffer{ShopID: token, ShopName: shop.Nickname, ShopURL: shop.Link, ProductID: goodsKey, ChannelID: channelID, Amount: price.TotalAmount.String(), Currency: "CNY", Quantity: 1, InStock: inStock}
+	// The fee is display-only; it is kept only when the breakdown adds up.
+	if price.OriginalAmount != nil && price.Fee != nil && price.OriginalAmount.IsPositive() && !price.Fee.IsNegative() && price.OriginalAmount.Add(*price.Fee).Equal(*price.TotalAmount) {
+		offer.OriginalAmount, offer.Fee = price.OriginalAmount.String(), price.Fee.String()
+	}
+	return offer, nil
 }
 
 func (a *catFKHTTPAdapter) Create(ctx context.Context, order *model.CatFKOrder, credentials CatFKCredentials, qq string) (*CatFKCreatedOrder, error) {

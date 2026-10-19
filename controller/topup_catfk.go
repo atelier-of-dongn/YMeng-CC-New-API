@@ -50,7 +50,7 @@ func RequestCatFKPay(c *gin.Context) {
 
 func GetCatFKPayment(c *gin.Context) {
 	// Existing orders remain readable when new purchases are disabled.
-	payment, err := service.GetUserCatFKPayment(c.GetInt("id"), c.Param("trade_no"))
+	payment, err := service.GetUserCatFKPayment(c.Request.Context(), c.GetInt("id"), c.Param("trade_no"))
 	if err != nil {
 		common.ApiError(c, err)
 		return

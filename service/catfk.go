@@ -37,6 +37,9 @@ type CatFKQuote struct {
 	Amount      float64 `json:"amount"`
 	Currency    string  `json:"currency"`
 	TopUpAmount float64 `json:"topup_amount"`
+	// Fee is included in Amount; FeeRate is its percentage of the goods price.
+	Fee     *float64 `json:"fee,omitempty"`
+	FeeRate *float64 `json:"fee_rate,omitempty"`
 }
 type CatFKPaymentRequest struct {
 	ProductID      string `json:"product_id"`
@@ -89,6 +92,9 @@ type CatFKOffer struct {
 	Currency  string
 	Quantity  int
 	InStock   bool
+	// OriginalAmount and Fee break Amount down for display; empty if unknown.
+	OriginalAmount string
+	Fee            string
 }
 type CatFKCredentials struct {
 	Visitor  string
@@ -225,11 +231,11 @@ func CreateCatFKPayment(ctx context.Context, userID int, req CatFKPaymentRequest
 	p, err := catFKProductionService().create(ctx, userID, req)
 	return p, catFKPublicError(err)
 }
-func GetUserCatFKPayment(userID int, tradeNo string) (*CatFKPayment, error) {
+func GetUserCatFKPayment(ctx context.Context, userID int, tradeNo string) (*CatFKPayment, error) {
 	if userID <= 0 || tradeNo == "" {
 		return nil, ErrCatFKInvalidRequest
 	}
-	order, err := model.GetCatFKOrderForUser(userID, tradeNo)
+	order, err := catFKProductionService().refresh(ctx, userID, tradeNo)
 	if err != nil {
 		return nil, ErrCatFKOrderUnavailable
 	}
@@ -403,7 +409,15 @@ func (s *catFKService) quote(ctx context.Context, userID int, productID, channel
 	if err != nil {
 		return nil, err
 	}
-	return &CatFKQuote{QuoteID: token, Amount: amountFloat, Currency: offer.Currency, TopUpAmount: product.Amount}, nil
+	result := &CatFKQuote{QuoteID: token, Amount: amountFloat, Currency: offer.Currency, TopUpAmount: product.Amount}
+	original, originalErr := decimal.NewFromString(offer.OriginalAmount)
+	fee, feeErr := decimal.NewFromString(offer.Fee)
+	if originalErr == nil && feeErr == nil && original.IsPositive() && original.Add(fee).Equal(amount) {
+		feeFloat, _ := fee.Float64()
+		rateFloat, _ := fee.Div(original).Mul(decimal.NewFromInt(100)).Round(2).Float64()
+		result.Fee, result.FeeRate = &feeFloat, &rateFloat
+	}
+	return result, nil
 }
 func (s *catFKService) create(ctx context.Context, userID int, req CatFKPaymentRequest) (*CatFKPayment, error) {
 	if !s.adapter.Ready() {

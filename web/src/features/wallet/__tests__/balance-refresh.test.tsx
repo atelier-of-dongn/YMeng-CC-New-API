@@ -162,6 +162,11 @@ it('refreshes both the wallet balance and the shared dashboard balance after a s
   )
 
   const user = userEvent.setup()
+  const custom = await screen.findByRole('spinbutton', {
+    name: 'Custom Amount',
+  })
+  expect(custom).toHaveValue(null)
+  expect(custom).toHaveAttribute('placeholder', 'Minimum 1')
   await user.click(await screen.findByRole('button', { name: /^10 Pay/ }))
   await user.click(screen.getByRole('button', { name: /Alipay/ }))
   await user.type(
@@ -173,7 +178,7 @@ it('refreshes both the wallet balance and the shared dashboard balance after a s
     expect(screen.getAllByText(formatQuota(6000000))).toHaveLength(2)
   )
   const success = screen.getByRole('dialog', { name: 'Payment successful' })
-  await user.click(within(success).getByRole('button', { name: 'Close' }))
+  await user.click(within(success).getByRole('button', { name: 'Done' }))
   expect(
     within(screen.getByRole('region', { name: 'Dashboard balance' })).getByText(
       formatQuota(6000000)

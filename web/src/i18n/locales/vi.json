@@ -7704,7 +7704,6 @@
     "Prepare the new version while existing requests finish on the current version.": "Chuẩn bị phiên bản mới trong khi các yêu cầu hiện tại hoàn tất trên phiên bản hiện tại.",
     "Contact method": "Liên hệ",
     "Enter QQ number (5-12 digits)": "Nhập số QQ (5-12 chữ số)",
-    "Automatically credited {{amount}}. No redemption needed.": "Đã tự động cộng {{amount}}. Không cần đổi mã.",
     "Payment successful": "Thanh toán thành công",
     "Unable to check payment status. Retrying automatically.": "Chưa thể kiểm tra thanh toán. Đang tự động thử lại.",
     "Waiting for payment confirmation": "Đang chờ xác nhận thanh toán",
@@ -7715,6 +7714,7 @@
     "Redemption code unavailable": "Không có mã đổi thưởng",
     "Redemption code is not available yet": "Mã đổi thưởng chưa khả dụng",
     "Cancel payment": "Hủy thanh toán",
-    "Open Alipay to pay": "Mở Alipay để thanh toán"
+    "Open Alipay to pay": "Mở Alipay để thanh toán",
+    "Includes a {{rate}}% fee ({{fee}})": "Đã gồm phí {{rate}}% ({{fee}})"
   }
 }

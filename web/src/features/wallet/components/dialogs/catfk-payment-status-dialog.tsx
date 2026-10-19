@@ -10,7 +10,9 @@ import { formatBillingCurrencyFromUSD } from '@/lib/currency'
 import { useSystemConfigStore } from '@/stores/system-config-store'
 
 import { safeCatfkQrCode } from '../../catfk-api'
+import { formatCurrency } from '../../lib'
 import type { CatfkPaymentStatusOrder } from '../../types'
+import { CatfkFeeNote } from '../catfk-fee-note'
 import { CatfkOrderStatus } from '../catfk-order-status'
 
 export function CatfkPaymentStatusDialog(props: {
@@ -37,8 +39,6 @@ export function CatfkPaymentStatusDialog(props: {
   // While waiting the dialog holds only the amount, the code and a cancel.
   if (waiting) {
     title = t('Scan with Alipay to pay')
-  } else if (completed) {
-    title = t('Payment successful')
   } else if (props.order.status === 'paid') {
     title = t('Payment received. Wallet credit is pending.')
   } else if (props.order.status === 'expired') {
@@ -53,6 +53,46 @@ export function CatfkPaymentStatusDialog(props: {
     isMobile && qrCode && new URL(qrCode).hostname === 'qr.alipay.com'
       ? qrCode
       : null
+
+  if (completed) {
+    return (
+      <Dialog
+        open={props.open}
+        onOpenChange={props.onOpenChange}
+        title={
+          <span className='flex flex-col items-center gap-3'>
+            <span className='bg-success/10 animate-in zoom-in-50 fade-in flex size-16 items-center justify-center rounded-full duration-500 motion-reduce:animate-none'>
+              <CheckCircle2
+                className='text-success size-9'
+                aria-hidden='true'
+              />
+            </span>
+            {t('Payment successful')}
+          </span>
+        }
+        showCloseButton={false}
+        headerClassName='items-center text-center'
+        contentClassName='max-sm:w-[calc(100vw-1.5rem)] sm:max-w-sm'
+        footer={
+          <Button className='w-full' onClick={() => props.onOpenChange(false)}>
+            {t('Done')}
+          </Button>
+        }
+      >
+        <div
+          role='status'
+          className='bg-muted/50 flex flex-col items-center gap-1 rounded-lg py-4'
+        >
+          <span className='text-muted-foreground text-xs'>
+            {t('Topup Amount')}
+          </span>
+          <span className='text-success text-2xl font-semibold break-all'>
+            +{amount}
+          </span>
+        </div>
+      </Dialog>
+    )
+  }
 
   return (
     <Dialog
@@ -77,16 +117,21 @@ export function CatfkPaymentStatusDialog(props: {
         </span>
         <span className='text-lg font-semibold break-all'>{amount}</span>
       </div>
-      {completed && (
-        <p role='status' className='flex items-start gap-2 text-sm'>
-          <CheckCircle2
-            className='text-success size-5 shrink-0'
-            aria-hidden='true'
-          />
-          {t('Automatically credited {{amount}}. No redemption needed.', {
-            amount,
-          })}
-        </p>
+      {waiting && (
+        <div className='flex items-start justify-between gap-3'>
+          <span className='text-muted-foreground text-sm'>
+            {t('Actual Amount')}
+          </span>
+          <div className='flex flex-col items-end'>
+            <span className='text-lg font-semibold'>
+              {formatCurrency(props.order.payment.amount)}
+            </span>
+            <CatfkFeeNote
+              fee={props.order.payment.fee}
+              feeRate={props.order.payment.fee_rate}
+            />
+          </div>
+        </div>
       )}
       {waiting && qrCode && (
         <div className='flex flex-col items-center gap-3'>
@@ -114,7 +159,7 @@ export function CatfkPaymentStatusDialog(props: {
           )}
         </div>
       )}
-      {!completed && !waiting && (
+      {!waiting && (
         <>
           <CatfkOrderStatus status={props.order.status} />
           {props.queryFailed && (

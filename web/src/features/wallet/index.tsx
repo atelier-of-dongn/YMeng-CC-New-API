@@ -173,27 +173,6 @@ export function Wallet(props: WalletProps) {
     }
   }, [props.initialShowHistory])
 
-  // Initialize topup amount when topup info is loaded
-  const topupAmountInitializedRef = useRef(false)
-  useEffect(() => {
-    if (topupInfo && !topupAmountInitializedRef.current) {
-      topupAmountInitializedRef.current = true
-      const minTopup = getMinTopupAmount(topupInfo)
-      setTopupAmount(minTopup)
-
-      // Calculate initial payment amount with default payment type
-      const defaultPaymentType = getDefaultPaymentType(topupInfo)
-      if (
-        topupInfo.enable_online_topup ||
-        topupInfo.enable_stripe_topup ||
-        topupInfo.enable_waffo_topup ||
-        topupInfo.enable_waffo_pancake_topup
-      ) {
-        calculatePaymentAmount(minTopup, defaultPaymentType)
-      }
-    }
-  }, [topupInfo, calculatePaymentAmount])
-
   // Get current payment type (selected or default)
   const getCurrentPaymentType = useCallback(() => {
     return selectedPaymentMethod?.type || getDefaultPaymentType(topupInfo)

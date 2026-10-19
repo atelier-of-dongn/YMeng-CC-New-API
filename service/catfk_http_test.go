@@ -63,6 +63,8 @@ func TestCatFKHTTPQuoteUsesStockOwnershipAndFeeInclusivePrice(t *testing.T) {
 			}
 			require.NoError(t, err)
 			assert.Equal(t, "10.18", offer.Amount)
+			assert.Equal(t, "10", offer.OriginalAmount)
+			assert.Equal(t, "0.18", offer.Fee)
 			assert.Equal(t, "CNY", offer.Currency)
 			assert.Equal(t, "YMengCC", offer.ShopID)
 			assert.True(t, offer.InStock)

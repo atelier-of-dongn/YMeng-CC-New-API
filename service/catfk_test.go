@@ -396,6 +396,62 @@ func TestCatFKPendingOrderExposesOnlyTheScrapedQRCode(t *testing.T) {
 	}
 }
 
+func TestCatFKRefreshSettlesAWatchedOrderWithoutWaitingForThePoll(t *testing.T) {
+	s, a, store, _ := catFKFixture(t)
+	req := catFKRequest(t, s)
+	a.createFn = func(o *model.CatFKOrder, _ CatFKCredentials) (*CatFKCreatedOrder, error) {
+		e := catFKTestEvidence(o)
+		e.Paid, e.Delivered, e.RedemptionKey = false, false, ""
+		return &CatFKCreatedOrder{UpstreamOrderID: "upstream", PaymentURL: "https://payments.example/pay", Evidence: e}, nil
+	}
+	payment, err := s.create(context.Background(), 7, req)
+	require.NoError(t, err)
+	require.Equal(t, model.CatFKOrderStatusPending, payment.Status)
+	require.Greater(t, store.order.NextQueryAt, s.now().Unix(), "the background poll is not due yet")
+
+	store.order.UpdatedAt = s.now().Unix()
+	order, err := s.refresh(context.Background(), 7, payment.TradeNo)
+	require.NoError(t, err)
+	assert.Equal(t, model.CatFKOrderStatusPending, order.Status)
+	assert.Zero(t, a.queries.Load(), "a just-updated order is not queried again")
+
+	store.order.UpdatedAt = s.now().Unix() - 2
+	order, err = s.refresh(context.Background(), 7, payment.TradeNo)
+	require.NoError(t, err)
+	assert.Equal(t, model.CatFKOrderStatusCompleted, order.Status)
+	assert.EqualValues(t, 1, a.queries.Load())
+	assert.Equal(t, 1, store.completed)
+
+	order, err = s.refresh(context.Background(), 7, payment.TradeNo)
+	require.NoError(t, err)
+	assert.Equal(t, model.CatFKOrderStatusCompleted, order.Status)
+	assert.EqualValues(t, 1, a.queries.Load(), "a finished order is never queried")
+	_, err = s.refresh(context.Background(), 8, payment.TradeNo)
+	require.Error(t, err)
+}
+
+func TestCatFKQuoteShowsTheIncludedFeeOnlyWhenItAddsUp(t *testing.T) {
+	for _, tc := range []struct {
+		name, original, fee string
+		wantFee, wantRate   *float64
+	}{
+		{"breakdown", "10", "0.18", new(0.18), new(1.8)},
+		{"no-fee", "10.18", "0", new(0.0), new(0.0)},
+		{"inconsistent", "10", "0.5", nil, nil},
+		{"unknown", "", "", nil, nil},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s, a, _, _ := catFKFixture(t)
+			a.offer.Amount, a.offer.OriginalAmount, a.offer.Fee = "10.18", tc.original, tc.fee
+			q, err := s.quote(context.Background(), 7, "tier", "pay")
+			require.NoError(t, err)
+			assert.Equal(t, 10.18, q.Amount)
+			assert.Equal(t, tc.wantFee, q.Fee)
+			assert.Equal(t, tc.wantRate, q.FeeRate)
+		})
+	}
+}
+
 func TestCatFKDocumentedReceiptCanSettleOnlyTheBoundPurchase(t *testing.T) {
 	s, a, store, _ := catFKFixture(t)
 	req := catFKRequest(t, s)

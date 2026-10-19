@@ -7704,7 +7704,6 @@
     "Prepare the new version while existing requests finish on the current version.": "Prepare the new version while existing requests finish on the current version.",
     "Contact method": "Contact method",
     "Enter QQ number (5-12 digits)": "Enter QQ number (5-12 digits)",
-    "Automatically credited {{amount}}. No redemption needed.": "Automatically credited {{amount}}. No redemption needed.",
     "Payment successful": "Payment successful",
     "Unable to check payment status. Retrying automatically.": "Unable to check payment status. Retrying automatically.",
     "Waiting for payment confirmation": "Waiting for payment confirmation",
@@ -7715,6 +7714,7 @@
     "Redemption code unavailable": "Redemption code unavailable",
     "Redemption code is not available yet": "Redemption code is not available yet",
     "Cancel payment": "Cancel payment",
-    "Open Alipay to pay": "Open Alipay to pay"
+    "Open Alipay to pay": "Open Alipay to pay",
+    "Includes a {{rate}}% fee ({{fee}})": "Includes a {{rate}}% fee ({{fee}})"
   }
 }

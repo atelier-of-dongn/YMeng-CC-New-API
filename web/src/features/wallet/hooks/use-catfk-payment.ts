@@ -160,6 +160,11 @@ export function useCatfkPayment(
           order.status === 'pending'
             ? safeCatfkQrCode(order.payment_qr_code)
             : null,
+        payment: {
+          amount: quote.amount,
+          fee: quote.fee,
+          fee_rate: quote.fee_rate,
+        },
       })
       inFlight.current = false
       reset()
@@ -182,7 +187,8 @@ export function useCatfkPayment(
     queryFn: () => getCatfkOrder(trade ?? ''),
     enabled:
       !!trade && !!userId && !finalStatuses.has(statusOrder?.status ?? ''),
-    refetchInterval: 5000,
+    // Each read also checks CatFK, throttled by the server per order.
+    refetchInterval: 3000,
     refetchOnWindowFocus: 'always',
     refetchIntervalInBackground: true,
     retry: false,

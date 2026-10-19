@@ -27,7 +27,10 @@ const quote = {
   amount: 10.18,
   currency: 'CNY',
   topup_amount: 10,
+  fee: 0.18,
+  fee_rate: 1.8,
 }
+const paidAmount = { amount: 10.18, fee: 0.18, fee_rate: 1.8 }
 const paymentQrCode = 'https://qr.alipay.com/upx-code'
 const info = {
   enabled: true,
@@ -129,12 +132,15 @@ it('shows the payment QR code in the site without opening the payment page until
     await screen.findByRole('textbox', { name: /Contact method/ }),
     '12345'
   )
+  expect(await screen.findByText('Includes a 1.8% fee (0.18)')).toBeVisible()
   await user.click(screen.getByRole('button', { name: 'Confirm Payment' }))
   const waiting = await screen.findByRole('dialog', {
     name: 'Scan with Alipay to pay',
   })
   expect(open).not.toHaveBeenCalled()
   expect(within(waiting).getByText('$10')).toBeVisible()
+  expect(within(waiting).getByText('10.18')).toBeVisible()
+  expect(within(waiting).getByText('Includes a 1.8% fee (0.18)')).toBeVisible()
   expect(
     within(waiting).getByRole('img', { name: 'Payment QR code' })
   ).toBeVisible()
@@ -169,12 +175,12 @@ it('shows the payment QR code in the site without opening the payment page until
   const success = await screen.findByRole('dialog', {
     name: 'Payment successful',
   })
-  expect(within(success).getByRole('status')).toHaveTextContent(
-    'Automatically credited $10. No redemption needed.'
-  )
+  expect(within(success).getByRole('status')).toHaveTextContent('+$10')
+  expect(within(success).queryByText(/No redemption needed/)).toBeNull()
   expect(within(success).queryByRole('link')).not.toBeInTheDocument()
   await waitFor(() => expect(credited).toHaveBeenCalledOnce())
-  await user.click(within(success).getByRole('button', { name: 'Close' }))
+  expect(within(success).getAllByRole('button')).toHaveLength(1)
+  await user.click(within(success).getByRole('button', { name: 'Done' }))
   await waitFor(() =>
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   )
@@ -187,12 +193,17 @@ it.each(['pending', 'paid', 'needs_attention', 'expired', 'creation_unknown'])(
       <CatfkPaymentStatusDialog
         open
         onOpenChange={vi.fn()}
-        order={{ tradeNo: 'order', amount: 10, status, paymentQrCode }}
+        order={{
+          tradeNo: 'order',
+          payment: paidAmount,
+          amount: 10,
+          status,
+          paymentQrCode,
+        }}
         queryFailed={false}
       />
     )
     expect(screen.queryByText('Payment successful')).not.toBeInTheDocument()
-    expect(screen.queryByText(/Automatically credited/)).not.toBeInTheDocument()
     if (status !== 'pending') {
       expect(
         screen.queryByRole('img', { name: 'Payment QR code' })
@@ -207,7 +218,13 @@ it('keeps only the amount, the QR code and a cancel button while waiting, and ca
     <CatfkPaymentStatusDialog
       open
       onOpenChange={onOpenChange}
-      order={{ tradeNo: 'order', amount: 10, status: 'pending', paymentQrCode }}
+      order={{
+        tradeNo: 'order',
+        payment: paidAmount,
+        amount: 10,
+        status: 'pending',
+        paymentQrCode,
+      }}
       queryFailed
     />
   )
@@ -245,6 +262,7 @@ describe('on a phone', () => {
         onOpenChange={vi.fn()}
         order={{
           tradeNo: 'order',
+          payment: paidAmount,
           amount: 10,
           status: 'pending',
           paymentQrCode,
@@ -265,6 +283,7 @@ describe('on a phone', () => {
         onOpenChange={vi.fn()}
         order={{
           tradeNo: 'order',
+          payment: paidAmount,
           amount: 10,
           status: 'pending',
           paymentQrCode: 'https://catfk.com/shopApi/Pay/payment?trade_no=CAT1',
@@ -298,6 +317,7 @@ it.each(['zhCN', 'zhTW', 'en', 'fr', 'ru', 'ja', 'vi', 'invalid_locale!'])(
           onOpenChange={vi.fn()}
           order={{
             tradeNo: 'order',
+            payment: paidAmount,
             amount: 10.25,
             status: 'completed',
             paymentQrCode: null,
@@ -334,6 +354,7 @@ it('omits unsafe QR codes and supports dismissing with Escape', async () => {
         onOpenChange={setOpen}
         order={{
           tradeNo: 'order',
+          payment: paidAmount,
           amount: 10,
           status: 'pending',
           paymentQrCode: 'javascript:alert(1)',

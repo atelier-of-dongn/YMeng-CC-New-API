@@ -153,6 +153,9 @@ export interface CatfkQuote {
   amount: number
   currency: string
   topup_amount: number
+  /** Included in amount; fee_rate is its percentage of the goods price. */
+  fee?: number
+  fee_rate?: number
 }
 
 export interface CatfkPaymentStatusOrder {
@@ -160,6 +163,8 @@ export interface CatfkPaymentStatusOrder {
   amount: number
   status: string
   paymentQrCode: string | null
+  /** What the buyer pays, fee included, from the confirmed quote. */
+  payment: Pick<CatfkQuote, 'amount' | 'fee' | 'fee_rate'>
 }
 
 export interface CatfkOrder {

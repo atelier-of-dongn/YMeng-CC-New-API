@@ -37,7 +37,7 @@ it.each(Object.entries(resources))(
       'Redemption code unavailable',
       'Redemption code is not available yet',
       'Payment successful',
-      'Automatically credited {{amount}}. No redemption needed.',
+      'Includes a {{rate}}% fee ({{fee}})',
       'Unable to check payment status. Retrying automatically.',
       'Contact method',
       'Enter QQ number (5-12 digits)',
@@ -62,10 +62,8 @@ it('shows the requested Chinese custom amount note and switches gateway labels w
   expect(i18n.t('View redemption code')).toBe('查看兑换码')
   expect(i18n.t('Payment successful')).toBe('支付成功')
   expect(
-    i18n.t('Automatically credited {{amount}}. No redemption needed.', {
-      amount: '¥70',
-    })
-  ).toBe('自动到账¥70，无需兑换')
+    i18n.t('Includes a {{rate}}% fee ({{fee}})', { rate: '1.8', fee: '0.18' })
+  ).toBe('含 1.8% 手续费（0.18）')
   expect(i18n.t('Contact method')).toBe('联系方式')
   expect(i18n.t('Enter QQ number (5-12 digits)')).toBe(
     '请输入QQ号（5-12位数字）'

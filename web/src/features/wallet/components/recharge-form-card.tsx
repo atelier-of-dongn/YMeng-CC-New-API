@@ -121,7 +121,11 @@ export function RechargeFormCard({
   catfkBusy,
 }: RechargeFormCardProps) {
   const { t } = useTranslation()
-  const [localAmount, setLocalAmount] = useState(topupAmount.toString())
+  // The field starts empty and shows the minimum as its placeholder; an
+  // amount of 0 means nothing is entered.
+  const [localAmount, setLocalAmount] = useState(
+    topupAmount > 0 ? topupAmount.toString() : ''
+  )
 
   useEffect(() => {
     // Empty string must survive, otherwise the field can never be cleared
