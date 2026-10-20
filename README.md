@@ -292,6 +292,16 @@ curl -fsS http://localhost:3000/api/status
 
 分支相关问题请在[本仓库 Issues](https://github.com/atelier-of-dongn/YMeng-CC-New-API/issues)中反馈，附上部署提交、复现步骤与脱敏日志。下方官方文档、发行版和社区链接属于上游 New API，未必涵盖本分支的定制功能。
 
+<a id="fork-partners"></a>
+
+## 🤝 值得信赖的合作伙伴
+
+<p align="center">
+  <a href="https://baocode.dev" target="_blank">
+    <img src="https://baocode.dev/icon.png" alt="BaoCode" height="80" />
+  </a>
+</p>
+
 <a id="upstream-reference"></a>
 
 ## 上游参考
@@ -398,9 +408,6 @@ Accounts, channels, plugin installation states, usage, prices, and costs shown b
   </a><!--
   --><a href="https://io.net/" target="_blank">
     <img src="./docs/images/io-net.png" alt="IO.NET" height="80" />
-  </a><!--
-  --><a href="https://baocode.dev" target="_blank">
-    <img src="https://baocode.dev/icon.png" alt="BaoCode" height="80" />
   </a>
 </p>
 
