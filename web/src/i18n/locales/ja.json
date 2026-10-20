@@ -7715,6 +7715,9 @@
     "Redemption code is not available yet": "引き換えコードはまだ利用できません",
     "Cancel payment": "支払いをキャンセル",
     "Open Alipay to pay": "Alipayを開いて支払う",
+    "Scan with WeChat to pay": "WeChatでスキャンして支払う",
+    "Save QR code": "QRコードを保存",
+    "Save the QR code, then scan it from your photo album in WeChat": "QRコードを保存し、WeChatのスキャンでアルバムから読み取ってください",
     "Includes a {{rate}}% fee ({{fee}})": "手数料 {{rate}}%（{{fee}}）を含む"
   }
 }

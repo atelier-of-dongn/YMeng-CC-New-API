@@ -79,6 +79,7 @@ it('shows the QR code dialog without opening a window and refreshes the wallet o
     tradeNo: 'trade1',
     amount: 10,
     status: 'pending',
+    channelName: 'WeChat',
     paymentQrCode: 'https://qr.alipay.com/upx-code',
     payment: { amount: 72, fee: undefined, fee_rate: undefined },
   })

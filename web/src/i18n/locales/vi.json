@@ -7715,6 +7715,9 @@
     "Redemption code is not available yet": "Mã đổi thưởng chưa khả dụng",
     "Cancel payment": "Hủy thanh toán",
     "Open Alipay to pay": "Mở Alipay để thanh toán",
+    "Scan with WeChat to pay": "Quét bằng WeChat để thanh toán",
+    "Save QR code": "Lưu mã QR",
+    "Save the QR code, then scan it from your photo album in WeChat": "Lưu mã QR, sau đó quét mã từ album ảnh trong WeChat",
     "Includes a {{rate}}% fee ({{fee}})": "Đã gồm phí {{rate}}% ({{fee}})"
   }
 }

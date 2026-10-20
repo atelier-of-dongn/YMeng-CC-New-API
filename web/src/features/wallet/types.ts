@@ -162,6 +162,8 @@ export interface CatfkPaymentStatusOrder {
   tradeNo: string
   amount: number
   status: string
+  /** Display name of the payment channel the buyer chose, such as Alipay. */
+  channelName: string
   paymentQrCode: string | null
   /** What the buyer pays, fee included, from the confirmed quote. */
   payment: Pick<CatfkQuote, 'amount' | 'fee' | 'fee_rate'>

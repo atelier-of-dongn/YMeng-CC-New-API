@@ -32,6 +32,9 @@ it.each(Object.entries(resources))(
       'Waiting for payment confirmation',
       'Payment QR code',
       'Scan with Alipay to pay',
+      'Scan with WeChat to pay',
+      'Save QR code',
+      'Save the QR code, then scan it from your photo album in WeChat',
       'View redemption code',
       'The code redeemed for this order',
       'Redemption code unavailable',
@@ -59,6 +62,8 @@ it('shows the requested Chinese custom amount note and switches gateway labels w
   expect(i18n.t('Open Alipay to pay')).toBe('打开支付宝付款')
   expect(i18n.t('Waiting for payment confirmation')).toBe('等待付款确认')
   expect(i18n.t('Scan with Alipay to pay')).toBe('请使用支付宝扫码支付')
+  expect(i18n.t('Scan with WeChat to pay')).toBe('请使用微信扫码支付')
+  expect(i18n.t('Save QR code')).toBe('保存二维码')
   expect(i18n.t('View redemption code')).toBe('查看兑换码')
   expect(i18n.t('Payment successful')).toBe('支付成功')
   expect(

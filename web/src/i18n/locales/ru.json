@@ -7715,6 +7715,9 @@
     "Redemption code is not available yet": "Код активации пока недоступен",
     "Cancel payment": "Отменить оплату",
     "Open Alipay to pay": "Открыть Alipay для оплаты",
+    "Scan with WeChat to pay": "Отсканируйте в WeChat для оплаты",
+    "Save QR code": "Сохранить QR-код",
+    "Save the QR code, then scan it from your photo album in WeChat": "Сохраните QR-код, затем отсканируйте его из фотоальбома в WeChat",
     "Includes a {{rate}}% fee ({{fee}})": "Включая комиссию {{rate}}% ({{fee}})"
   }
 }

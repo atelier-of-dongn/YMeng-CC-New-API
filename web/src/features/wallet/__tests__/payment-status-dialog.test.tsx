@@ -195,6 +195,7 @@ it.each(['pending', 'paid', 'needs_attention', 'expired', 'creation_unknown'])(
         onOpenChange={vi.fn()}
         order={{
           tradeNo: 'order',
+          channelName: 'Alipay',
           payment: paidAmount,
           amount: 10,
           status,
@@ -220,6 +221,7 @@ it('keeps only the amount, the QR code and a cancel button while waiting, and ca
       onOpenChange={onOpenChange}
       order={{
         tradeNo: 'order',
+        channelName: 'Alipay',
         payment: paidAmount,
         amount: 10,
         status: 'pending',
@@ -246,6 +248,30 @@ it('keeps only the amount, the QR code and a cancel button while waiting, and ca
   expect(onOpenChange).toHaveBeenCalledWith(false)
 })
 
+it('asks to scan with WeChat while a WeChat order waits', () => {
+  render(
+    <CatfkPaymentStatusDialog
+      open
+      onOpenChange={vi.fn()}
+      order={{
+        tradeNo: 'order',
+        channelName: '微信支付',
+        payment: paidAmount,
+        amount: 10,
+        status: 'pending',
+        paymentQrCode: 'https://catfk.com/shopApi/Pay/payment?trade_no=CAT1',
+      }}
+      queryFailed={false}
+    />
+  )
+  expect(
+    screen.getByRole('dialog', { name: 'Scan with WeChat to pay' })
+  ).toBeVisible()
+  expect(
+    screen.queryByRole('button', { name: 'Save QR code' })
+  ).not.toBeInTheDocument()
+})
+
 describe('on a phone', () => {
   const desktopWidth = window.innerWidth
   beforeEach(() => {
@@ -262,6 +288,7 @@ describe('on a phone', () => {
         onOpenChange={vi.fn()}
         order={{
           tradeNo: 'order',
+          channelName: 'Alipay',
           payment: paidAmount,
           amount: 10,
           status: 'pending',
@@ -283,6 +310,7 @@ describe('on a phone', () => {
         onOpenChange={vi.fn()}
         order={{
           tradeNo: 'order',
+          channelName: 'Alipay',
           payment: paidAmount,
           amount: 10,
           status: 'pending',
@@ -295,6 +323,51 @@ describe('on a phone', () => {
     expect(
       screen.queryByRole('button', { name: 'Open Alipay to pay' })
     ).not.toBeInTheDocument()
+  })
+
+  it('saves the WeChat QR code as an image to scan from the photo album', async () => {
+    const blob = new Blob(['png'], { type: 'image/png' })
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation(
+      (callback) => callback(blob)
+    )
+    const createObjectURL = vi
+      .spyOn(URL, 'createObjectURL')
+      .mockReturnValue('blob:qr')
+    const revokeObjectURL = vi
+      .spyOn(URL, 'revokeObjectURL')
+      .mockImplementation(() => {})
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {})
+    render(
+      <CatfkPaymentStatusDialog
+        open
+        onOpenChange={vi.fn()}
+        order={{
+          tradeNo: 'order',
+          channelName: 'WeChat Pay',
+          payment: paidAmount,
+          amount: 10,
+          status: 'pending',
+          paymentQrCode: 'https://catfk.com/shopApi/Pay/payment?trade_no=CAT1',
+        }}
+        queryFailed={false}
+      />
+    )
+    expect(
+      screen.queryByRole('button', { name: 'Open Alipay to pay' })
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByText(
+        'Save the QR code, then scan it from your photo album in WeChat'
+      )
+    ).toBeVisible()
+    await userEvent.click(screen.getByRole('button', { name: 'Save QR code' }))
+    expect(createObjectURL).toHaveBeenCalledWith(blob)
+    const anchor = click.mock.contexts[0] as HTMLAnchorElement
+    expect(anchor.download).toBe('payment-qr-code.png')
+    expect(anchor.href).toBe('blob:qr')
+    expect(revokeObjectURL).toHaveBeenCalledWith('blob:qr')
   })
 })
 
@@ -317,6 +390,7 @@ it.each(['zhCN', 'zhTW', 'en', 'fr', 'ru', 'ja', 'vi', 'invalid_locale!'])(
           onOpenChange={vi.fn()}
           order={{
             tradeNo: 'order',
+            channelName: 'Alipay',
             payment: paidAmount,
             amount: 10.25,
             status: 'completed',
@@ -354,6 +428,7 @@ it('omits unsafe QR codes and supports dismissing with Escape', async () => {
         onOpenChange={setOpen}
         order={{
           tradeNo: 'order',
+          channelName: 'Alipay',
           payment: paidAmount,
           amount: 10,
           status: 'pending',

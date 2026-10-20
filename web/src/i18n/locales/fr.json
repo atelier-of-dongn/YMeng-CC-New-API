@@ -7715,6 +7715,9 @@
     "Redemption code is not available yet": "Le code d'échange n'est pas encore disponible",
     "Cancel payment": "Annuler le paiement",
     "Open Alipay to pay": "Ouvrir Alipay pour payer",
+    "Scan with WeChat to pay": "Scannez avec WeChat pour payer",
+    "Save QR code": "Enregistrer le QR code",
+    "Save the QR code, then scan it from your photo album in WeChat": "Enregistrez le QR code, puis scannez-le depuis votre album photo dans WeChat",
     "Includes a {{rate}}% fee ({{fee}})": "Dont {{rate}} % de frais ({{fee}})"
   }
 }

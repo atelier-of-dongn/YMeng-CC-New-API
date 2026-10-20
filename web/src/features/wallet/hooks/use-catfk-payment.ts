@@ -156,6 +156,7 @@ export function useCatfkPayment(
         tradeNo: order.trade_no,
         amount: product.amount,
         status: order.status,
+        channelName: channel.name,
         paymentQrCode:
           order.status === 'pending'
             ? safeCatfkQrCode(order.payment_qr_code)

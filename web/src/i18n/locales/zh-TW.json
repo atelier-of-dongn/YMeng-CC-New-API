@@ -7715,6 +7715,9 @@
     "Redemption code is not available yet": "訂單完成後才能查看兌換碼",
     "Cancel payment": "取消付款",
     "Open Alipay to pay": "開啟支付寶付款",
+    "Scan with WeChat to pay": "請使用微信掃碼付款",
+    "Save QR code": "儲存 QR 碼",
+    "Save the QR code, then scan it from your photo album in WeChat": "儲存 QR 碼後，在微信「掃一掃」中從相簿識別付款",
     "Includes a {{rate}}% fee ({{fee}})": "含 {{rate}}% 手續費（{{fee}}）"
   }
 }

@@ -7715,6 +7715,9 @@
     "Redemption code is not available yet": "Redemption code is not available yet",
     "Cancel payment": "Cancel payment",
     "Open Alipay to pay": "Open Alipay to pay",
+    "Scan with WeChat to pay": "Scan with WeChat to pay",
+    "Save QR code": "Save QR code",
+    "Save the QR code, then scan it from your photo album in WeChat": "Save the QR code, then scan it from your photo album in WeChat",
     "Includes a {{rate}}% fee ({{fee}})": "Includes a {{rate}}% fee ({{fee}})"
   }
 }

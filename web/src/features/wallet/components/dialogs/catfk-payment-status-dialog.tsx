@@ -1,5 +1,6 @@
 import { CheckCircle2 } from 'lucide-react'
-import { QRCodeSVG } from 'qrcode.react'
+import { QRCodeCanvas, QRCodeSVG } from 'qrcode.react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Dialog } from '@/components/dialog'
@@ -23,6 +24,7 @@ export function CatfkPaymentStatusDialog(props: {
 }) {
   const { t, i18n } = useTranslation()
   const isMobile = useIsMobile()
+  const canvasRef = useRef<HTMLCanvasElement>(null)
   useSystemConfigStore((state) => state.config.currency)
   if (!props.order) return null
   const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
@@ -35,10 +37,11 @@ export function CatfkPaymentStatusDialog(props: {
   const completed = props.order.status === 'completed'
   const waiting =
     props.order.status === 'pending' || props.order.status === 'new'
+  const wechat = /微信|wechat|weixin/i.test(props.order.channelName)
   let title = t('Waiting for payment confirmation')
   // While waiting the dialog holds only the amount, the code and a cancel.
   if (waiting) {
-    title = t('Scan with Alipay to pay')
+    title = wechat ? t('Scan with WeChat to pay') : t('Scan with Alipay to pay')
   } else if (props.order.status === 'paid') {
     title = t('Payment received. Wallet credit is pending.')
   } else if (props.order.status === 'expired') {
@@ -53,6 +56,21 @@ export function CatfkPaymentStatusDialog(props: {
     isMobile && qrCode && new URL(qrCode).hostname === 'qr.alipay.com'
       ? qrCode
       : null
+  // Other codes, such as WeChat's, have no link that opens the app to pay:
+  // the buyer saves the code and scans it from the photo album instead.
+  const savableQrCode = isMobile && qrCode && !alipayLink ? qrCode : null
+
+  function saveQrCode() {
+    canvasRef.current?.toBlob((blob) => {
+      if (!blob) return
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = 'payment-qr-code.png'
+      anchor.click()
+      URL.revokeObjectURL(url)
+    }, 'image/png')
+  }
 
   if (completed) {
     return (
@@ -156,6 +174,28 @@ export function CatfkPaymentStatusDialog(props: {
             >
               {t('Open Alipay to pay')}
             </Button>
+          )}
+          {savableQrCode && (
+            <>
+              <QRCodeCanvas
+                ref={canvasRef}
+                value={savableQrCode}
+                size={512}
+                marginSize={4}
+                className='hidden'
+                aria-hidden='true'
+              />
+              <Button className='w-full' onClick={saveQrCode}>
+                {t('Save QR code')}
+              </Button>
+              {wechat && (
+                <p className='text-muted-foreground text-center text-xs'>
+                  {t(
+                    'Save the QR code, then scan it from your photo album in WeChat'
+                  )}
+                </p>
+              )}
+            </>
           )}
         </div>
       )}
