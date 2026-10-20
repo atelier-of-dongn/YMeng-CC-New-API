@@ -299,6 +299,9 @@ curl -fsS http://localhost:3000/api/status
 <p align="center">
   <a href="https://baocode.dev" target="_blank">
     <img src="https://baocode.dev/icon.png" alt="BaoCode" height="80" />
+  </a><!--
+  --><a href="https://github.com/leookun/cursor-byok" target="_blank">
+    <img src="https://raw.githubusercontent.com/leookun/cursor-byok/main/images/en-brand-1.png" alt="cursor-byok" height="80" />
   </a>
 </p>
 
