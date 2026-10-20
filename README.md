@@ -398,6 +398,9 @@ Accounts, channels, plugin installation states, usage, prices, and costs shown b
   </a><!--
   --><a href="https://io.net/" target="_blank">
     <img src="./docs/images/io-net.png" alt="IO.NET" height="80" />
+  </a><!--
+  --><a href="https://baocode.dev" target="_blank">
+    <img src="https://baocode.dev/icon.png" alt="BaoCode" height="80" />
   </a>
 </p>
 
