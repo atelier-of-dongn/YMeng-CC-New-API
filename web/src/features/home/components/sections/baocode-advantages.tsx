@@ -70,11 +70,11 @@ export function BaoCodeAdvantages() {
               {t(item.labelKey)}
             </dt>
             <dd>
-              <div className='flex items-baseline gap-1.5'>
-                <span className='font-mono text-lg font-semibold text-[var(--paper-ink)] tabular-nums'>
+              <div className='flex flex-wrap items-baseline gap-x-1.5'>
+                <span className='font-mono text-lg font-semibold whitespace-nowrap text-[var(--paper-ink)] tabular-nums'>
                   {item.baocode}
                 </span>
-                <span className='font-mono text-[11px] text-[var(--paper-faint)] tabular-nums'>
+                <span className='font-mono text-[11px] whitespace-nowrap text-[var(--paper-faint)] tabular-nums'>
                   vs Cursor {item.cursor}
                 </span>
               </div>

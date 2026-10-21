@@ -7736,6 +7736,14 @@
     "Idle memory": "Bộ nhớ khi rảnh",
     "Visual UI, not a terminal": "Giao diện trực quan, không terminal",
     "Any model, one app": "Mọi mô hình, một ứng dụng",
-    "Native, no Electron": "Ứng dụng gốc, không Electron"
+    "Native, no Electron": "Ứng dụng gốc, không Electron",
+    "Q&A, feedback and new model updates": "Hỏi đáp, góp ý và cập nhật mô hình mới",
+    "Join group": "Tham gia",
+    "Q&A": "Hỏi đáp",
+    "Feedback": "Góp ý",
+    "New models": "Mô hình mới",
+    "Join the YMeng CC QQ group": "Tham gia nhóm QQ YMeng CC",
+    "When is the new Claude model coming?": "Bao giờ có mô hình Claude mới?",
+    "Already live, try it in the console": "Đã có rồi, thử ngay trong bảng điều khiển"
   }
 }

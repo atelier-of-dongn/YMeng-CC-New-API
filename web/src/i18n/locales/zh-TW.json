@@ -7736,6 +7736,14 @@
     "Idle memory": "閒置記憶體（單視窗）",
     "Visual UI, not a terminal": "視覺化，不用終端機",
     "Any model, one app": "全模型通用",
-    "Native, no Electron": "原生，無 Electron"
+    "Native, no Electron": "原生，無 Electron",
+    "Q&A, feedback and new model updates": "答疑、回饋，新模型上線第一時間知道",
+    "Join group": "一鍵加群",
+    "Q&A": "答疑",
+    "Feedback": "回饋",
+    "New models": "新模型",
+    "Join the YMeng CC QQ group": "加入 YMeng CC 交流群",
+    "When is the new Claude model coming?": "新出的 Claude 模型什麼時候上？",
+    "Already live, try it in the console": "已經上線啦，主控台就能用"
   }
 }

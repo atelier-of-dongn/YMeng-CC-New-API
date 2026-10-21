@@ -7736,6 +7736,14 @@
     "Idle memory": "アイドル時メモリ",
     "Visual UI, not a terminal": "ターミナル不要の UI",
     "Any model, one app": "ひとつのアプリで全モデル",
-    "Native, no Electron": "ネイティブ、Electron なし"
+    "Native, no Electron": "ネイティブ、Electron なし",
+    "Q&A, feedback and new model updates": "質問・フィードバック・新モデル情報",
+    "Join group": "参加する",
+    "Q&A": "質問",
+    "Feedback": "フィードバック",
+    "New models": "新モデル",
+    "Join the YMeng CC QQ group": "YMeng CC の QQ グループに参加",
+    "When is the new Claude model coming?": "新しい Claude モデルはいつ来ますか？",
+    "Already live, try it in the console": "もう使えます。コンソールからどうぞ"
   }
 }

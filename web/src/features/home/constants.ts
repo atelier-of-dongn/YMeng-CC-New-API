@@ -29,6 +29,9 @@ export const MAIN_BASE_CLASSES = 'bg-background text-foreground w-full'
 export const BAOCODE_YMENGCC_URL = 'https://baocode.dev/?ymengcc'
 export const BAOCODE_ICON_URL = 'https://baocode.dev/brand/baocode-icon-48.png'
 
+// The site's QQ group for questions and feedback
+export const COMMUNITY_QQ_GROUP_URL = 'https://qm.qq.com/q/gLTLDuSMms'
+
 // Hero section - AI Applications (Left side)
 export const AI_APPLICATIONS = [
   'LobeHub.Color',

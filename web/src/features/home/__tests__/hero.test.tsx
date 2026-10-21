@@ -77,6 +77,25 @@ it('links the BaoCode entry to the YMeng CC channel page in a new tab', async ()
   expect(link.getAttribute('rel')).toContain('noopener')
 })
 
+it('links the QQ group entry to the community invite in a new tab', async () => {
+  await renderHero({ isAuthenticated: false })
+
+  const link = screen.getByRole('button', { name: /Join group/ })
+
+  expect(link).toHaveAttribute('href', 'https://qm.qq.com/q/gLTLDuSMms')
+  expect(link).toHaveAttribute('target', '_blank')
+  expect(link.getAttribute('rel')).toContain('noopener')
+})
+
+it('keeps the example chat in the community slice out of the accessibility tree', async () => {
+  await renderHero({ isAuthenticated: false })
+
+  const example = screen.queryByText('Already live, try it in the console')
+
+  expect(example).not.toBeNull()
+  expect(example?.closest('[aria-hidden="true"]')).not.toBeNull()
+})
+
 it('shows sign-up and pricing entries to signed-out visitors', async () => {
   await renderHero({ isAuthenticated: false })
 

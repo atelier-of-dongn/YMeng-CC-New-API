@@ -7736,6 +7736,14 @@
     "Idle memory": "Idle memory",
     "Visual UI, not a terminal": "Visual UI, not a terminal",
     "Any model, one app": "Any model, one app",
-    "Native, no Electron": "Native, no Electron"
+    "Native, no Electron": "Native, no Electron",
+    "Q&A, feedback and new model updates": "Q&A, feedback and new model updates",
+    "Join group": "Join group",
+    "Q&A": "Q&A",
+    "Feedback": "Feedback",
+    "New models": "New models",
+    "Join the YMeng CC QQ group": "Join the YMeng CC QQ group",
+    "When is the new Claude model coming?": "When is the new Claude model coming?",
+    "Already live, try it in the console": "Already live, try it in the console"
   }
 }

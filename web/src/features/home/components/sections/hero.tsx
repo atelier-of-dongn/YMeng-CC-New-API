@@ -16,7 +16,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { RiQqLine } from 'react-icons/ri'
+
 import { BaoCodePanel } from './baocode-panel'
+import { CommunityCard } from './community-card'
+import { CommunityChatPreview } from './community-chat-preview'
 import { ConsolePanel } from './console-panel'
 
 interface HeroProps {
@@ -45,6 +49,17 @@ export function Hero(props: HeroProps) {
       <div
         aria-hidden
         className='absolute inset-0 -z-20 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] [mask-image:radial-gradient(ellipse_45%_55%_at_75%_35%,black_20%,transparent_100%)] bg-[size:4rem_4rem] opacity-[0.1]'
+      />
+
+      {/* Community corner, cut off by a second seam; the paper side covers
+          its left end, so it shows from the main seam rightwards */}
+      <div
+        aria-hidden
+        className='home-community-wedge absolute inset-x-0 top-0 -z-[15] hidden lg:block'
+      />
+      <div
+        aria-hidden
+        className='home-community-seam absolute inset-x-0 top-0 -z-[15] hidden lg:block'
       />
 
       {/* Paper side, seam and badge from lg up */}
@@ -87,7 +102,15 @@ export function Hero(props: HeroProps) {
           <BaoCodePanel />
         </div>
 
-        <div className='flex items-center px-6 pt-10 pb-20 md:px-10 lg:px-0 lg:pt-32 lg:pb-24 lg:pl-16 xl:pl-20'>
+        <div className='relative flex flex-col items-start px-6 pt-10 pb-20 md:px-10 lg:px-0 lg:pt-[20.5rem] lg:pb-24 lg:pl-16 xl:pl-20'>
+          <CommunityCard className='mb-8 lg:absolute lg:top-[4.75rem] lg:left-16 lg:mb-0 xl:left-20' />
+          {/* The narrow end of the community slice: a faint penguin and a
+              looping chat peek that stays above the seam */}
+          <RiQqLine
+            aria-hidden
+            className='pointer-events-none absolute top-2 right-[20.5rem] hidden size-36 -rotate-12 text-sky-500/[0.07] xl:block dark:text-sky-300/[0.06]'
+          />
+          <CommunityChatPreview className='absolute top-[5.25rem] right-0 hidden w-72 xl:block' />
           <ConsolePanel isAuthenticated={props.isAuthenticated} />
         </div>
       </div>

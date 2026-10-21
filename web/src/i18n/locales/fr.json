@@ -7736,6 +7736,14 @@
     "Idle memory": "Mémoire au repos",
     "Visual UI, not a terminal": "Interface visuelle, pas de terminal",
     "Any model, one app": "Tous les modèles, une app",
-    "Native, no Electron": "Natif, sans Electron"
+    "Native, no Electron": "Natif, sans Electron",
+    "Q&A, feedback and new model updates": "Questions, retours et nouveaux modèles",
+    "Join group": "Rejoindre",
+    "Q&A": "Questions",
+    "Feedback": "Retours",
+    "New models": "Nouveaux modèles",
+    "Join the YMeng CC QQ group": "Rejoignez le groupe QQ YMeng CC",
+    "When is the new Claude model coming?": "Quand arrive le nouveau modèle Claude ?",
+    "Already live, try it in the console": "Déjà disponible, essayez dans la console"
   }
 }

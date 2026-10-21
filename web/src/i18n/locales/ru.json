@@ -7736,6 +7736,14 @@
     "Idle memory": "Память в простое",
     "Visual UI, not a terminal": "Наглядный UI вместо терминала",
     "Any model, one app": "Любые модели в одном приложении",
-    "Native, no Electron": "Нативно, без Electron"
+    "Native, no Electron": "Нативно, без Electron",
+    "Q&A, feedback and new model updates": "Вопросы, отзывы и новые модели",
+    "Join group": "Вступить",
+    "Q&A": "Вопросы",
+    "Feedback": "Отзывы",
+    "New models": "Новые модели",
+    "Join the YMeng CC QQ group": "Вступайте в группу QQ YMeng CC",
+    "When is the new Claude model coming?": "Когда появится новая модель Claude?",
+    "Already live, try it in the console": "Уже доступна, попробуйте в консоли"
   }
 }

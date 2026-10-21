@@ -558,6 +558,104 @@ For commercial licensing, please contact support@quantumnous.com
   .home-paper-grid {
     animation: none !important;
   }
+  .home-qq-float,
+  .home-qq-ring,
+  .home-qq-bubble,
+  .home-qq-typing,
+  .home-qq-shine::after {
+    animation: none !important;
+  }
+  .home-qq-bubble {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  .home-qq-float {
+    transform: none !important;
+  }
+}
+
+/* ── Home community slice: QQ group in the cut-off corner ── */
+@keyframes home-qq-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+.home-qq-float {
+  animation: home-qq-float 4s ease-in-out infinite;
+}
+/* Two rings spreading out of the emblem, one after the other. */
+@keyframes home-qq-ring {
+  0% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+.home-qq-ring {
+  animation: home-qq-ring 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+/* Chat bubbles: each appears in turn (delays 0s, 1.5s, 3s from the markup),
+   stays for the rest of the 6s loop, then all clear together. */
+@keyframes home-qq-bubble {
+  0% {
+    opacity: 0;
+    transform: translateY(6px) scale(0.96);
+  }
+  5%,
+  95% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(0) scale(1);
+  }
+}
+.home-qq-bubble {
+  animation: home-qq-bubble 6s ease-in-out infinite;
+}
+@keyframes home-qq-typing {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-2px);
+  }
+}
+.home-qq-typing {
+  animation: home-qq-typing 1s ease-in-out infinite;
+}
+/* A light sweep across the join button on hover. */
+.home-qq-shine::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 70%
+  );
+  transform: translateX(-120%);
+}
+.home-qq-shine:hover::after {
+  animation: home-qq-shine 0.9s ease-out;
+}
+@keyframes home-qq-shine {
+  to {
+    transform: translateX(120%);
+  }
 }
 
 /* ── Home split hero: BaoCode's paper look on the left, a slanted seam ── */
@@ -623,6 +721,43 @@ For commercial licensing, please contact support@quantumnous.com
   color: var(--paper-pill-ink);
   font: 400 1.375rem/1 var(--paper-serif);
   box-shadow: 0 6px 20px -8px rgba(122, 78, 20, 0.35);
+}
+/* The community corner: a second seam from behind the paper side (40% wide,
+   19rem down) rising to the right edge 13rem down. The right end is deep
+   enough for the chat peek to sit above it. */
+.home-community-wedge,
+.home-community-seam {
+  height: 19.25rem;
+}
+.home-community-wedge {
+  background:
+    radial-gradient(rgba(18, 183, 245, 0.22) 1px, transparent 1.2px) 0 0 / 14px
+      14px,
+    linear-gradient(
+      100deg,
+      rgba(18, 183, 245, 0.12),
+      rgba(18, 183, 245, 0.04) 70%
+    );
+  clip-path: polygon(0 0, 100% 0, 100% 13rem, 40% 19rem, 0 19rem);
+}
+.dark .home-community-wedge {
+  background:
+    radial-gradient(rgba(18, 183, 245, 0.16) 1px, transparent 1.2px) 0 0 / 14px
+      14px,
+    linear-gradient(
+      100deg,
+      rgba(18, 183, 245, 0.09),
+      rgba(18, 183, 245, 0.02) 70%
+    );
+}
+.home-community-seam {
+  background: rgba(226, 179, 115, 0.75);
+  clip-path: polygon(
+    40% 19rem,
+    100% 13rem,
+    100% calc(13rem + 2px),
+    40% calc(19rem + 2px)
+  );
 }
 .home-paper-clip-sm {
   clip-path: polygon(0 0, 100% 0, 100% calc(100% - 3.5rem), 0 100%);
