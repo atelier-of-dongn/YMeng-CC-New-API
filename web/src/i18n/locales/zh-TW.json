@@ -7718,6 +7718,24 @@
     "Scan with WeChat to pay": "請使用微信掃碼付款",
     "Save QR code": "儲存 QR 碼",
     "Save the QR code, then scan it from your photo album in WeChat": "儲存 QR 碼後，在微信「掃一掃」中從相簿識別付款",
-    "Includes a {{rate}}% fee ({{fee}})": "含 {{rate}}% 手續費（{{fee}}）"
+    "Includes a {{rate}}% fee ({{fee}})": "含 {{rate}}% 手續費（{{fee}}）",
+    "For developers": "開發者入口",
+    "Beginner friendly": "新手入口",
+    "Partner channel": "合作渠道",
+    "One gateway, multiple models. Turn ideas into code.": "一個入口，連接多元模型，讓靈感直達程式碼。",
+    "Less setup, more creation. Access multiple AI models through YMeng CC, choose your coding companion in BaoCode, and bring your next idea to life.": "少一點接入折騰，多一點專注創造。透過 YMeng CC 統一接入多種 AI 模型，在 BaoCode 中選擇適合你的程式設計夥伴，讓每一次靈感，都更進一步。",
+    "Download BaoCode for Mac, Windows or Linux": "下載 BaoCode（支援 Mac、Windows、Linux）",
+    "Sign in with your YMeng CC account directly": "直接登入你的 YMeng CC 帳號",
+    "Pick a model and start coding, no API setup needed": "選好模型即可開始寫程式，無需設定 API",
+    "Get BaoCode": "取得 BaoCode",
+    "Free and open source": "免費開源",
+    "No API key needed": "無需 API Key",
+    "Why BaoCode": "為什麼選 BaoCode",
+    "Smoother than Codex, Claude Code and Cursor": "比 Codex、Claude Code、Cursor 更好用",
+    "Launch time": "啟動時間",
+    "Idle memory": "閒置記憶體（單視窗）",
+    "Visual UI, not a terminal": "視覺化，不用終端機",
+    "Any model, one app": "全模型通用",
+    "Native, no Electron": "原生，無 Electron"
   }
 }

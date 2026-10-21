@@ -7718,6 +7718,24 @@
     "Scan with WeChat to pay": "Scannez avec WeChat pour payer",
     "Save QR code": "Enregistrer le QR code",
     "Save the QR code, then scan it from your photo album in WeChat": "Enregistrez le QR code, puis scannez-le depuis votre album photo dans WeChat",
-    "Includes a {{rate}}% fee ({{fee}})": "Dont {{rate}} % de frais ({{fee}})"
+    "Includes a {{rate}}% fee ({{fee}})": "Dont {{rate}} % de frais ({{fee}})",
+    "For developers": "Pour les développeurs",
+    "Beginner friendly": "Pour débuter",
+    "Partner channel": "Canal partenaire",
+    "One gateway, multiple models. Turn ideas into code.": "Une passerelle, plusieurs modèles. Transformez vos idées en code.",
+    "Less setup, more creation. Access multiple AI models through YMeng CC, choose your coding companion in BaoCode, and bring your next idea to life.": "Moins de configuration, plus de création. Accédez à plusieurs modèles d'IA via YMeng CC, choisissez votre compagnon de code dans BaoCode et donnez vie à votre prochaine idée.",
+    "Download BaoCode for Mac, Windows or Linux": "Téléchargez BaoCode pour Mac, Windows ou Linux",
+    "Sign in with your YMeng CC account directly": "Connectez-vous directement avec votre compte YMeng CC",
+    "Pick a model and start coding, no API setup needed": "Choisissez un modèle et codez, sans configurer d'API",
+    "Get BaoCode": "Obtenir BaoCode",
+    "Free and open source": "Gratuit et open source",
+    "No API key needed": "Pas besoin de clé d'API",
+    "Why BaoCode": "Pourquoi BaoCode",
+    "Smoother than Codex, Claude Code and Cursor": "Plus agréable que Codex, Claude Code et Cursor",
+    "Launch time": "Temps de lancement",
+    "Idle memory": "Mémoire au repos",
+    "Visual UI, not a terminal": "Interface visuelle, pas de terminal",
+    "Any model, one app": "Tous les modèles, une app",
+    "Native, no Electron": "Natif, sans Electron"
   }
 }

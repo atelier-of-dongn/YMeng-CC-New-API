@@ -7718,6 +7718,24 @@
     "Scan with WeChat to pay": "Quét bằng WeChat để thanh toán",
     "Save QR code": "Lưu mã QR",
     "Save the QR code, then scan it from your photo album in WeChat": "Lưu mã QR, sau đó quét mã từ album ảnh trong WeChat",
-    "Includes a {{rate}}% fee ({{fee}})": "Đã gồm phí {{rate}}% ({{fee}})"
+    "Includes a {{rate}}% fee ({{fee}})": "Đã gồm phí {{rate}}% ({{fee}})",
+    "For developers": "Dành cho nhà phát triển",
+    "Beginner friendly": "Dành cho người mới",
+    "Partner channel": "Kênh đối tác",
+    "One gateway, multiple models. Turn ideas into code.": "Một cổng, nhiều mô hình. Biến ý tưởng thành mã.",
+    "Less setup, more creation. Access multiple AI models through YMeng CC, choose your coding companion in BaoCode, and bring your next idea to life.": "Ít thiết lập hơn, sáng tạo nhiều hơn. Truy cập nhiều mô hình AI qua YMeng CC, chọn người bạn lập trình trong BaoCode và hiện thực hóa ý tưởng tiếp theo.",
+    "Download BaoCode for Mac, Windows or Linux": "Tải BaoCode cho Mac, Windows hoặc Linux",
+    "Sign in with your YMeng CC account directly": "Đăng nhập trực tiếp bằng tài khoản YMeng CC",
+    "Pick a model and start coding, no API setup needed": "Chọn mô hình và bắt đầu lập trình, không cần cấu hình API",
+    "Get BaoCode": "Tải BaoCode",
+    "Free and open source": "Miễn phí và mã nguồn mở",
+    "No API key needed": "Không cần API key",
+    "Why BaoCode": "Vì sao chọn BaoCode",
+    "Smoother than Codex, Claude Code and Cursor": "Mượt hơn Codex, Claude Code và Cursor",
+    "Launch time": "Thời gian khởi động",
+    "Idle memory": "Bộ nhớ khi rảnh",
+    "Visual UI, not a terminal": "Giao diện trực quan, không terminal",
+    "Any model, one app": "Mọi mô hình, một ứng dụng",
+    "Native, no Electron": "Ứng dụng gốc, không Electron"
   }
 }

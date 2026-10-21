@@ -7718,6 +7718,24 @@
     "Scan with WeChat to pay": "WeChatでスキャンして支払う",
     "Save QR code": "QRコードを保存",
     "Save the QR code, then scan it from your photo album in WeChat": "QRコードを保存し、WeChatのスキャンでアルバムから読み取ってください",
-    "Includes a {{rate}}% fee ({{fee}})": "手数料 {{rate}}%（{{fee}}）を含む"
+    "Includes a {{rate}}% fee ({{fee}})": "手数料 {{rate}}%（{{fee}}）を含む",
+    "For developers": "開発者向け",
+    "Beginner friendly": "初心者向け",
+    "Partner channel": "パートナーチャネル",
+    "One gateway, multiple models. Turn ideas into code.": "ひとつの入口から多彩なモデルへ。アイデアをそのままコードに。",
+    "Less setup, more creation. Access multiple AI models through YMeng CC, choose your coding companion in BaoCode, and bring your next idea to life.": "接続の手間は少なく、創造にもっと集中を。YMeng CC で多様な AI モデルにまとめてアクセスし、BaoCode で自分に合うコーディングパートナーを選んで、次のアイデアを形にしましょう。",
+    "Download BaoCode for Mac, Windows or Linux": "BaoCode をダウンロード（Mac・Windows・Linux 対応）",
+    "Sign in with your YMeng CC account directly": "YMeng CC アカウントでそのままログイン",
+    "Pick a model and start coding, no API setup needed": "モデルを選ぶだけでコーディング開始、API 設定は不要",
+    "Get BaoCode": "BaoCode を入手",
+    "Free and open source": "無料・オープンソース",
+    "No API key needed": "API キー不要",
+    "Why BaoCode": "BaoCode を選ぶ理由",
+    "Smoother than Codex, Claude Code and Cursor": "Codex・Claude Code・Cursor より快適",
+    "Launch time": "起動時間",
+    "Idle memory": "アイドル時メモリ",
+    "Visual UI, not a terminal": "ターミナル不要の UI",
+    "Any model, one app": "ひとつのアプリで全モデル",
+    "Native, no Electron": "ネイティブ、Electron なし"
   }
 }

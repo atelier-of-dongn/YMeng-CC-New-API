@@ -20,10 +20,14 @@ For commercial licensing, please contact support@quantumnous.com
  * Home page constants
  * All hardcoded data for home page sections
  */
-import { type TFunction } from 'i18next'
+import type { TFunction } from 'i18next'
 
 // Layout - Main base classes
 export const MAIN_BASE_CLASSES = 'bg-background text-foreground w-full'
+
+// BaoCode channel page for YMeng CC: users sign in with their account in BaoCode
+export const BAOCODE_YMENGCC_URL = 'https://baocode.dev/?ymengcc'
+export const BAOCODE_ICON_URL = 'https://baocode.dev/brand/baocode-icon-48.png'
 
 // Hero section - AI Applications (Left side)
 export const AI_APPLICATIONS = [

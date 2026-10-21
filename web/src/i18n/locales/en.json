@@ -7718,6 +7718,24 @@
     "Scan with WeChat to pay": "Scan with WeChat to pay",
     "Save QR code": "Save QR code",
     "Save the QR code, then scan it from your photo album in WeChat": "Save the QR code, then scan it from your photo album in WeChat",
-    "Includes a {{rate}}% fee ({{fee}})": "Includes a {{rate}}% fee ({{fee}})"
+    "Includes a {{rate}}% fee ({{fee}})": "Includes a {{rate}}% fee ({{fee}})",
+    "For developers": "For developers",
+    "Beginner friendly": "Beginner friendly",
+    "Partner channel": "Partner channel",
+    "One gateway, multiple models. Turn ideas into code.": "One gateway, multiple models. Turn ideas into code.",
+    "Less setup, more creation. Access multiple AI models through YMeng CC, choose your coding companion in BaoCode, and bring your next idea to life.": "Less setup, more creation. Access multiple AI models through YMeng CC, choose your coding companion in BaoCode, and bring your next idea to life.",
+    "Download BaoCode for Mac, Windows or Linux": "Download BaoCode for Mac, Windows or Linux",
+    "Sign in with your YMeng CC account directly": "Sign in with your YMeng CC account directly",
+    "Pick a model and start coding, no API setup needed": "Pick a model and start coding, no API setup needed",
+    "Get BaoCode": "Get BaoCode",
+    "Free and open source": "Free and open source",
+    "No API key needed": "No API key needed",
+    "Why BaoCode": "Why BaoCode",
+    "Smoother than Codex, Claude Code and Cursor": "Smoother than Codex, Claude Code and Cursor",
+    "Launch time": "Launch time",
+    "Idle memory": "Idle memory",
+    "Visual UI, not a terminal": "Visual UI, not a terminal",
+    "Any model, one app": "Any model, one app",
+    "Native, no Electron": "Native, no Electron"
   }
 }

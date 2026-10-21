@@ -555,6 +555,116 @@ For commercial licensing, please contact support@quantumnous.com
     opacity: 1 !important;
     transform: none !important;
   }
+  .home-paper-grid {
+    animation: none !important;
+  }
+}
+
+/* ── Home split hero: BaoCode's paper look on the left, a slanted seam ── */
+.home-split {
+  /* The seam leans from 48% of the content width at the top to 34% at the
+     bottom; % is the full-width layer's own width. */
+  --seam-top: calc(50% - min(100%, 80rem) * 0.02);
+  --seam-bottom: calc(50% - min(100%, 80rem) * 0.16);
+  --seam-middle: calc(50% - min(100%, 80rem) * 0.09);
+  --seam-width: 2px;
+}
+.home-paper {
+  --paper: #ffffff;
+  --paper-tint: #f6f4ef;
+  --paper-ink: #1b1a17;
+  --paper-ink-hover: #000000;
+  --paper-body: #2f2d29;
+  --paper-muted: #6f6b63;
+  --paper-faint: #a9a49a;
+  --paper-rule: #e7e3da;
+  --paper-sand: rgba(226, 179, 115, 0.75);
+  --paper-pill-ink: #7a4e14;
+  --paper-pill-bg: #f8ead2;
+  --paper-pill-border: #edcf9e;
+  --paper-serif:
+    Charter, 'Iowan Old Style', 'Source Serif 4', Cambria, Georgia, 'Songti SC',
+    'Noto Serif SC', serif;
+}
+.dark .home-paper {
+  --paper: #1a1915;
+  --paper-tint: #211f1a;
+  --paper-ink: #f3efe7;
+  --paper-ink-hover: #ffffff;
+  --paper-body: #d9d4ca;
+  --paper-muted: #a39e94;
+  --paper-faint: #6f6b63;
+  --paper-rule: #34312b;
+  --paper-pill-ink: #edcf9e;
+  --paper-pill-bg: rgba(226, 179, 115, 0.12);
+  --paper-pill-border: rgba(226, 179, 115, 0.32);
+}
+.home-paper-clip-lg {
+  clip-path: polygon(0 0, var(--seam-top) 0, var(--seam-bottom) 100%, 0 100%);
+}
+.home-seam-lg {
+  background: var(--paper-sand, rgba(226, 179, 115, 0.75));
+  clip-path: polygon(
+    var(--seam-top) 0,
+    calc(var(--seam-top) + var(--seam-width)) 0,
+    calc(var(--seam-bottom) + var(--seam-width)) 100%,
+    var(--seam-bottom) 100%
+  );
+}
+.home-seam-badge {
+  left: var(--seam-middle);
+  width: 2.75rem;
+  height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--paper-pill-border);
+  border-radius: 9999px;
+  background: var(--paper);
+  color: var(--paper-pill-ink);
+  font: 400 1.375rem/1 var(--paper-serif);
+  box-shadow: 0 6px 20px -8px rgba(122, 78, 20, 0.35);
+}
+.home-paper-clip-sm {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 3.5rem), 0 100%);
+}
+.home-seam-sm {
+  background: rgba(226, 179, 115, 0.75);
+  clip-path: polygon(
+    0 calc(100% - 2px),
+    100% calc(100% - 3.5rem - 2px),
+    100% calc(100% - 3.5rem),
+    0 100%
+  );
+}
+@media (max-width: 63.99rem) {
+  .home-seam-badge {
+    left: 50%;
+  }
+}
+/* BaoCode's tilted grid, slowly zooming, faded where the text sits. */
+.home-paper-grid {
+  position: absolute;
+  inset: -40%;
+  background-image:
+    linear-gradient(to right, var(--paper-rule) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--paper-rule) 1px, transparent 1px);
+  background-size: 56px 56px;
+  transform: perspective(900px) rotateX(48deg) rotateZ(-14deg);
+  transform-origin: 50% 50%;
+  mask-image: radial-gradient(
+    ellipse 70% 60% at 30% 50%,
+    rgba(0, 0, 0, 0.15) 0%,
+    rgba(0, 0, 0, 0.9) 100%
+  );
+  animation: home-paper-grid-zoom 48s linear infinite alternate;
+}
+@keyframes home-paper-grid-zoom {
+  from {
+    transform: perspective(900px) rotateX(48deg) rotateZ(-14deg) scale(1);
+  }
+  to {
+    transform: perspective(900px) rotateX(48deg) rotateZ(-14deg) scale(1.25);
+  }
 }
 
 /* Micro-interactions — Vercel-style subtle hover/active feedback */

@@ -7718,6 +7718,24 @@
     "Scan with WeChat to pay": "Отсканируйте в WeChat для оплаты",
     "Save QR code": "Сохранить QR-код",
     "Save the QR code, then scan it from your photo album in WeChat": "Сохраните QR-код, затем отсканируйте его из фотоальбома в WeChat",
-    "Includes a {{rate}}% fee ({{fee}})": "Включая комиссию {{rate}}% ({{fee}})"
+    "Includes a {{rate}}% fee ({{fee}})": "Включая комиссию {{rate}}% ({{fee}})",
+    "For developers": "Для разработчиков",
+    "Beginner friendly": "Для новичков",
+    "Partner channel": "Партнёрский канал",
+    "One gateway, multiple models. Turn ideas into code.": "Один шлюз, множество моделей. Превращайте идеи в код.",
+    "Less setup, more creation. Access multiple AI models through YMeng CC, choose your coding companion in BaoCode, and bring your next idea to life.": "Меньше настройки, больше творчества. Получите доступ к множеству моделей ИИ через YMeng CC, выберите помощника для кода в BaoCode и воплотите следующую идею.",
+    "Download BaoCode for Mac, Windows or Linux": "Скачайте BaoCode для Mac, Windows или Linux",
+    "Sign in with your YMeng CC account directly": "Войдите напрямую с аккаунтом YMeng CC",
+    "Pick a model and start coding, no API setup needed": "Выберите модель и пишите код без настройки API",
+    "Get BaoCode": "Получить BaoCode",
+    "Free and open source": "Бесплатно и с открытым кодом",
+    "No API key needed": "API-ключ не нужен",
+    "Why BaoCode": "Почему BaoCode",
+    "Smoother than Codex, Claude Code and Cursor": "Удобнее, чем Codex, Claude Code и Cursor",
+    "Launch time": "Время запуска",
+    "Idle memory": "Память в простое",
+    "Visual UI, not a terminal": "Наглядный UI вместо терминала",
+    "Any model, one app": "Любые модели в одном приложении",
+    "Native, no Electron": "Нативно, без Electron"
   }
 }
