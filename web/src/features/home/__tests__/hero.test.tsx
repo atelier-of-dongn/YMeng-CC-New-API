@@ -107,15 +107,16 @@ it('shows sign-up and pricing entries to signed-out visitors', async () => {
     'href',
     '/pricing'
   )
-  expect(screen.queryByRole('button', { name: /Go to Dashboard/ })).toBeNull()
+  expect(screen.queryByRole('button', { name: /Sign in/ })).toBeNull()
 })
 
-it('shows the dashboard entry instead of sign-up to signed-in users', async () => {
+it('shows the sign-in entry to the dashboard instead of sign-up to signed-in users', async () => {
   await renderHero({ isAuthenticated: true })
 
-  expect(
-    screen.getByRole('button', { name: /Go to Dashboard/ })
-  ).toHaveAttribute('href', '/dashboard')
+  expect(screen.getByRole('button', { name: /Sign in/ })).toHaveAttribute(
+    'href',
+    '/dashboard'
+  )
   expect(screen.queryByRole('button', { name: /Get Started/ })).toBeNull()
 })
 

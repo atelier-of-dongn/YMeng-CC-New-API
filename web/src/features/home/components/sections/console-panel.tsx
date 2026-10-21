@@ -110,10 +110,10 @@ export function ConsolePanel(props: ConsolePanelProps) {
       >
         {props.isAuthenticated ? (
           <Button
-            className='group h-11 rounded-lg px-5 text-sm font-medium'
+            className='group shadow-primary/25 h-12 rounded-lg px-7 text-base font-semibold shadow-md'
             render={<Link to='/dashboard' />}
           >
-            {t('Go to Dashboard')}
+            {t('Sign in')}
             <ArrowRight className='ml-1.5 size-4 transition-transform duration-200 group-hover:translate-x-0.5' />
           </Button>
         ) : (
