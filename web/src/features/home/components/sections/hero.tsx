@@ -30,7 +30,8 @@ interface HeroProps {
 
 // The first screen, split by a slanted seam (see .home-split in index.css):
 // BaoCode's beginner entry on the paper side, the developer console entry on
-// the other. Stacked below lg, where the paper side ends in a slanted edge.
+// the other. Stacked below lg with the developer entry first (its column comes
+// first in the DOM), and the paper side below it ending in a slanted edge.
 export function Hero(props: HeroProps) {
   return (
     <section className='home-split relative isolate overflow-hidden'>
@@ -81,7 +82,19 @@ export function Hero(props: HeroProps) {
       </div>
 
       <div className='mx-auto grid max-w-7xl grid-cols-1 lg:min-h-[100svh] lg:grid-cols-[minmax(0,42fr)_minmax(0,58fr)] lg:px-8'>
-        <div className='relative flex items-center px-6 pt-24 pb-24 md:px-10 lg:items-start lg:px-0 lg:pt-24 lg:pr-20 lg:pb-24'>
+        <div className='relative flex flex-col items-start px-6 pt-24 pb-20 md:px-10 lg:col-start-2 lg:row-start-1 lg:px-0 lg:pt-[20.5rem] lg:pb-24 lg:pl-16 xl:pl-20'>
+          <CommunityCard className='mb-8 lg:absolute lg:top-[4.75rem] lg:left-16 lg:mb-0 xl:left-20' />
+          {/* The narrow end of the community slice: a faint penguin and a
+              looping chat peek that stays above the seam */}
+          <RiQqLine
+            aria-hidden
+            className='pointer-events-none absolute top-2 right-[20.5rem] hidden size-36 -rotate-12 text-sky-500/[0.07] xl:block dark:text-sky-300/[0.06]'
+          />
+          <CommunityChatPreview className='absolute top-[5.25rem] right-0 hidden w-72 xl:block' />
+          <ConsolePanel isAuthenticated={props.isAuthenticated} />
+        </div>
+
+        <div className='relative flex items-center px-6 pt-20 pb-24 md:px-10 lg:col-start-1 lg:row-start-1 lg:items-start lg:px-0 lg:pt-24 lg:pr-20 lg:pb-24'>
           {/* Paper side below lg: its own background with a slanted bottom */}
           <div
             aria-hidden
@@ -100,18 +113,6 @@ export function Hero(props: HeroProps) {
             ×
           </div>
           <BaoCodePanel />
-        </div>
-
-        <div className='relative flex flex-col items-start px-6 pt-10 pb-20 md:px-10 lg:px-0 lg:pt-[20.5rem] lg:pb-24 lg:pl-16 xl:pl-20'>
-          <CommunityCard className='mb-8 lg:absolute lg:top-[4.75rem] lg:left-16 lg:mb-0 xl:left-20' />
-          {/* The narrow end of the community slice: a faint penguin and a
-              looping chat peek that stays above the seam */}
-          <RiQqLine
-            aria-hidden
-            className='pointer-events-none absolute top-2 right-[20.5rem] hidden size-36 -rotate-12 text-sky-500/[0.07] xl:block dark:text-sky-300/[0.06]'
-          />
-          <CommunityChatPreview className='absolute top-[5.25rem] right-0 hidden w-72 xl:block' />
-          <ConsolePanel isAuthenticated={props.isAuthenticated} />
         </div>
       </div>
     </section>

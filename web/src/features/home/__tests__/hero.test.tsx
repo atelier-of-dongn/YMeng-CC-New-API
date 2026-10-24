@@ -141,6 +141,22 @@ it('keeps a relative docs link inside the app', async () => {
   expect(docs).not.toHaveAttribute('target')
 })
 
+it('stacks the developer entry above the BaoCode entry below lg', async () => {
+  await renderHero({ isAuthenticated: false })
+
+  const developerEntry = screen.getByText('For developers')
+  const baocodeEntry = screen.getByRole('button', { name: /Get BaoCode/ })
+  expect(
+    developerEntry.compareDocumentPosition(baocodeEntry) &
+      Node.DOCUMENT_POSITION_FOLLOWING
+  ).toBeTruthy()
+
+  const developerColumn = developerEntry.closest('.grid > div')
+  const baocodeColumn = baocodeEntry.closest('.grid > div')
+  expect(developerColumn).toHaveClass('lg:col-start-2')
+  expect(baocodeColumn).toHaveClass('lg:col-start-1')
+})
+
 it('exposes one page heading and hides the decorative seam badges', async () => {
   await renderHero({ isAuthenticated: false })
 
