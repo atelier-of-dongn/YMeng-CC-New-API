@@ -24,6 +24,10 @@ For commercial licensing, please contact support@quantumnous.com
 export const DEFAULT_SYSTEM_NAME = 'New API'
 export const DEFAULT_LOGO = '/logo.png'
 
+// Project Links
+export const GITHUB_REPO_URL =
+  'https://github.com/atelier-of-dongn/YMeng-CC-New-API'
+
 // LocalStorage Keys
 export const STORAGE_KEYS = {
   SYSTEM_NAME: 'system_name',

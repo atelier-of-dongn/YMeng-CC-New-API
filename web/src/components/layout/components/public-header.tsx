@@ -44,6 +44,7 @@ import { useAuthStore } from '@/stores/auth-store'
 
 import { defaultTopNavLinks } from '../config/top-nav.config'
 import type { TopNavLink } from '../types'
+import { GitHubLink } from './github-link'
 import { HeaderLogo } from './header-logo'
 
 const AUTH_PROMPT_SECONDS = 5
@@ -244,6 +245,7 @@ export function PublicHeader(props: PublicHeaderProps) {
                 </span>
               </Link>
               <SystemUpdateAction presentation='version' />
+              <GitHubLink />
             </div>
 
             {/* Desktop nav */}
