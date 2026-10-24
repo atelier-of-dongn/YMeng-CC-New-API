@@ -16,7 +16,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { FaTelegram } from 'react-icons/fa'
 import { RiQqLine } from 'react-icons/ri'
+
+import { useStatus } from '@/hooks/use-status'
+import { cn } from '@/lib/utils'
 
 import { BaoCodePanel } from './baocode-panel'
 import { CommunityCard } from './community-card'
@@ -33,6 +37,15 @@ interface HeroProps {
 // the other. Stacked below lg with the developer entry first (its column comes
 // first in the DOM), and the paper side below it ending in a slanted edge.
 export function Hero(props: HeroProps) {
+  const { status } = useStatus()
+
+  const qqLink = (
+    (status?.community_qq_group_link as string | undefined) ?? ''
+  ).trim()
+  const telegramLink = (
+    (status?.community_telegram_link as string | undefined) ?? ''
+  ).trim()
+
   return (
     <section className='home-split relative isolate overflow-hidden'>
       {/* Console side: radial glow and grid */}
@@ -81,20 +94,40 @@ export function Hero(props: HeroProps) {
         ×
       </div>
 
-      <div className='mx-auto grid max-w-7xl grid-cols-1 lg:min-h-[100svh] lg:grid-cols-[minmax(0,42fr)_minmax(0,58fr)] lg:px-8'>
+      {/* The column split is pulled left by its padding, so the console column
+          keeps its old width and the diagonal seam stays where it was. */}
+      <div className='home-hero-grid mx-auto grid max-w-7xl grid-cols-1 lg:min-h-[100svh] lg:grid-cols-2 lg:gap-x-0 lg:px-8'>
         {/* The gap between the community region and the developer entry sits
             on the region itself, so an empty region leaves no stray gap. */}
-        <div className='relative flex flex-col items-start px-6 pt-24 pb-20 md:px-10 lg:col-start-2 lg:row-start-1 lg:px-0 lg:pt-24 lg:pb-24 lg:pl-16 xl:pl-20'>
-          <div className='home-community-content mb-10 flex w-full min-w-0 flex-col items-start empty:mb-0 [&>*]:w-full [&>*:not(:last-child)]:mb-5'>
-            <CommunityCard className='max-w-md' />
-            <CommunityChatPreview className='max-w-sm' />
+        <div className='relative flex flex-col items-start px-6 pt-24 pb-20 md:px-10 lg:col-start-2 lg:row-start-1 lg:min-w-0 lg:px-0 lg:pt-24 lg:pb-24 lg:pl-16 xl:pl-20'>
+          {/* The community region: the join card and the chat example share
+              one row from lg up, both on top of the faint group emblems. */}
+          <div className='home-community-slice relative mb-10 w-full min-w-0 empty:mb-0 lg:mb-16'>
+            {(qqLink || telegramLink) && (
+              // Above the transparent card text on lg, behind it below lg.
+              <div
+                aria-hidden
+                data-community-emblem
+                className='pointer-events-none absolute inset-0 z-10 overflow-hidden opacity-40 lg:-z-10 lg:opacity-100'
+              >
+                {qqLink && (
+                  <RiQqLine className='absolute top-2 right-[12rem] size-36 -rotate-12 text-sky-500/[0.07] dark:text-sky-300/[0.06]' />
+                )}
+                {telegramLink && (
+                  <FaTelegram
+                    className={cn(
+                      'absolute -top-4 -right-4 text-sky-500/[0.07] dark:text-sky-300/[0.06]',
+                      qqLink ? 'size-20 rotate-12' : 'size-36 -rotate-12'
+                    )}
+                  />
+                )}
+              </div>
+            )}
+            <div className='home-community-content flex w-full min-w-0 flex-col items-center gap-5 empty:mb-0 lg:flex-row lg:items-start lg:justify-end lg:gap-4 lg:pl-10'>
+              <CommunityCard className='max-w-md lg:max-w-sm lg:min-w-0 lg:flex-1' />
+              <CommunityChatPreview className='max-w-md lg:w-60 lg:max-w-[15rem] lg:shrink-0' />
+            </div>
           </div>
-          {/* The narrow end of the community slice: a faint penguin and a
-              looping chat peek that stays above the seam */}
-          <RiQqLine
-            aria-hidden
-            className='pointer-events-none absolute top-2 right-[20.5rem] hidden size-36 -rotate-12 text-sky-500/[0.07] xl:block dark:text-sky-300/[0.06]'
-          />
           <ConsolePanel isAuthenticated={props.isAuthenticated} />
         </div>
 

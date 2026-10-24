@@ -112,7 +112,7 @@ export function CommunityChatPreview(props: CommunityChatPreviewProps) {
 
       <div
         className={cn(
-          'home-chat-rounds grid min-w-0',
+          'home-chat-rounds grid w-full min-w-0',
           rotating ? 'home-chat-rotating' : 'home-chat-static'
         )}
       >
@@ -122,7 +122,7 @@ export function CommunityChatPreview(props: CommunityChatPreviewProps) {
             <div
               key={round.name}
               className={cn(
-                'home-qq-round col-start-1 row-start-1 flex min-w-0 flex-col gap-1 pt-2',
+                'home-qq-round col-start-1 row-start-1 flex w-full min-w-0 flex-col gap-1 pt-2',
                 rotating &&
                   round.name === rounds[1].name &&
                   'home-qq-round-late'
@@ -134,7 +134,7 @@ export function CommunityChatPreview(props: CommunityChatPreviewProps) {
                   <div
                     key={message}
                     className={cn(
-                      'home-qq-bubble flex min-w-0 items-start gap-1.5',
+                      'home-qq-bubble flex w-full min-w-0 items-start gap-1.5',
                       own && 'home-chat-answer flex-row-reverse'
                     )}
                   >
@@ -161,7 +161,7 @@ export function CommunityChatPreview(props: CommunityChatPreviewProps) {
                   </div>
                 )
               })}
-              <div className='home-qq-bubble home-chat-typing-row flex min-w-0 items-start gap-1.5'>
+              <div className='home-qq-bubble home-chat-typing-row flex w-full min-w-0 items-start gap-1.5'>
                 <span className='flex size-5 shrink-0 items-center justify-center rounded-full bg-slate-400/80 text-white'>
                   <Icon className='size-2.5' />
                 </span>

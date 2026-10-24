@@ -208,6 +208,7 @@ it('hides the community card and the example chat when no group links are config
     screen.queryByRole('button', { name: /Join Telegram group/ })
   ).toBeNull()
   expect(screen.queryByText('How do I connect this model?')).toBeNull()
+  expect(document.querySelector('[data-community-emblem]')).toBeNull()
   expect(
     document.querySelector('.home-community-content')
   ).toBeEmptyDOMElement()
@@ -251,13 +252,23 @@ it('keeps the developer entry after the community region without an absolute gap
 
   const community = document.querySelector('.home-community-content')
   const developerEntry = screen.getByText('For developers')
-  if (!community) throw new Error('Expected community content')
+  const slice = document.querySelector('.home-community-slice')
+  if (!community || !slice) throw new Error('Expected community content')
   expect(community).not.toHaveClass('absolute')
-  expect(community.className).toMatch(/\bempty:mb-0\b|\bmb-10\b/)
+  expect(community.className).toMatch(/\bempty:mb-0\b/)
+  expect(slice.className).toMatch(/\bempty:mb-0\b|\bmb-10\b/)
+  // The emblem layer sits behind the community text and the chat example.
+  expect(slice.firstElementChild).toHaveAttribute('data-community-emblem')
+  expect(slice.contains(community)).toBe(true)
   expect(
     community.compareDocumentPosition(developerEntry) &
       Node.DOCUMENT_POSITION_FOLLOWING
   ).toBeTruthy()
+  // The split is pulled left by its padding, so the console column starts at
+  // the same gutter as before and the developer entry stays clear of the seam.
+  expect(document.querySelector('.home-hero-grid')).toHaveClass('lg:px-8')
+  const developerColumn = developerEntry.closest('.home-hero-grid > div')
+  expect(developerColumn).toHaveClass('lg:min-w-0')
 })
 
 it.each([
@@ -274,6 +285,7 @@ it.each([
     if (!slot) throw new Error('Expected a conversation slot')
     expect(slot).toHaveClass(
       'grid',
+      'w-full',
       'min-w-0',
       count === 2 ? 'home-chat-rotating' : 'home-chat-static'
     )
@@ -326,11 +338,21 @@ it('keeps long community names wrapping above the preview and console in normal 
   expect(title).not.toHaveClass('truncate')
   const community = title.closest('.home-community-content')
   if (!community) throw new Error('Expected community content')
-  expect(community).toHaveClass('flex-col', 'empty:mb-0')
+  expect(community).toHaveClass(
+    'flex-col',
+    'gap-5',
+    'lg:flex-row',
+    'lg:items-start',
+    'empty:mb-0'
+  )
   expect(community).not.toHaveClass('absolute')
   const preview = community.querySelector('[aria-hidden="true"].rounded-xl')
-  expect(preview).toHaveClass('w-full', 'max-w-sm')
+  expect(preview).toHaveClass('w-full', 'max-w-md', 'lg:w-60', 'lg:shrink-0')
   expect(preview).not.toHaveClass('absolute')
+  // From lg up the chat example sits to the right of the join text, not below it.
+  const card = title.closest('.landing-animate-fade-up')
+  if (!card || !preview) throw new Error('Expected the community card')
+  expect(preview.previousElementSibling).toBe(card)
   expect(
     community.compareDocumentPosition(
       screen.getByRole('heading', { level: 2 })
@@ -339,6 +361,39 @@ it('keeps long community names wrapping above the preview and console in normal 
   // The hero title wraps its brand name instead of clipping it.
   expect(screen.getByRole('heading', { level: 1 })).toHaveClass('flex-wrap')
 })
+
+it('lets the example chat bubbles span the full card width', async () => {
+  await renderHero({
+    isAuthenticated: false,
+    qqGroupLink: 'https://qm.qq.com/q/example',
+    telegramLink: 'https://t.me/example',
+  })
+
+  const rounds = [...document.querySelectorAll('.home-qq-round')]
+  expect(rounds.length).toBeGreaterThan(0)
+  for (const round of rounds) {
+    expect(round).toHaveClass('w-full')
+    for (const bubble of round.querySelectorAll('.home-qq-bubble')) {
+      expect(bubble).toHaveClass('w-full')
+    }
+  }
+})
+
+it.each([
+  ['https://qm.qq.com/q/example', '', 1],
+  ['', 'https://t.me/example', 1],
+  ['https://qm.qq.com/q/example', 'https://t.me/example', 2],
+])(
+  'shows a background emblem for each configured group with QQ=%s Telegram=%s',
+  async (qqGroupLink, telegramLink, count) => {
+    await renderHero({ isAuthenticated: false, qqGroupLink, telegramLink })
+
+    const emblem = document.querySelector('[data-community-emblem]')
+    expect(emblem).not.toBeNull()
+    if (!emblem) throw new Error('Expected a background emblem')
+    expect(emblem.querySelectorAll('svg')).toHaveLength(count)
+  }
+)
 
 it('keeps the example chat in the community slice out of the accessibility tree', async () => {
   await renderHero({

@@ -569,6 +569,16 @@ For commercial licensing, please contact support@quantumnous.com
   }
 }
 
+/* The same 42/58 split as the console column, measured past its own padding so
+   the seam lines up with the page gutter instead of moving when `lg:px-8` is
+   added to the grid. */
+@variant lg {
+  .home-hero-grid {
+    grid-template-columns:
+      calc((100% - 4rem) * 0.42 + 1rem)
+      calc((100% - 4rem) * 0.58 + 1rem);
+  }
+}
 /* ── Home community slice: QQ group in the cut-off corner ── */
 @keyframes home-qq-float {
   0%,
