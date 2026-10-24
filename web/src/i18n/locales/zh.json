@@ -7725,9 +7725,9 @@
     "Beginner friendly": "小白入口",
     "Partner channel": "合作渠道",
     "One gateway, multiple models. Turn ideas into code.": "一个入口，连接多元模型，让灵感直达代码。",
-    "Less setup, more creation. Access multiple AI models through YMeng CC, choose your coding companion in BaoCode, and bring your next idea to life.": "少一点接入折腾，多一点专注创造。通过 YMeng CC 统一接入多种 AI 模型，在 BaoCode 中选择适合你的编程伙伴，让每一次灵感，都更进一步。",
+    "Less setup, more creation. Access multiple AI models through {{name}}, choose your coding companion in BaoCode, and bring your next idea to life.": "少一点接入折腾，多一点专注创造。通过 {{name}} 统一接入多种 AI 模型，在 BaoCode 中选择适合你的编程伙伴，让每一次灵感，都更进一步。",
     "Download BaoCode for Mac, Windows or Linux": "下载 BaoCode（支持 Mac、Windows、Linux）",
-    "Sign in with your YMeng CC account directly": "直接登录你的 YMeng CC 账号",
+    "Sign in with your {{name}} account directly": "直接登录你的 {{name}} 账号",
     "Pick a model and start coding, no API setup needed": "选好模型即可开始编程，无需配置 API",
     "Get BaoCode": "获取 BaoCode",
     "Free and open source": "免费开源",
@@ -7745,7 +7745,16 @@
     "Feedback": "反馈",
     "New models": "新模型",
     "Join the YMeng CC QQ group": "加入 YMeng CC 交流群",
-    "When is the new Claude model coming?": "新出的 Claude 模型什么时候上？",
-    "Already live, try it in the console": "已经上线啦，控制台就能用"
+    "Join the {{name}} community group": "加入 {{name}} 交流群",
+    "Join QQ group": "一键加群",
+    "Join Telegram group": "加入 Telegram 群",
+    "QQ Group Link": "QQ 群链接",
+    "Telegram Group Link": "Telegram 群链接",
+    "Link opened by the home page QQ group entry. Leave empty to hide it": "首页 QQ 群入口的跳转地址，留空则隐藏该入口",
+    "Link opened by the home page Telegram group entry. Leave empty to hide it": "首页 Telegram 群入口的跳转地址，留空则隐藏该入口",
+    "How do I connect this model?": "这个模型怎么接入？",
+    "Grab a key in the console and paste it into your client": "控制台拿个 key，填到客户端就能用",
+    "How do I report an error?": "有报错怎么反馈？",
+    "Post the logs in the group and we will take a look": "把日志贴到群里，我们帮你看看"
   }
 }

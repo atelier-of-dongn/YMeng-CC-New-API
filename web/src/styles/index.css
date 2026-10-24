@@ -561,11 +561,13 @@ For commercial licensing, please contact support@quantumnous.com
   .home-qq-float,
   .home-qq-ring,
   .home-qq-bubble,
+  .home-qq-round,
   .home-qq-typing,
   .home-qq-shine::after {
     animation: none !important;
   }
-  .home-qq-bubble {
+  .home-qq-bubble,
+  .home-qq-round {
     opacity: 1 !important;
     transform: none !important;
   }
@@ -620,7 +622,38 @@ For commercial licensing, please contact support@quantumnous.com
   }
 }
 .home-qq-bubble {
-  animation: home-qq-bubble 6s ease-in-out infinite;
+  animation: home-qq-bubble 6s ease-in-out var(--home-qq-bubble-delay, 0s)
+    infinite;
+}
+/* Each platform's round (question, answer, typing) takes its turn: a round is
+   fully on screen for its 6s slot, then fades out while the next one fades in.
+   The second round runs the same animation half a cycle later (6s delay in the
+   markup), so exactly one round is visible at any time. */
+@keyframes home-qq-round {
+  0% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 1;
+  }
+  50%,
+  90% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+.home-qq-round {
+  animation: home-qq-round 12s ease-in-out infinite;
+}
+.home-qq-round-late {
+  animation-delay: 6s;
+}
+/* A round's bubbles play in sequence within its own 6s slot (0s, 1.5s, 3s from
+   the markup), so the second round is empty until its slot begins. */
+.home-qq-round-late .home-qq-bubble {
+  animation-delay: calc(var(--home-qq-bubble-delay, 0s) + 6s);
 }
 @keyframes home-qq-typing {
   0%,

@@ -7725,9 +7725,9 @@
     "Beginner friendly": "Для новичков",
     "Partner channel": "Партнёрский канал",
     "One gateway, multiple models. Turn ideas into code.": "Один шлюз, множество моделей. Превращайте идеи в код.",
-    "Less setup, more creation. Access multiple AI models through YMeng CC, choose your coding companion in BaoCode, and bring your next idea to life.": "Меньше настройки, больше творчества. Получите доступ к множеству моделей ИИ через YMeng CC, выберите помощника для кода в BaoCode и воплотите следующую идею.",
+    "Less setup, more creation. Access multiple AI models through {{name}}, choose your coding companion in BaoCode, and bring your next idea to life.": "Меньше настройки, больше творчества. Получите доступ к множеству моделей ИИ через {{name}}, выберите помощника для кода в BaoCode и воплотите следующую идею.",
     "Download BaoCode for Mac, Windows or Linux": "Скачайте BaoCode для Mac, Windows или Linux",
-    "Sign in with your YMeng CC account directly": "Войдите напрямую с аккаунтом YMeng CC",
+    "Sign in with your {{name}} account directly": "Войдите напрямую с аккаунтом {{name}}",
     "Pick a model and start coding, no API setup needed": "Выберите модель и пишите код без настройки API",
     "Get BaoCode": "Получить BaoCode",
     "Free and open source": "Бесплатно и с открытым кодом",
@@ -7745,7 +7745,16 @@
     "Feedback": "Отзывы",
     "New models": "Новые модели",
     "Join the YMeng CC QQ group": "Вступайте в группу QQ YMeng CC",
-    "When is the new Claude model coming?": "Когда появится новая модель Claude?",
-    "Already live, try it in the console": "Уже доступна, попробуйте в консоли"
+    "Join the {{name}} community group": "Вступайте в сообщество {{name}}",
+    "Join QQ group": "Вступить в группу QQ",
+    "Join Telegram group": "Вступить в группу Telegram",
+    "QQ Group Link": "Ссылка на группу QQ",
+    "Telegram Group Link": "Ссылка на группу Telegram",
+    "Link opened by the home page QQ group entry. Leave empty to hide it": "Ссылка, открываемая входом в группу QQ на главной странице. Оставьте пустой, чтобы скрыть её",
+    "Link opened by the home page Telegram group entry. Leave empty to hide it": "Ссылка, открываемая входом в группу Telegram на главной странице. Оставьте пустой, чтобы скрыть её",
+    "How do I connect this model?": "Как подключить эту модель?",
+    "Grab a key in the console and paste it into your client": "Возьмите ключ в консоли и вставьте его в свой клиент",
+    "How do I report an error?": "Как сообщить об ошибке?",
+    "Post the logs in the group and we will take a look": "Пришлите логи в группу, мы посмотрим"
   }
 }

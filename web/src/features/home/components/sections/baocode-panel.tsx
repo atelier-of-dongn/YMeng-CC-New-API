@@ -25,15 +25,20 @@ import { useSystemConfig } from '@/hooks/use-system-config'
 import { BAOCODE_ICON_URL, BAOCODE_YMENGCC_URL } from '../../constants'
 import { BaoCodeAdvantages } from './baocode-advantages'
 
-// The beginner entry: BaoCode's channel page for YMeng CC, drawn in
+// The beginner entry: BaoCode's channel page for this site, drawn in
 // BaoCode's own paper look (colors and fonts from .home-paper).
 export function BaoCodePanel() {
   const { t } = useTranslation()
-  const { logo } = useSystemConfig()
+  const { logo, systemName } = useSystemConfig()
 
   const steps = [
     { icon: Download, text: t('Download BaoCode for Mac, Windows or Linux') },
-    { icon: LogIn, text: t('Sign in with your YMeng CC account directly') },
+    {
+      icon: LogIn,
+      text: t('Sign in with your {{name}} account directly', {
+        name: systemName,
+      }),
+    },
     {
       icon: Sparkles,
       text: t('Pick a model and start coding, no API setup needed'),
@@ -72,7 +77,7 @@ export function BaoCodePanel() {
               event.currentTarget.style.display = 'none'
             }}
           />
-          YMeng CC
+          {systemName}
           <span className='mx-[0.12em] font-normal text-[var(--paper-faint)]'>
             ×
           </span>
@@ -99,7 +104,8 @@ export function BaoCodePanel() {
         style={{ animationDelay: '180ms' }}
       >
         {t(
-          'Less setup, more creation. Access multiple AI models through YMeng CC, choose your coding companion in BaoCode, and bring your next idea to life.'
+          'Less setup, more creation. Access multiple AI models through {{name}}, choose your coding companion in BaoCode, and bring your next idea to life.',
+          { name: systemName }
         )}
       </p>
 

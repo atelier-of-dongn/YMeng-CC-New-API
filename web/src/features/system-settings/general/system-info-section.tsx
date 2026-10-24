@@ -32,6 +32,8 @@ import {
 } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
+import { DEFAULT_BAOCODE_URL } from '@/features/home/constants'
+import { isHttpUrl } from '@/lib/content-format'
 
 import { FormDirtyIndicator } from '../components/form-dirty-indicator'
 import { FormNavigationGuard } from '../components/form-navigation-guard'
@@ -56,6 +58,11 @@ const _systemInfoSchema = z.object({
   HomePageContent: z.string().optional(),
   general_setting: z.object({
     docs_link: z.string(),
+    baocode_link: z.string().trim().refine(isHttpUrl),
+  }),
+  community_setting: z.object({
+    qq_group_link: z.string().optional(),
+    telegram_link: z.string().optional(),
   }),
   legal: z.object({
     user_agreement: z.string().optional(),
@@ -88,6 +95,17 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
     HomePageContent: normalizeValue(defaultValues.HomePageContent),
     general_setting: {
       docs_link: normalizeValue(defaultValues.general_setting?.docs_link),
+      baocode_link: normalizeValue(
+        defaultValues.general_setting?.baocode_link ?? DEFAULT_BAOCODE_URL
+      ),
+    },
+    community_setting: {
+      qq_group_link: normalizeValue(
+        defaultValues.community_setting?.qq_group_link
+      ),
+      telegram_link: normalizeValue(
+        defaultValues.community_setting?.telegram_link
+      ),
     },
     legal: {
       user_agreement: normalizeValue(defaultValues.legal?.user_agreement),
@@ -112,6 +130,13 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
     HomePageContent: z.string().optional(),
     general_setting: z.object({
       docs_link: z.string(),
+      baocode_link: z.string().trim().refine(isHttpUrl, {
+        error: () => t('Enter an absolute HTTP(S) URL'),
+      }),
+    }),
+    community_setting: z.object({
+      qq_group_link: z.string().optional(),
+      telegram_link: z.string().optional(),
     }),
     legal: z.object({
       user_agreement: z.string().optional(),
@@ -248,6 +273,64 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
                     </FormControl>
                     <FormDescription>
                       {t('Link to your documentation site')}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='general_setting.baocode_link'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('BaoCode Link')}</FormLabel>
+                    <FormControl>
+                      <Input placeholder={DEFAULT_BAOCODE_URL} {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      {t('Link opened by the Get BaoCode button on the home page')}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='community_setting.qq_group_link'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('QQ Group Link')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder={t('https://qm.qq.com/q/...')}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'Link opened by the home page QQ group entry. Leave empty to hide it'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='community_setting.telegram_link'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('Telegram Group Link')}</FormLabel>
+                    <FormControl>
+                      <Input placeholder={t('https://t.me/...')} {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'Link opened by the home page Telegram group entry. Leave empty to hide it'
+                      )}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

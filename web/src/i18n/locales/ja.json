@@ -7725,9 +7725,9 @@
     "Beginner friendly": "初心者向け",
     "Partner channel": "パートナーチャネル",
     "One gateway, multiple models. Turn ideas into code.": "ひとつの入口から多彩なモデルへ。アイデアをそのままコードに。",
-    "Less setup, more creation. Access multiple AI models through YMeng CC, choose your coding companion in BaoCode, and bring your next idea to life.": "接続の手間は少なく、創造にもっと集中を。YMeng CC で多様な AI モデルにまとめてアクセスし、BaoCode で自分に合うコーディングパートナーを選んで、次のアイデアを形にしましょう。",
+    "Less setup, more creation. Access multiple AI models through {{name}}, choose your coding companion in BaoCode, and bring your next idea to life.": "接続の手間は少なく、創造にもっと集中を。{{name}} で多様な AI モデルにまとめてアクセスし、BaoCode で自分に合うコーディングパートナーを選んで、次のアイデアを形にしましょう。",
     "Download BaoCode for Mac, Windows or Linux": "BaoCode をダウンロード（Mac・Windows・Linux 対応）",
-    "Sign in with your YMeng CC account directly": "YMeng CC アカウントでそのままログイン",
+    "Sign in with your {{name}} account directly": "{{name}} アカウントでそのままログイン",
     "Pick a model and start coding, no API setup needed": "モデルを選ぶだけでコーディング開始、API 設定は不要",
     "Get BaoCode": "BaoCode を入手",
     "Free and open source": "無料・オープンソース",
@@ -7745,7 +7745,16 @@
     "Feedback": "フィードバック",
     "New models": "新モデル",
     "Join the YMeng CC QQ group": "YMeng CC の QQ グループに参加",
-    "When is the new Claude model coming?": "新しい Claude モデルはいつ来ますか？",
-    "Already live, try it in the console": "もう使えます。コンソールからどうぞ"
+    "Join the {{name}} community group": "{{name}} コミュニティに参加",
+    "Join QQ group": "QQ グループに参加",
+    "Join Telegram group": "Telegram グループに参加",
+    "QQ Group Link": "QQ グループリンク",
+    "Telegram Group Link": "Telegram グループリンク",
+    "Link opened by the home page QQ group entry. Leave empty to hide it": "ホームページの QQ グループ入口のリンクです。空欄にすると入口を非表示にします",
+    "Link opened by the home page Telegram group entry. Leave empty to hide it": "ホームページの Telegram グループ入口のリンクです。空欄にすると入口を非表示にします",
+    "How do I connect this model?": "このモデルはどう接続しますか？",
+    "Grab a key in the console and paste it into your client": "コンソールでキーを取得してクライアントに貼り付けるだけです",
+    "How do I report an error?": "エラーはどう報告しますか？",
+    "Post the logs in the group and we will take a look": "グループにログを貼ってください。確認します"
   }
 }

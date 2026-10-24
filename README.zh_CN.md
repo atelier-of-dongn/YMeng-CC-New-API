@@ -1,6 +1,6 @@
 <div align="center">
 
-![new-api](/web/public/logo.png)
+![new-api](https://tc.ymeng.cc/2026/08/26/6a8f0564c7a85.png)
 
 # New API
 
@@ -55,6 +55,15 @@
 </div>
 
 ---
+
+## 🎨 本分支定制
+
+本仓库是 [QuantumNous/new-api](https://github.com/QuantumNous/new-api) 的二次开发版本，为 [YMeng API 中转站](https://ymeng.cc)开发与维护。
+
+- **新首页**：斜线分割首屏，左侧为「{{站点名称}} × BaoCode」小白入口，右侧为开发者控制台入口；右上角为 QQ / Telegram 交流群入口，另有 BaoCode 优势对比、统计、核心能力、工作原理、价格与常见问题等区块。BaoCode 用户可直接用本站账号登录，无需配置 API Key。
+- **近期功能**：云猫寄售店铺支付（含微信二维码）、发票申请与管理、邀请消费返佣与推荐看板、渠道优先级拖拽、API Key 有序多分组、日志请求参数追溯、日志响应模型开关、网页地区可见性、上游成本监控与收益分析、运营告警与导航配置。
+
+完整说明见[中文分支说明](./README.md#fork-overview)。部署请从本仓库构建镜像；上游官方镜像 `calciumion/new-api:latest` 不包含以上修改。
 
 ## 📝 项目说明
 

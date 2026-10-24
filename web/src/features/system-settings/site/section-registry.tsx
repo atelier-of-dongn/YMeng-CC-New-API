@@ -45,6 +45,11 @@ const SITE_SECTIONS = [
           TaskPublicAddress: settings.TaskPublicAddress,
           general_setting: {
             docs_link: settings['general_setting.docs_link'],
+            baocode_link: settings['general_setting.baocode_link'],
+          },
+          community_setting: {
+            qq_group_link: settings['community_setting.qq_group_link'],
+            telegram_link: settings['community_setting.telegram_link'],
           },
           legal: {
             user_agreement: settings['legal.user_agreement'],

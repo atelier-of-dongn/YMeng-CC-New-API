@@ -1,6 +1,6 @@
 <div align="center">
 
-![new-api](/web/public/logo.png)
+![new-api](https://tc.ymeng.cc/2026/08/26/6a8f0564c7a85.png)
 
 # New API
 
@@ -54,6 +54,15 @@
 </div>
 
 ---
+
+## 🎨 Cette branche
+
+Ce dépôt est une version personnalisée de [QuantumNous/new-api](https://github.com/QuantumNous/new-api), développée et maintenue pour le [service de relais YMeng API](https://ymeng.cc).
+
+- **Nouvelle page d'accueil** : un premier écran découpé en diagonale, avec une entrée débutant « {{nom du site}} × BaoCode » d'un côté et l'entrée de la console développeur de l'autre, un coin pour les groupes QQ / Telegram, une carte comparative BaoCode, puis des sections statistiques, fonctionnalités, fonctionnement, tarifs et FAQ. Les utilisateurs de BaoCode se connectent avec leur compte {{nom du site}}, sans clé API.
+- **Fonctionnalités récentes** : paiement par boutique de consignation Yunmao (avec QR code WeChat), demandes et gestion de factures, commission sur les dépenses des filleuls et tableau de recommandation, réorganisation des priorités de canal par glisser-déposer, clés API à groupes ordonnés, traçabilité des paramètres de requête dans les journaux, réglage de visibilité du modèle de réponse dans les journaux et exports utilisateur, visibilité web par région, surveillance des coûts amont avec analyse du chiffre d'affaires, alertes d'exploitation et réglages de navigation.
+
+La documentation complète se trouve dans la [présentation de la branche](./README.md#fork-overview). Construisez l'image depuis ce dépôt ; l'image amont `calciumion/new-api:latest` ne contient pas ces modifications.
 
 ## 📝 Description du projet
 

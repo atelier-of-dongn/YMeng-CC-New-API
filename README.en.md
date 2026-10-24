@@ -1,6 +1,6 @@
 <div align="center">
 
-![new-api](/web/public/logo.png)
+![new-api](https://tc.ymeng.cc/2026/08/26/6a8f0564c7a85.png)
 
 # New API
 
@@ -57,6 +57,15 @@
 </div>
 
 ---
+
+## 🎨 This fork
+
+This repository is a fork of [QuantumNous/new-api](https://github.com/QuantumNous/new-api), developed and maintained for the [YMeng API relay service](https://ymeng.cc).
+
+- **New home page**: a diagonally split first screen with a "{{site name}} × BaoCode" beginner entry on one side and the developer console entry on the other, a QQ / Telegram community group corner, a BaoCode comparison card, and sections for stats, core features, how it works, pricing, and FAQ. BaoCode users sign in with their {{site name}} account and need no API key.
+- **Recent features**: Yunmao consignment-store payment (including WeChat QR codes), invoice requests and management, invite-based spend commission and a referral dashboard, drag-to-order channel priorities, ordered multi-group API keys, request-parameter traceability in logs, a response-model visibility switch for user logs and exports, region-based web visibility, upstream cost monitoring with revenue analysis, and operations alerts and navigation settings.
+
+See the [branch overview](./README.md#fork-overview) for the full documentation. Build the image from this repository; the upstream image `calciumion/new-api:latest` does not contain these changes.
 
 ## 📝 Project Description
 

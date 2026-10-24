@@ -90,7 +90,7 @@ export function Hero(props: HeroProps) {
             aria-hidden
             className='pointer-events-none absolute top-2 right-[20.5rem] hidden size-36 -rotate-12 text-sky-500/[0.07] xl:block dark:text-sky-300/[0.06]'
           />
-          <CommunityChatPreview className='absolute top-[5.25rem] right-0 hidden w-72 xl:block' />
+          <CommunityChatPreview className='absolute top-[9.5rem] right-0 hidden w-64 2xl:block' />
           <ConsolePanel isAuthenticated={props.isAuthenticated} />
         </div>
 

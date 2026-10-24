@@ -150,6 +150,9 @@ export type SiteSettings = {
   ServerAddress: string
   TaskPublicAddress: string
   'general_setting.docs_link': string
+  'general_setting.baocode_link': string
+  'community_setting.qq_group_link': string
+  'community_setting.telegram_link': string
   'legal.user_agreement': string
   'legal.privacy_policy': string
   HeaderNavModules: string

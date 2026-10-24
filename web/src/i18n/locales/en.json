@@ -7725,9 +7725,9 @@
     "Beginner friendly": "Beginner friendly",
     "Partner channel": "Partner channel",
     "One gateway, multiple models. Turn ideas into code.": "One gateway, multiple models. Turn ideas into code.",
-    "Less setup, more creation. Access multiple AI models through YMeng CC, choose your coding companion in BaoCode, and bring your next idea to life.": "Less setup, more creation. Access multiple AI models through YMeng CC, choose your coding companion in BaoCode, and bring your next idea to life.",
+    "Less setup, more creation. Access multiple AI models through {{name}}, choose your coding companion in BaoCode, and bring your next idea to life.": "Less setup, more creation. Access multiple AI models through {{name}}, choose your coding companion in BaoCode, and bring your next idea to life.",
     "Download BaoCode for Mac, Windows or Linux": "Download BaoCode for Mac, Windows or Linux",
-    "Sign in with your YMeng CC account directly": "Sign in with your YMeng CC account directly",
+    "Sign in with your {{name}} account directly": "Sign in with your {{name}} account directly",
     "Pick a model and start coding, no API setup needed": "Pick a model and start coding, no API setup needed",
     "Get BaoCode": "Get BaoCode",
     "Free and open source": "Free and open source",
@@ -7745,7 +7745,16 @@
     "Feedback": "Feedback",
     "New models": "New models",
     "Join the YMeng CC QQ group": "Join the YMeng CC QQ group",
-    "When is the new Claude model coming?": "When is the new Claude model coming?",
-    "Already live, try it in the console": "Already live, try it in the console"
+    "Join the {{name}} community group": "Join the {{name}} community group",
+    "Join QQ group": "Join QQ group",
+    "Join Telegram group": "Join Telegram group",
+    "QQ Group Link": "QQ Group Link",
+    "Telegram Group Link": "Telegram Group Link",
+    "Link opened by the home page QQ group entry. Leave empty to hide it": "Link opened by the home page QQ group entry. Leave empty to hide it",
+    "Link opened by the home page Telegram group entry. Leave empty to hide it": "Link opened by the home page Telegram group entry. Leave empty to hide it",
+    "How do I connect this model?": "How do I connect this model?",
+    "Grab a key in the console and paste it into your client": "Grab a key in the console and paste it into your client",
+    "How do I report an error?": "How do I report an error?",
+    "Post the logs in the group and we will take a look": "Post the logs in the group and we will take a look"
   }
 }

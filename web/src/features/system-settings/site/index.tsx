@@ -16,6 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { DEFAULT_BAOCODE_URL } from '@/features/home/constants'
+
 import { SettingsPage } from '../components/settings-page'
 import type { SiteSettings } from '../types'
 import {
@@ -34,6 +36,9 @@ const defaultSiteSettings: SiteSettings = {
   ServerAddress: '',
   TaskPublicAddress: '',
   'general_setting.docs_link': '',
+  'general_setting.baocode_link': DEFAULT_BAOCODE_URL,
+  'community_setting.qq_group_link': '',
+  'community_setting.telegram_link': '',
   'legal.user_agreement': '',
   'legal.privacy_policy': '',
   HeaderNavModules: '',

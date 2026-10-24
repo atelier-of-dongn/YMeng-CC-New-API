@@ -7725,9 +7725,9 @@
     "Beginner friendly": "Dành cho người mới",
     "Partner channel": "Kênh đối tác",
     "One gateway, multiple models. Turn ideas into code.": "Một cổng, nhiều mô hình. Biến ý tưởng thành mã.",
-    "Less setup, more creation. Access multiple AI models through YMeng CC, choose your coding companion in BaoCode, and bring your next idea to life.": "Ít thiết lập hơn, sáng tạo nhiều hơn. Truy cập nhiều mô hình AI qua YMeng CC, chọn người bạn lập trình trong BaoCode và hiện thực hóa ý tưởng tiếp theo.",
+    "Less setup, more creation. Access multiple AI models through {{name}}, choose your coding companion in BaoCode, and bring your next idea to life.": "Ít thiết lập hơn, sáng tạo nhiều hơn. Truy cập nhiều mô hình AI qua {{name}}, chọn người bạn lập trình trong BaoCode và hiện thực hóa ý tưởng tiếp theo.",
     "Download BaoCode for Mac, Windows or Linux": "Tải BaoCode cho Mac, Windows hoặc Linux",
-    "Sign in with your YMeng CC account directly": "Đăng nhập trực tiếp bằng tài khoản YMeng CC",
+    "Sign in with your {{name}} account directly": "Đăng nhập trực tiếp bằng tài khoản {{name}}",
     "Pick a model and start coding, no API setup needed": "Chọn mô hình và bắt đầu lập trình, không cần cấu hình API",
     "Get BaoCode": "Tải BaoCode",
     "Free and open source": "Miễn phí và mã nguồn mở",
@@ -7745,7 +7745,16 @@
     "Feedback": "Góp ý",
     "New models": "Mô hình mới",
     "Join the YMeng CC QQ group": "Tham gia nhóm QQ YMeng CC",
-    "When is the new Claude model coming?": "Bao giờ có mô hình Claude mới?",
-    "Already live, try it in the console": "Đã có rồi, thử ngay trong bảng điều khiển"
+    "Join the {{name}} community group": "Tham gia cộng đồng {{name}}",
+    "Join QQ group": "Tham gia nhóm QQ",
+    "Join Telegram group": "Tham gia nhóm Telegram",
+    "QQ Group Link": "Liên kết nhóm QQ",
+    "Telegram Group Link": "Liên kết nhóm Telegram",
+    "Link opened by the home page QQ group entry. Leave empty to hide it": "Liên kết mà mục nhóm QQ trên trang chủ mở ra. Để trống để ẩn mục này",
+    "Link opened by the home page Telegram group entry. Leave empty to hide it": "Liên kết mà mục nhóm Telegram trên trang chủ mở ra. Để trống để ẩn mục này",
+    "How do I connect this model?": "Làm sao để kết nối mô hình này?",
+    "Grab a key in the console and paste it into your client": "Lấy key trong bảng điều khiển rồi dán vào ứng dụng của bạn",
+    "How do I report an error?": "Làm sao để báo lỗi?",
+    "Post the logs in the group and we will take a look": "Gửi log vào nhóm, chúng tôi sẽ xem giúp"
   }
 }

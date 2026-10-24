@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"slices"
 	"sort"
 	"strconv"
@@ -239,6 +240,14 @@ func UpdateOption(c *gin.Context) {
 		}
 	}
 	switch option.Key {
+	case "general_setting.baocode_link":
+		value := strings.TrimSpace(option.Value.(string))
+		parsed, err := url.Parse(value)
+		if err != nil || value == "" || parsed.Host == "" || (parsed.Scheme != "http" && parsed.Scheme != "https") {
+			common.ApiErrorT(c, "Enter an absolute HTTP(S) URL")
+			return
+		}
+		option.Value = value
 	case "GitHubOAuthEnabled":
 		if option.Value == "true" && common.GitHubClientId == "" {
 			common.ApiErrorT(c, "Cannot enable {{provider}}. Enter the {{provider}} Client ID and Client Secret first.", map[string]any{"provider": "GitHub OAuth"})
