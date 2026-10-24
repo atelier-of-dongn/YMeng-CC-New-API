@@ -72,29 +72,32 @@ export function BaoCodePanel() {
       </div>
 
       <h1
-        className='landing-animate-fade-up max-w-full font-[family-name:var(--paper-serif)] text-[clamp(2rem,3.4vw,2.75rem)] leading-[1.15] font-semibold tracking-[-0.015em] break-words text-[var(--paper-ink)] opacity-0'
+        className='landing-animate-fade-up flex max-w-full flex-wrap items-center gap-x-[0.28em] gap-y-1 font-[family-name:var(--paper-serif)] text-[clamp(2rem,3.4vw,2.75rem)] leading-[1.15] font-semibold tracking-[-0.015em] text-[var(--paper-ink)] opacity-0'
         style={{ animationDelay: '60ms' }}
       >
-        <span className='inline'>
+        <span className='inline-flex min-w-0 max-w-full items-center gap-[0.28em]'>
           <img
             src={logo}
             alt=''
-            className='mr-[0.28em] inline h-[0.78em] w-auto rounded-[0.18em]'
+            className='h-[0.78em] w-auto shrink-0 rounded-[0.18em]'
             onError={(event) => {
               // A missing site logo leaves the name on its own
               event.currentTarget.style.display = 'none'
             }}
           />
-          {systemName}
-          <span className='mx-[0.12em] font-normal text-[var(--paper-faint)]'>
+          <span className='min-w-0 break-words'>{systemName}</span>
+          <span
+            aria-hidden
+            className='shrink-0 font-normal text-[var(--paper-faint)]'
+          >
             ×
           </span>
-        </span>{' '}
-        <span className='inline'>
+        </span>
+        <span className='inline-flex shrink-0 items-center gap-[0.28em]'>
           <img
             src={BAOCODE_ICON_URL}
             alt=''
-            className='mr-[0.28em] inline h-[0.78em] w-auto rounded-[0.18em]'
+            className='h-[0.78em] w-auto rounded-[0.18em]'
           />
           BaoCode
         </span>

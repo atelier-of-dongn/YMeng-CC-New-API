@@ -82,7 +82,7 @@ export function CommunityChatPreview(props: CommunityChatPreviewProps) {
     <div
       aria-hidden
       className={cn(
-        'rounded-xl border border-sky-500/15 bg-white/75 p-2 shadow-[0_18px_40px_-30px_rgba(18,183,245,0.8)] backdrop-blur-sm dark:border-sky-400/15 dark:bg-[#0b0f17]/80',
+        'w-full rounded-xl border border-sky-500/15 bg-white/75 p-2 shadow-[0_18px_40px_-30px_rgba(18,183,245,0.8)] backdrop-blur-sm dark:border-sky-400/15 dark:bg-[#0b0f17]/80',
         props.className
       )}
     >

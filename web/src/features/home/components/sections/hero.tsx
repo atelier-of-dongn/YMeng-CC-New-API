@@ -56,11 +56,11 @@ export function Hero(props: HeroProps) {
           its left end, so it shows from the main seam rightwards */}
       <div
         aria-hidden
-        className='home-community-wedge absolute inset-x-0 top-0 -z-[15] hidden lg:block'
+        className='home-community-wedge absolute inset-x-0 top-0 -z-[15] hidden h-[19.25rem] lg:block'
       />
       <div
         aria-hidden
-        className='home-community-seam absolute inset-x-0 top-0 -z-[15] hidden lg:block'
+        className='home-community-seam absolute inset-x-0 top-0 -z-[15] hidden h-[19.25rem] lg:block'
       />
 
       {/* Paper side, seam and badge from lg up */}
@@ -82,10 +82,12 @@ export function Hero(props: HeroProps) {
       </div>
 
       <div className='mx-auto grid max-w-7xl grid-cols-1 lg:min-h-[100svh] lg:grid-cols-[minmax(0,42fr)_minmax(0,58fr)] lg:px-8'>
+        {/* The gap between the community region and the developer entry sits
+            on the region itself, so an empty region leaves no stray gap. */}
         <div className='relative flex flex-col items-start px-6 pt-24 pb-20 md:px-10 lg:col-start-2 lg:row-start-1 lg:px-0 lg:pt-24 lg:pb-24 lg:pl-16 xl:pl-20'>
-          <div className='home-community-content mb-12 flex w-full min-w-0 flex-col items-start gap-5 empty:hidden'>
-            <CommunityCard />
-            <CommunityChatPreview className='hidden w-full max-w-sm 2xl:block' />
+          <div className='home-community-content mb-10 flex w-full min-w-0 flex-col items-start empty:mb-0 [&>*]:w-full [&>*:not(:last-child)]:mb-5'>
+            <CommunityCard className='max-w-md' />
+            <CommunityChatPreview className='max-w-sm' />
           </div>
           {/* The narrow end of the community slice: a faint penguin and a
               looping chat peek that stays above the seam */}

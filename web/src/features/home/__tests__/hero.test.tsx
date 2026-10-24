@@ -213,6 +213,53 @@ it('hides the community card and the example chat when no group links are config
   ).toBeEmptyDOMElement()
 })
 
+it('shows the example chat at every width the community card shows at', async () => {
+  await renderHero({
+    isAuthenticated: false,
+    qqGroupLink: 'https://qm.qq.com/q/example',
+    telegramLink: 'https://t.me/example',
+  })
+
+  const preview = screen
+    .getByText('How do I connect this model?')
+    .closest('[aria-hidden="true"].rounded-xl') as HTMLElement
+
+  // The preview used to be hidden below 2xl, so most desktops never saw it.
+  expect(preview.className).not.toMatch(/\bhidden\b|\b2xl:block\b/)
+  expect(preview).toHaveClass('w-full')
+})
+
+it('wraps the brand and BaoCode as two whole blocks in the hero title', async () => {
+  await renderHero({ isAuthenticated: false })
+
+  const title = screen.getByRole('heading', { level: 1 })
+  expect(title).toHaveClass('flex-wrap')
+  expect(title).not.toHaveClass('whitespace-nowrap')
+  const blocks = [...title.children]
+  expect(blocks).toHaveLength(2)
+  expect(blocks[0]).toHaveClass('min-w-0', 'max-w-full')
+  expect(blocks[0].querySelector('.break-words')).toHaveTextContent('Test Site')
+  expect(blocks[1]).toHaveTextContent('BaoCode')
+  expect(blocks[1]).toHaveClass('shrink-0')
+})
+
+it('keeps the developer entry after the community region without an absolute gap', async () => {
+  await renderHero({
+    isAuthenticated: false,
+    qqGroupLink: 'https://qm.qq.com/q/example',
+  })
+
+  const community = document.querySelector('.home-community-content')
+  const developerEntry = screen.getByText('For developers')
+  if (!community) throw new Error('Expected community content')
+  expect(community).not.toHaveClass('absolute')
+  expect(community.className).toMatch(/\bempty:mb-0\b|\bmb-10\b/)
+  expect(
+    community.compareDocumentPosition(developerEntry) &
+      Node.DOCUMENT_POSITION_FOLLOWING
+  ).toBeTruthy()
+})
+
 it.each([
   ['https://qm.qq.com/q/example', '', 1],
   ['', 'https://t.me/example', 1],
@@ -279,17 +326,18 @@ it('keeps long community names wrapping above the preview and console in normal 
   expect(title).not.toHaveClass('truncate')
   const community = title.closest('.home-community-content')
   if (!community) throw new Error('Expected community content')
-  expect(community).toHaveClass('flex-col', 'gap-5', 'empty:hidden')
+  expect(community).toHaveClass('flex-col', 'empty:mb-0')
   expect(community).not.toHaveClass('absolute')
   const preview = community.querySelector('[aria-hidden="true"].rounded-xl')
-  expect(preview).toHaveClass('hidden', '2xl:block', 'w-full')
+  expect(preview).toHaveClass('w-full', 'max-w-sm')
   expect(preview).not.toHaveClass('absolute')
   expect(
     community.compareDocumentPosition(
       screen.getByRole('heading', { level: 2 })
     ) & Node.DOCUMENT_POSITION_FOLLOWING
   ).toBeTruthy()
-  expect(screen.getByRole('heading', { level: 1 })).toHaveClass('break-words')
+  // The hero title wraps its brand name instead of clipping it.
+  expect(screen.getByRole('heading', { level: 1 })).toHaveClass('flex-wrap')
 })
 
 it('keeps the example chat in the community slice out of the accessibility tree', async () => {

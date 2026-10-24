@@ -597,10 +597,14 @@ For commercial licensing, please contact support@quantumnous.com
 .home-qq-ring {
   animation: home-qq-ring 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
-/* Rounds share one grid cell: the slot reserves the taller conversation,
-   not the sum. Only two-platform previews rotate. */
+/* Rounds share one grid cell: the slot reserves the taller conversation, not
+   the sum. Only two-platform previews rotate. Each round is visible for its own
+   half of the 12s cycle; the question is on screen from the start of the half,
+   the answer and typing row join it later within that same half. The second
+   round runs half a cycle behind, so exactly one round is visible at a time. */
 @keyframes home-chat-round {
-  0% {
+  0%,
+  49.999% {
     visibility: visible;
     opacity: 1;
   }
@@ -616,6 +620,14 @@ For commercial licensing, please contact support@quantumnous.com
     opacity: 0;
   }
   15%,
+  49.999% {
+    opacity: 1;
+  }
+  50%,
+  62% {
+    opacity: 0;
+  }
+  65%,
   100% {
     opacity: 1;
   }
@@ -626,6 +638,14 @@ For commercial licensing, please contact support@quantumnous.com
     opacity: 0;
   }
   27%,
+  49.999% {
+    opacity: 1;
+  }
+  50%,
+  74% {
+    opacity: 0;
+  }
+  77%,
   100% {
     opacity: 1;
   }
@@ -759,8 +779,9 @@ For commercial licensing, please contact support@quantumnous.com
   box-shadow: 0 6px 20px -8px rgba(122, 78, 20, 0.35);
 }
 /* The community corner: a second seam from behind the paper side (40% wide,
-   19rem down) rising to the right edge 13rem down. The right end is deep
-   enough for the chat peek to sit above it. */
+   19rem down) rising to the right edge 13rem down. It is decoration only and
+   keeps a fixed height, so a taller community region simply extends below it
+   into the regular console background instead of being clipped. */
 .home-community-wedge,
 .home-community-seam {
   height: 19.25rem;
