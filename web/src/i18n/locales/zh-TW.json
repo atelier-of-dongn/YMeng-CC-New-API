@@ -1,5 +1,8 @@
 {
   "translation": {
+    "BaoCode Link": "BaoCode 連結",
+    "Link opened by the Get BaoCode button on the home page": "首頁「取得 BaoCode」按鈕開啟的連結",
+    "Enter an absolute HTTP(S) URL": "請輸入 HTTP(S) 絕對 URL",
     "360": "360",
     "1000": "1000",
     "10000": "10000",

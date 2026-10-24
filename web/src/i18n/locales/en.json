@@ -1,5 +1,8 @@
 {
   "translation": {
+    "BaoCode Link": "BaoCode Link",
+    "Link opened by the Get BaoCode button on the home page": "Link opened by the Get BaoCode button on the home page",
+    "Enter an absolute HTTP(S) URL": "Enter an absolute HTTP(S) URL",
     "360": "360",
     "1000": "1000",
     "10000": "10000",

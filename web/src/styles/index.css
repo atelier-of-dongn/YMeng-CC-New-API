@@ -560,16 +560,9 @@ For commercial licensing, please contact support@quantumnous.com
   }
   .home-qq-float,
   .home-qq-ring,
-  .home-qq-bubble,
-  .home-qq-round,
   .home-qq-typing,
   .home-qq-shine::after {
     animation: none !important;
-  }
-  .home-qq-bubble,
-  .home-qq-round {
-    opacity: 1 !important;
-    transform: none !important;
   }
   .home-qq-float {
     transform: none !important;
@@ -604,57 +597,67 @@ For commercial licensing, please contact support@quantumnous.com
 .home-qq-ring {
   animation: home-qq-ring 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
-/* Chat bubbles: each appears in turn (delays 0s, 1.5s, 3s from the markup),
-   stays for the rest of the 6s loop, then all clear together. */
-@keyframes home-qq-bubble {
+/* Rounds share one grid cell: the slot reserves the taller conversation,
+   not the sum. Only two-platform previews rotate. */
+@keyframes home-chat-round {
   0% {
-    opacity: 0;
-    transform: translateY(6px) scale(0.96);
-  }
-  5%,
-  95% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(0) scale(1);
-  }
-}
-.home-qq-bubble {
-  animation: home-qq-bubble 6s ease-in-out var(--home-qq-bubble-delay, 0s)
-    infinite;
-}
-/* Each platform's round (question, answer, typing) takes its turn: a round is
-   fully on screen for its 6s slot, then fades out while the next one fades in.
-   The second round runs the same animation half a cycle later (6s delay in the
-   markup), so exactly one round is visible at any time. */
-@keyframes home-qq-round {
-  0% {
-    opacity: 1;
-  }
-  40% {
+    visibility: visible;
     opacity: 1;
   }
   50%,
-  90% {
+  100% {
+    visibility: hidden;
     opacity: 0;
   }
+}
+@keyframes home-chat-answer {
+  0%,
+  12% {
+    opacity: 0;
+  }
+  15%,
   100% {
     opacity: 1;
   }
 }
-.home-qq-round {
-  animation: home-qq-round 12s ease-in-out infinite;
+@keyframes home-chat-typing {
+  0%,
+  24% {
+    opacity: 0;
+  }
+  27%,
+  100% {
+    opacity: 1;
+  }
 }
-.home-qq-round-late {
-  animation-delay: 6s;
+.home-chat-rotating .home-qq-round {
+  animation: home-chat-round 12s steps(1, end) infinite;
 }
-/* A round's bubbles play in sequence within its own 6s slot (0s, 1.5s, 3s from
-   the markup), so the second round is empty until its slot begins. */
-.home-qq-round-late .home-qq-bubble {
-  animation-delay: calc(var(--home-qq-bubble-delay, 0s) + 6s);
+.home-chat-rotating .home-chat-answer {
+  animation: home-chat-answer 12s ease-in-out infinite;
 }
+.home-chat-rotating .home-chat-typing-row {
+  animation: home-chat-typing 12s ease-in-out infinite;
+}
+.home-chat-rotating .home-qq-round-late,
+.home-chat-rotating .home-qq-round-late .home-chat-answer,
+.home-chat-rotating .home-qq-round-late .home-chat-typing-row {
+  animation-delay: -6s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-chat-rounds .home-qq-round,
+  .home-chat-rounds .home-qq-bubble,
+  .home-chat-rounds .home-chat-typing-row {
+    animation: none !important;
+    opacity: 1 !important;
+    visibility: visible;
+    transform: none !important;
+  }
+  .home-chat-rounds .home-qq-round-late {
+    display: none;
+  }
+}
+
 @keyframes home-qq-typing {
   0%,
   100% {
@@ -666,7 +669,7 @@ For commercial licensing, please contact support@quantumnous.com
     transform: translateY(-2px);
   }
 }
-.home-qq-typing {
+.home-chat-rotating .home-qq-typing {
   animation: home-qq-typing 1s ease-in-out infinite;
 }
 /* A light sweep across the join button on hover. */

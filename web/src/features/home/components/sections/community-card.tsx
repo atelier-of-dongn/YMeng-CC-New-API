@@ -89,7 +89,7 @@ export function CommunityCard(props: CommunityCardProps) {
   return (
     <div
       className={cn(
-        'landing-animate-fade-up w-full max-w-md rounded-xl border border-sky-500/15 bg-white/70 p-3 opacity-0 shadow-[0_16px_40px_-28px_rgba(18,183,245,0.6)] backdrop-blur-sm lg:w-auto lg:max-w-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none dark:border-sky-400/15 dark:bg-white/[0.04] dark:lg:bg-transparent',
+        'landing-animate-fade-up w-full max-w-md rounded-xl border border-sky-500/15 bg-white/70 p-3 opacity-0 shadow-[0_16px_40px_-28px_rgba(18,183,245,0.6)] backdrop-blur-sm lg:max-w-none lg:border-0 lg:bg-transparent lg:p-0 lg:shadow-none lg:backdrop-blur-none dark:border-sky-400/15 dark:bg-white/[0.04] dark:lg:bg-transparent',
         props.className
       )}
       style={{ animationDelay: '60ms' }}
@@ -129,7 +129,7 @@ export function CommunityCard(props: CommunityCardProps) {
         </span>
 
         <div className='flex min-w-0 flex-col'>
-          <span className='flex items-center gap-1.5 font-mono text-[10px] font-semibold tracking-[0.2em] text-sky-600 uppercase dark:text-sky-400'>
+          <span className='flex flex-wrap items-center gap-1.5 font-mono text-[10px] font-semibold tracking-[0.2em] text-sky-600 uppercase dark:text-sky-400'>
             {entries.map((entry, index) => {
               const Icon = entry.icon
               return (
@@ -141,7 +141,7 @@ export function CommunityCard(props: CommunityCardProps) {
               )
             })}
           </span>
-          <span className='text-foreground truncate text-base font-semibold lg:text-lg'>
+          <span className='text-foreground text-base font-semibold break-words lg:text-lg'>
             {t('Join the {{name}} community group', { name: systemName })}
           </span>
           <span className='text-muted-foreground mt-0.5 text-xs'>

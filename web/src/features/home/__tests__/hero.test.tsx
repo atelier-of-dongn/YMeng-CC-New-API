@@ -40,9 +40,9 @@ await i18n.init({
   resources: {
     en: {
       translation: {
-        'Join the {{name}} community group': 'Join the {{name}} community group',
+        'Join the {{name}} community group':
+          'Join the {{name}} community group',
         'How do I connect this model?': 'How do I connect this model?',
-        'What is the model for?': 'What is the model for?',
         'How do I report an error?': 'How do I report an error?',
         'Grab a key in the console and paste it into your client':
           'Grab a key in the console and paste it into your client',
@@ -53,16 +53,6 @@ await i18n.init({
   },
   initAsync: false,
 })
-
-// The community card is the element that holds the join buttons; the example
-// chat repeats the platform names, so platform assertions stay inside it.
-function getCommunityCard(): HTMLElement | null {
-  return (
-    screen
-      .queryByRole('button', { name: /Join QQ group/ })
-      ?.closest('.landing-animate-fade-up') ?? null
-  )
-}
 
 const initialSystemConfig = useSystemConfigStore.getState().config
 
@@ -81,12 +71,14 @@ async function renderHero(options: {
   docsLink?: string
   qqGroupLink?: string
   telegramLink?: string
+  baocodeLink?: unknown
 }) {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
   client.setQueryData(['status'], {
     docs_link: options.docsLink ?? '',
+    baocode_link: options.baocodeLink,
     community_qq_group_link: options.qqGroupLink ?? '',
     community_telegram_link: options.telegramLink ?? '',
   })
@@ -112,15 +104,32 @@ afterEach(() => {
   cleanup()
 })
 
-it('links the BaoCode entry to the YMeng CC channel page in a new tab', async () => {
-  await renderHero({ isAuthenticated: false })
+it.each([
+  [undefined, 'https://baocode.dev/?ymengcc'],
+  ['', 'https://baocode.dev/?ymengcc'],
+  ['javascript:alert(1)', 'https://baocode.dev/?ymengcc'],
+  ['/relative', 'https://baocode.dev/?ymengcc'],
+  [42, 'https://baocode.dev/?ymengcc'],
+  [
+    '  https://example.com/install?ref=site#download  ',
+    'https://example.com/install?ref=site#download',
+  ],
+])(
+  'uses a safe configured destination for both BaoCode links with %s',
+  async (baocodeLink, expected) => {
+    await renderHero({ isAuthenticated: false, baocodeLink })
 
-  const link = screen.getByRole('button', { name: /Get BaoCode/ })
-
-  expect(link).toHaveAttribute('href', 'https://baocode.dev/?ymengcc')
-  expect(link).toHaveAttribute('target', '_blank')
-  expect(link.getAttribute('rel')).toContain('noopener')
-})
+    for (const link of [
+      screen.getByRole('button', { name: /Get BaoCode/ }),
+      screen.getByRole('link', { name: 'BaoCode' }),
+    ]) {
+      expect(link).toHaveAttribute('href', expected)
+      expect(link).toHaveAttribute('target', '_blank')
+      expect(link.getAttribute('rel')).toContain('noopener')
+      expect(link.getAttribute('rel')).toContain('noreferrer')
+    }
+  }
+)
 
 it('links the QQ group entry to the configured link in a new tab', async () => {
   await renderHero({
@@ -150,7 +159,6 @@ it('links the Telegram group entry to the configured link in a new tab', async (
   expect(link).toHaveAttribute('target', '_blank')
   expect(link.getAttribute('rel')).toContain('noopener')
   expect(screen.queryByRole('button', { name: /Join QQ group/ })).toBeNull()
-  expect(getCommunityCard()).toBeNull()
 })
 
 it('shows both group entries and both platform logos when both links are configured', async () => {
@@ -167,7 +175,9 @@ it('shows both group entries and both platform logos when both links are configu
   expect(
     screen.getByRole('button', { name: /Join Telegram group/ })
   ).toHaveAttribute('href', 'https://t.me/example')
-  const community = getCommunityCard()
+  const community = screen
+    .getByText('Join the Test Site community group')
+    .closest('.landing-animate-fade-up')
   expect(community).not.toBeNull()
   expect(
     within(community as HTMLElement).getByText('QQ', { exact: true })
@@ -198,22 +208,88 @@ it('hides the community card and the example chat when no group links are config
     screen.queryByRole('button', { name: /Join Telegram group/ })
   ).toBeNull()
   expect(screen.queryByText('How do I connect this model?')).toBeNull()
+  expect(
+    document.querySelector('.home-community-content')
+  ).toBeEmptyDOMElement()
 })
 
-it('shows the question and the answer of each configured group in the example chat', async () => {
+it.each([
+  ['https://qm.qq.com/q/example', '', 1],
+  ['', 'https://t.me/example', 1],
+  ['https://qm.qq.com/q/example', 'https://t.me/example', 2],
+])(
+  'reserves a single unclipped conversation slot for QQ=%s Telegram=%s',
+  async (qqGroupLink, telegramLink, count) => {
+    await renderHero({ isAuthenticated: false, qqGroupLink, telegramLink })
+
+    const slot = document.querySelector('.home-chat-rounds')
+    expect(slot).not.toBeNull()
+    if (!slot) throw new Error('Expected a conversation slot')
+    expect(slot).toHaveClass(
+      'grid',
+      'min-w-0',
+      count === 2 ? 'home-chat-rotating' : 'home-chat-static'
+    )
+    expect(slot.children).toHaveLength(count)
+    for (const round of slot.children) {
+      expect(round).toHaveClass('col-start-1', 'row-start-1')
+      expect(round.querySelectorAll('.home-qq-bubble')).toHaveLength(3)
+      expect(round.querySelectorAll('.home-chat-answer')).toHaveLength(1)
+      for (const message of round.querySelectorAll(
+        '.home-qq-bubble > span:last-child'
+      )) {
+        expect(message).not.toHaveClass('truncate')
+      }
+    }
+    expect(slot.querySelectorAll('.home-qq-round-late')).toHaveLength(count - 1)
+    if (qqGroupLink) {
+      expect(
+        within(slot as HTMLElement).getByText('How do I connect this model?')
+      ).toBeInTheDocument()
+      expect(
+        within(slot as HTMLElement).getByText(
+          'Grab a key in the console and paste it into your client'
+        )
+      ).toBeInTheDocument()
+    }
+    if (telegramLink) {
+      expect(
+        within(slot as HTMLElement).getByText('How do I report an error?')
+      ).toBeInTheDocument()
+      expect(
+        within(slot as HTMLElement).getByText(
+          'Post the logs in the group and we will take a look'
+        )
+      ).toBeInTheDocument()
+    }
+  }
+)
+
+it('keeps long community names wrapping above the preview and console in normal flow', async () => {
+  useSystemConfigStore.setState({
+    config: { ...initialSystemConfig, systemName: 'LongSiteName'.repeat(30) },
+  })
   await renderHero({
     isAuthenticated: false,
     qqGroupLink: 'https://qm.qq.com/q/example',
-    telegramLink: 'https://t.me/example',
   })
 
-  // Both lines must be rendered: a fixed-height, end-aligned container used to
-  // clip the question above it and leave only the answer visible.
-  expect(screen.getByText('How do I connect this model?')).toBeVisible()
-  expect(screen.getByText('How do I report an error?')).toBeVisible()
+  const title = screen.getByText(/Join the LongSiteName/)
+  expect(title).toHaveClass('break-words')
+  expect(title).not.toHaveClass('truncate')
+  const community = title.closest('.home-community-content')
+  if (!community) throw new Error('Expected community content')
+  expect(community).toHaveClass('flex-col', 'gap-5', 'empty:hidden')
+  expect(community).not.toHaveClass('absolute')
+  const preview = community.querySelector('[aria-hidden="true"].rounded-xl')
+  expect(preview).toHaveClass('hidden', '2xl:block', 'w-full')
+  expect(preview).not.toHaveClass('absolute')
   expect(
-    screen.getByText('Grab a key in the console and paste it into your client')
-  ).toBeVisible()
+    community.compareDocumentPosition(
+      screen.getByRole('heading', { level: 2 })
+    ) & Node.DOCUMENT_POSITION_FOLLOWING
+  ).toBeTruthy()
+  expect(screen.getByRole('heading', { level: 1 })).toHaveClass('break-words')
 })
 
 it('keeps the example chat in the community slice out of the accessibility tree', async () => {

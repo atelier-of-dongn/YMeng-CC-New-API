@@ -16,7 +16,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import type { CSSProperties } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { IconType } from 'react-icons'
 import { FaTelegram } from 'react-icons/fa'
@@ -59,7 +58,7 @@ export function CommunityChatPreview(props: CommunityChatPreviewProps) {
       accentClassName: 'bg-[#12b7f5] text-white',
       messages: [
         t('How do I connect this model?'),
-        t("Grab a key in the console and paste it into your client"),
+        t('Grab a key in the console and paste it into your client'),
       ],
     })
   }
@@ -111,78 +110,75 @@ export function CommunityChatPreview(props: CommunityChatPreviewProps) {
         })}
       </div>
 
-      {rounds.map((round) => {
-        const Icon = round.icon
-        return (
-          <div
-            key={round.name}
-            className={cn(
-              'home-qq-round flex flex-col justify-end gap-1 pt-1',
-              rotating && round.name === rounds[1].name && 'home-qq-round-late'
-            )}
-          >
-            {round.messages.map((message, index) => {
-              const own = index === 1
-              return (
-                <div
-                  key={message}
-                  className={cn(
-                    'home-qq-bubble flex shrink-0 items-center gap-1.5 opacity-0',
-                    own && 'flex-row-reverse'
-                  )}
-                  style={
-                    {
-                      '--home-qq-bubble-delay': `${index * 1.5}s`,
-                    } as CSSProperties
-                  }
-                >
-                  <span
-                    className={cn(
-                      'flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold',
-                      own
-                        ? round.accentClassName
-                        : 'bg-slate-400/80 text-white'
-                    )}
-                  >
-                    <Icon className={own ? 'size-3' : 'size-2.5'} />
-                  </span>
-                  <span
-                    className={cn(
-                      'max-w-[13.5rem] truncate rounded-lg px-2 py-1 text-[11px]',
-                      own
-                        ? 'rounded-tr-sm bg-[#12b7f5]/12 text-sky-800 dark:text-sky-200'
-                        : 'rounded-tl-sm bg-slate-500/10 text-slate-600 dark:text-slate-300'
-                    )}
-                  >
-                    {message}
-                  </span>
-                </div>
-              )
-            })}
+      <div
+        className={cn(
+          'home-chat-rounds grid min-w-0',
+          rotating ? 'home-chat-rotating' : 'home-chat-static'
+        )}
+      >
+        {rounds.map((round) => {
+          const Icon = round.icon
+          return (
             <div
-              className='home-qq-bubble flex shrink-0 items-center gap-1.5 opacity-0'
-              style={
-                {
-                  '--home-qq-bubble-delay': '3s',
-                } as CSSProperties
-              }
+              key={round.name}
+              className={cn(
+                'home-qq-round col-start-1 row-start-1 flex min-w-0 flex-col gap-1 pt-2',
+                rotating &&
+                  round.name === rounds[1].name &&
+                  'home-qq-round-late'
+              )}
             >
-              <span className='flex size-5 shrink-0 items-center justify-center rounded-full bg-slate-400/80 text-white'>
-                <Icon className='size-2.5' />
-              </span>
-              <span className='flex items-center gap-1 rounded-lg rounded-tl-sm bg-slate-500/10 px-2 py-1.5'>
-                {[0, 1, 2].map((dot) => (
-                  <span
-                    key={dot}
-                    className='home-qq-typing size-1 rounded-full bg-slate-400'
-                    style={{ animationDelay: `${dot * 0.2}s` }}
-                  />
-                ))}
-              </span>
+              {round.messages.map((message, index) => {
+                const own = index === 1
+                return (
+                  <div
+                    key={message}
+                    className={cn(
+                      'home-qq-bubble flex min-w-0 items-start gap-1.5',
+                      own && 'home-chat-answer flex-row-reverse'
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        'flex size-5 shrink-0 items-center justify-center rounded-full text-[9px] font-semibold',
+                        own
+                          ? round.accentClassName
+                          : 'bg-slate-400/80 text-white'
+                      )}
+                    >
+                      <Icon className={own ? 'size-3' : 'size-2.5'} />
+                    </span>
+                    <span
+                      className={cn(
+                        'min-w-0 max-w-[calc(100%-1.625rem)] rounded-lg px-2 py-1 text-[11px] leading-relaxed break-words',
+                        own
+                          ? 'rounded-tr-sm bg-[#12b7f5]/12 text-sky-800 dark:text-sky-200'
+                          : 'rounded-tl-sm bg-slate-500/10 text-slate-600 dark:text-slate-300'
+                      )}
+                    >
+                      {message}
+                    </span>
+                  </div>
+                )
+              })}
+              <div className='home-qq-bubble home-chat-typing-row flex min-w-0 items-start gap-1.5'>
+                <span className='flex size-5 shrink-0 items-center justify-center rounded-full bg-slate-400/80 text-white'>
+                  <Icon className='size-2.5' />
+                </span>
+                <span className='flex items-center gap-1 rounded-lg rounded-tl-sm bg-slate-500/10 px-2 py-1.5'>
+                  {[0, 1, 2].map((dot) => (
+                    <span
+                      key={dot}
+                      className='home-qq-typing size-1 rounded-full bg-slate-400'
+                      style={{ animationDelay: `${dot * 0.2}s` }}
+                    />
+                  ))}
+                </span>
+              </div>
             </div>
-          </div>
-        )
-      })}
+          )
+        })}
+      </div>
     </div>
   )
 }

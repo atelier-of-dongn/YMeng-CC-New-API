@@ -82,15 +82,17 @@ export function Hero(props: HeroProps) {
       </div>
 
       <div className='mx-auto grid max-w-7xl grid-cols-1 lg:min-h-[100svh] lg:grid-cols-[minmax(0,42fr)_minmax(0,58fr)] lg:px-8'>
-        <div className='relative flex flex-col items-start px-6 pt-24 pb-20 md:px-10 lg:col-start-2 lg:row-start-1 lg:px-0 lg:pt-[20.5rem] lg:pb-24 lg:pl-16 xl:pl-20'>
-          <CommunityCard className='mb-8 lg:absolute lg:top-[4.75rem] lg:left-16 lg:mb-0 xl:left-20' />
+        <div className='relative flex flex-col items-start px-6 pt-24 pb-20 md:px-10 lg:col-start-2 lg:row-start-1 lg:px-0 lg:pt-24 lg:pb-24 lg:pl-16 xl:pl-20'>
+          <div className='home-community-content mb-12 flex w-full min-w-0 flex-col items-start gap-5 empty:hidden'>
+            <CommunityCard />
+            <CommunityChatPreview className='hidden w-full max-w-sm 2xl:block' />
+          </div>
           {/* The narrow end of the community slice: a faint penguin and a
               looping chat peek that stays above the seam */}
           <RiQqLine
             aria-hidden
             className='pointer-events-none absolute top-2 right-[20.5rem] hidden size-36 -rotate-12 text-sky-500/[0.07] xl:block dark:text-sky-300/[0.06]'
           />
-          <CommunityChatPreview className='absolute top-[9.5rem] right-0 hidden w-64 2xl:block' />
           <ConsolePanel isAuthenticated={props.isAuthenticated} />
         </div>
 

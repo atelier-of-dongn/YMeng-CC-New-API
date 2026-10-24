@@ -130,9 +130,12 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
     HomePageContent: z.string().optional(),
     general_setting: z.object({
       docs_link: z.string(),
-      baocode_link: z.string().trim().refine(isHttpUrl, {
-        error: () => t('Enter an absolute HTTP(S) URL'),
-      }),
+      baocode_link: z
+        .string()
+        .trim()
+        .refine(isHttpUrl, {
+          error: () => t('Enter an absolute HTTP(S) URL'),
+        }),
     }),
     community_setting: z.object({
       qq_group_link: z.string().optional(),
@@ -289,7 +292,9 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
                       <Input placeholder={DEFAULT_BAOCODE_URL} {...field} />
                     </FormControl>
                     <FormDescription>
-                      {t('Link opened by the Get BaoCode button on the home page')}
+                      {t(
+                        'Link opened by the Get BaoCode button on the home page'
+                      )}
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

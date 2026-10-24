@@ -1,5 +1,8 @@
 {
   "translation": {
+    "BaoCode Link": "Liên kết BaoCode",
+    "Link opened by the Get BaoCode button on the home page": "Liên kết được mở bằng nút Tải BaoCode trên trang chủ",
+    "Enter an absolute HTTP(S) URL": "Nhập URL HTTP(S) tuyệt đối",
     "360": "360",
     "1000": "1000",
     "10000": "10000",

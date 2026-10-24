@@ -23,8 +23,9 @@ import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
 import { useStatus } from '@/hooks/use-status'
+import { isHttpUrl } from '@/lib/content-format'
 
-import { BAOCODE_ICON_URL, BAOCODE_YMENGCC_URL } from '../../constants'
+import { BAOCODE_ICON_URL, DEFAULT_BAOCODE_URL } from '../../constants'
 import { HeroTerminalDemo } from '../hero-terminal-demo'
 
 interface ConsolePanelProps {
@@ -40,6 +41,11 @@ const OUTLINE_BUTTON_CLASSES =
 export function ConsolePanel(props: ConsolePanelProps) {
   const { t } = useTranslation()
   const { status } = useStatus()
+  const configuredLink = status?.baocode_link
+  const baocodeLink =
+    typeof configuredLink === 'string' && isHttpUrl(configuredLink.trim())
+      ? configuredLink.trim()
+      : DEFAULT_BAOCODE_URL
   const docsUrl =
     (status?.docs_link as string | undefined) || 'https://docs.newapi.pro'
 
@@ -149,7 +155,7 @@ export function ConsolePanel(props: ConsolePanelProps) {
         </div>
         <div className='flex flex-wrap items-center gap-2.5'>
           <a
-            href={BAOCODE_YMENGCC_URL}
+            href={baocodeLink}
             target='_blank'
             rel='noopener noreferrer'
             className={APP_PILL_CLASSES}

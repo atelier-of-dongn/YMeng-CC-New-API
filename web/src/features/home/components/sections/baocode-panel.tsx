@@ -20,9 +20,11 @@ import { ArrowUpRight, Download, LogIn, Sparkles } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Button } from '@/components/ui/button'
+import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
+import { isHttpUrl } from '@/lib/content-format'
 
-import { BAOCODE_ICON_URL, BAOCODE_YMENGCC_URL } from '../../constants'
+import { BAOCODE_ICON_URL, DEFAULT_BAOCODE_URL } from '../../constants'
 import { BaoCodeAdvantages } from './baocode-advantages'
 
 // The beginner entry: BaoCode's channel page for this site, drawn in
@@ -30,6 +32,12 @@ import { BaoCodeAdvantages } from './baocode-advantages'
 export function BaoCodePanel() {
   const { t } = useTranslation()
   const { logo, systemName } = useSystemConfig()
+  const { status } = useStatus()
+  const configuredLink = status?.baocode_link
+  const baocodeLink =
+    typeof configuredLink === 'string' && isHttpUrl(configuredLink.trim())
+      ? configuredLink.trim()
+      : DEFAULT_BAOCODE_URL
 
   const steps = [
     { icon: Download, text: t('Download BaoCode for Mac, Windows or Linux') },
@@ -64,14 +72,14 @@ export function BaoCodePanel() {
       </div>
 
       <h1
-        className='landing-animate-fade-up font-[family-name:var(--paper-serif)] text-[clamp(2rem,3.4vw,2.75rem)] leading-[1.15] font-semibold tracking-[-0.015em] text-[var(--paper-ink)] opacity-0'
+        className='landing-animate-fade-up max-w-full font-[family-name:var(--paper-serif)] text-[clamp(2rem,3.4vw,2.75rem)] leading-[1.15] font-semibold tracking-[-0.015em] break-words text-[var(--paper-ink)] opacity-0'
         style={{ animationDelay: '60ms' }}
       >
-        <span className='inline-flex items-center gap-[0.28em] whitespace-nowrap'>
+        <span className='inline'>
           <img
             src={logo}
             alt=''
-            className='h-[0.78em] w-auto rounded-[0.18em]'
+            className='mr-[0.28em] inline h-[0.78em] w-auto rounded-[0.18em]'
             onError={(event) => {
               // A missing site logo leaves the name on its own
               event.currentTarget.style.display = 'none'
@@ -82,11 +90,11 @@ export function BaoCodePanel() {
             ×
           </span>
         </span>{' '}
-        <span className='inline-flex items-center gap-[0.28em] whitespace-nowrap'>
+        <span className='inline'>
           <img
             src={BAOCODE_ICON_URL}
             alt=''
-            className='h-[0.78em] w-auto rounded-[0.18em]'
+            className='mr-[0.28em] inline h-[0.78em] w-auto rounded-[0.18em]'
           />
           BaoCode
         </span>
@@ -100,7 +108,7 @@ export function BaoCodePanel() {
       </p>
 
       <p
-        className='landing-animate-fade-up mt-5 max-w-md font-[family-name:var(--paper-serif)] text-[17px] leading-[1.7] opacity-0'
+        className='landing-animate-fade-up mt-5 max-w-full font-[family-name:var(--paper-serif)] text-[17px] leading-[1.7] break-words opacity-0'
         style={{ animationDelay: '180ms' }}
       >
         {t(
@@ -122,7 +130,7 @@ export function BaoCodePanel() {
               className='size-4 shrink-0 text-[var(--paper-muted)]'
               aria-hidden
             />
-            <span>{step.text}</span>
+            <span className='min-w-0 break-words'>{step.text}</span>
           </li>
         ))}
       </ol>
@@ -134,11 +142,7 @@ export function BaoCodePanel() {
         <Button
           className='group h-10 rounded-md border border-[var(--paper-ink)] bg-[var(--paper-ink)] px-4 text-[15px] font-medium text-[var(--paper)] hover:bg-[var(--paper-ink-hover)]'
           render={
-            <a
-              href={BAOCODE_YMENGCC_URL}
-              target='_blank'
-              rel='noopener noreferrer'
-            />
+            <a href={baocodeLink} target='_blank' rel='noopener noreferrer' />
           }
         >
           {t('Get BaoCode')}
