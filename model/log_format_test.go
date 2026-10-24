@@ -25,7 +25,7 @@ func TestFormatUserLogsStripsQuotaSaturation(t *testing.T) {
 	})
 	logs := []*Log{{Other: other}}
 
-	formatUserLogs(logs, 0)
+	formatUserLogs(logs, 0, common.RoleCommonUser)
 
 	parsed, err := common.StrToMap(logs[0].Other)
 	require.NoError(t, err)
@@ -55,7 +55,7 @@ func TestTaskPluginLogVisibilityIsRoleSeparated(t *testing.T) {
 
 	t.Run("user", func(t *testing.T) {
 		logs := []*Log{{Other: other}}
-		formatUserLogs(logs, 0)
+		formatUserLogs(logs, 0, common.RoleCommonUser)
 
 		parsed, err := common.StrToMap(logs[0].Other)
 		require.NoError(t, err)
@@ -111,7 +111,7 @@ func TestLegacyLogOtherVisibilityIsRoleSeparated(t *testing.T) {
 			Other:       other,
 		}}
 
-		formatUserLogs(logs, 10)
+		formatUserLogs(logs, 10, common.RoleCommonUser)
 
 		assert.Equal(t, 11, logs[0].Id)
 		assert.Equal(t, 77, logs[0].ChannelId)
@@ -205,7 +205,7 @@ func TestLogFormattingPreservesLargeIntegerLexemes(t *testing.T) {
 	t.Run("user", func(t *testing.T) {
 		logs := []*Log{{Other: other}}
 
-		formatUserLogs(logs, 0)
+		formatUserLogs(logs, 0, common.RoleCommonUser)
 
 		assert.Contains(t, logs[0].Other, `"public_id":9007199254740993`)
 		assert.NotContains(t, logs[0].Other, "admin_id")
@@ -234,7 +234,7 @@ func TestLogFormattingPreservesLargeIntegerLexemes(t *testing.T) {
 		const unprivileged = `{"public_id":9007199254740993,"model_price":0.004}`
 
 		userLogs := []*Log{{Other: unprivileged}}
-		formatUserLogs(userLogs, 0)
+		formatUserLogs(userLogs, 0, common.RoleCommonUser)
 		assert.Equal(t, unprivileged, userLogs[0].Other)
 
 		adminLogs := []*Log{{Other: unprivileged}}

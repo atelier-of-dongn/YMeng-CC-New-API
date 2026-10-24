@@ -83,7 +83,7 @@ func GetUserLogs(c *gin.Context) {
 		}
 		filter.StartTimestamp = startTimestamp
 	}
-	logs, total, err := model.GetUserLogs(c.GetInt("id"), filter, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	logs, total, err := model.GetUserLogs(c.GetInt("id"), filter, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), c.GetInt("role"))
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -155,7 +155,7 @@ func exportLogs(c *gin.Context, all bool) {
 	if all {
 		err = model.StreamAllLogs(ctx, filter, c.GetInt("role"), writeLog)
 	} else {
-		err = model.StreamUserLogs(ctx, userId, filter, writeLog)
+		err = model.StreamUserLogs(ctx, userId, filter, c.GetInt("role"), writeLog)
 	}
 	if ctx.Err() != nil {
 		return

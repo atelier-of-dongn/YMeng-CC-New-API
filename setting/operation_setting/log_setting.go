@@ -14,14 +14,18 @@ type LogSetting struct {
 	// UserExportEnabled lets regular users export their own usage logs.
 	// Administrators can always export.
 	UserExportEnabled bool `json:"user_export_enabled"`
+	// UserResponseModelEnabled controls response-model diagnostics in user log views.
+	// Administrators retain access, and stored metadata is not changed.
+	UserResponseModelEnabled bool `json:"user_response_model_enabled"`
 	// MaxRangeDays is the longest time range a user can search in their logs
 	// and dashboard, and the longest range any export can cover.
 	MaxRangeDays int `json:"max_range_days"`
 }
 
 var logSetting = LogSetting{
-	UserExportEnabled: true,
-	MaxRangeDays:      365,
+	UserExportEnabled:        true,
+	UserResponseModelEnabled: true,
+	MaxRangeDays:             365,
 }
 
 func init() {

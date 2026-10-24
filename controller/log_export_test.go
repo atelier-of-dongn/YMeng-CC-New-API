@@ -13,6 +13,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting/config"
 	"github.com/QuantumNous/new-api/setting/operation_setting"
 
 	"github.com/alicebob/miniredis/v2"
@@ -212,6 +213,93 @@ func TestLogExportRules(t *testing.T) {
 		release()
 		assert.Len(t, callLogHandler(t, ExportUserLogs, 1, common.RoleCommonUser, recent), 3)
 	})
+}
+
+func TestLogResponseModelVisibility(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db, _ := newAuditTestDatabase(t, "sqlite", "")
+	useLogExportDatabases(t, db, db, common.DatabaseTypeSQLite, common.DatabaseTypeSQLite)
+	require.NoError(t, db.AutoMigrate(&model.Channel{}, &model.Log{}))
+	settings := operation_setting.GetLogSetting()
+	previous := *settings
+	t.Cleanup(func() { *settings = previous })
+	settings.UserExportEnabled = true
+	settings.MaxRangeDays = 365
+	assert.Equal(t, "true", config.GlobalConfig.ExportAllConfigs()["log_setting.user_response_model_enabled"])
+
+	const other = `{"response_model":{"requested_model":"requested","upstream_model":"mapped","returned_model":"returned"},"actual_model":"mapped","request_path":"/v1/responses","exact_integer":9007199254740993,"admin_info":{"private":"admin"},"root_info":{"private":"root"},"audit_info":{"private":"audit"}}`
+	entry := model.Log{UserId: 1, TokenId: 7, CreatedAt: time.Now().Unix() - 60, Type: model.LogTypeConsume, ModelName: "requested", Other: other}
+	require.NoError(t, db.Create(&entry).Error)
+
+	for _, enabled := range []bool{true, false, true} {
+		require.NoError(t, config.UpdateConfigFromMap(settings, map[string]string{"user_response_model_enabled": fmt.Sprint(enabled)}))
+		for _, tc := range []struct {
+			name    string
+			handler gin.HandlerFunc
+			role    int
+			export  bool
+			token   bool
+			all     bool
+		}{
+			{name: "user list", handler: GetUserLogs, role: common.RoleCommonUser},
+			{name: "user export", handler: ExportUserLogs, role: common.RoleCommonUser, export: true},
+			{name: "token query", handler: GetLogByKey, role: common.RoleAdminUser, token: true},
+			{name: "admin own list", handler: GetUserLogs, role: common.RoleAdminUser},
+			{name: "admin own export", handler: ExportUserLogs, role: common.RoleAdminUser, export: true},
+			{name: "root own list", handler: GetUserLogs, role: common.RoleRootUser},
+			{name: "root own export", handler: ExportUserLogs, role: common.RoleRootUser, export: true},
+			{name: "admin all list", handler: GetAllLogs, role: common.RoleAdminUser, all: true},
+			{name: "admin all export", handler: ExportAllLogs, role: common.RoleAdminUser, export: true, all: true},
+			{name: "root all list", handler: GetAllLogs, role: common.RoleRootUser, all: true},
+			{name: "root all export", handler: ExportAllLogs, role: common.RoleRootUser, export: true, all: true},
+		} {
+			t.Run(fmt.Sprintf("%s/enabled=%v", tc.name, enabled), func(t *testing.T) {
+				handler := tc.handler
+				if tc.token {
+					handler = func(c *gin.Context) {
+						c.Set("token_id", 7)
+						GetLogByKey(c)
+					}
+				}
+				lines := callLogHandler(t, handler, 1, tc.role, "")
+				var row map[string]any
+				switch {
+				case tc.export:
+					require.Len(t, lines, 2)
+					assert.Equal(t, true, lines[1]["success"])
+					row = lines[0]
+				case tc.token:
+					require.Equal(t, true, lines[0]["success"])
+					items := lines[0]["data"].([]any)
+					require.Len(t, items, 1)
+					row = items[0].(map[string]any)
+				default:
+					require.Equal(t, true, lines[0]["success"])
+					items := lines[0]["data"].(map[string]any)["items"].([]any)
+					require.Len(t, items, 1)
+					row = items[0].(map[string]any)
+				}
+				var metadata map[string]any
+				raw := row["other"].(string)
+				require.NoError(t, common.UnmarshalJsonStr(raw, &metadata))
+				visible := enabled || (!tc.token && tc.role >= common.RoleAdminUser)
+				assert.Equal(t, visible, metadata["response_model"] != nil)
+				if visible {
+					assert.Equal(t, map[string]any{"requested_model": "requested", "upstream_model": "mapped", "returned_model": "returned"}, metadata["response_model"])
+				}
+				assert.Equal(t, "requested", row["model_name"])
+				assert.Equal(t, "mapped", metadata["actual_model"])
+				assert.Equal(t, "/v1/responses", metadata["request_path"])
+				assert.Contains(t, raw, "9007199254740993")
+				assert.Equal(t, tc.all, metadata["admin_info"] != nil)
+				assert.Equal(t, tc.all && tc.role >= common.RoleRootUser, metadata["root_info"] != nil)
+				assert.Equal(t, tc.all, metadata["audit_info"] != nil)
+			})
+		}
+	}
+	var stored model.Log
+	require.NoError(t, db.First(&stored, entry.Id).Error)
+	assert.Equal(t, other, stored.Other, "view settings must not alter stored logs")
 }
 
 func TestAcquireLogExportLock(t *testing.T) {

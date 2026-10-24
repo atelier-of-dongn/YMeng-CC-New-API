@@ -26,6 +26,7 @@ import {
 } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { useState } from 'react'
+import { Toaster } from 'sonner'
 import { beforeEach, expect, test, vi } from 'vitest'
 
 import { api } from '@/lib/api'
@@ -33,16 +34,19 @@ import { api } from '@/lib/api'
 import { SettingsPageProvider } from '../../components/settings-page-context'
 import { LogSettingsSection } from '../log-settings-section'
 
-function Fixture() {
+function Fixture(props: { responseModelsEnabled?: boolean }) {
   const [container, setContainer] = useState<HTMLDivElement | null>(null)
   return (
     <>
       <div ref={setContainer} />
+      <Toaster />
       <SettingsPageProvider actionsContainer={container}>
         <LogSettingsSection
           defaultValues={{
             LogConsumeEnabled: true,
             'log_setting.user_export_enabled': true,
+            'log_setting.user_response_model_enabled':
+              props.responseModelsEnabled ?? true,
             'log_setting.max_range_days': 30,
           }}
         />
@@ -170,6 +174,80 @@ test('saving sends only the log export settings that changed', async () => {
     key: 'log_setting.max_range_days',
     value: 90,
   })
+})
+
+test('the response model switch defaults to enabled and submits only its changed value', async () => {
+  const user = userEvent.setup()
+  await renderSettings()
+  const toggle = screen.getByRole('switch', {
+    name: 'Show response models to users',
+  })
+  expect(toggle).toBeChecked()
+
+  toggle.focus()
+  await user.keyboard('[Space]')
+  expect(toggle).not.toBeChecked()
+  await user.click(screen.getByRole('button', { name: 'Save log settings' }))
+
+  await waitFor(() =>
+    expect(api.put).toHaveBeenCalledExactlyOnceWith('/api/option/', {
+      key: 'log_setting.user_response_model_enabled',
+      value: false,
+    })
+  )
+  expect(await screen.findByText('Setting updated successfully')).toBeVisible()
+})
+
+test('loading and refreshing saved response model settings updates the switch', async () => {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+  })
+  const view = render(
+    <QueryClientProvider client={client}>
+      <Fixture responseModelsEnabled={false} />
+    </QueryClientProvider>
+  )
+  const toggle = await screen.findByRole('switch', {
+    name: 'Show response models to users',
+  })
+  expect(toggle).not.toBeChecked()
+
+  view.rerender(
+    <QueryClientProvider client={client}>
+      <Fixture responseModelsEnabled />
+    </QueryClientProvider>
+  )
+  await waitFor(() => expect(toggle).toBeChecked())
+})
+
+test('saving unchanged response model settings does not submit a request', async () => {
+  const user = userEvent.setup()
+  await renderSettings()
+  await user.click(screen.getByRole('button', { name: 'Save log settings' }))
+  expect(api.put).not.toHaveBeenCalled()
+})
+
+test('a rejected response model setting save shows an error and allows retry', async () => {
+  const user = userEvent.setup()
+  vi.mocked(api.put).mockResolvedValueOnce({
+    data: { success: false, message: 'Unable to save response model setting' },
+  })
+  await renderSettings()
+  await user.click(
+    screen.getByRole('switch', { name: 'Show response models to users' })
+  )
+  await user.click(screen.getByRole('button', { name: 'Save log settings' }))
+
+  expect(
+    await screen.findByText('Unable to save response model setting')
+  ).toBeVisible()
+  expect(
+    screen.queryByText('Setting updated successfully')
+  ).not.toBeInTheDocument()
+  const save = screen.getByRole('button', { name: 'Save log settings' })
+  expect(save).toBeEnabled()
+  await user.click(save)
+  expect(await screen.findByText('Setting updated successfully')).toBeVisible()
 })
 
 test('a time range under one day shows a field error and is not saved', async () => {

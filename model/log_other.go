@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 )
 
 const (
@@ -31,6 +32,8 @@ const (
 	logOtherVisibilityUser logOtherVisibility = iota
 	logOtherVisibilityAdmin
 	logOtherVisibilityRoot
+	// Admin self views retain response models without exposing other privileged metadata.
+	logOtherVisibilityAdminSelf
 )
 
 // LogOther separates usage-log metadata by the audience allowed to see it.
@@ -243,7 +246,13 @@ func formatLogOtherJSON(value string, visibility logOtherVisibility) string {
 	}
 
 	changed := false
-	if visibility == logOtherVisibilityUser {
+	if visibility == logOtherVisibilityUser || visibility == logOtherVisibilityAdminSelf {
+		if visibility == logOtherVisibilityUser && !operation_setting.GetLogSetting().UserResponseModelEnabled {
+			if _, exists := values["response_model"]; exists {
+				delete(values, "response_model")
+				changed = true
+			}
+		}
 		for _, key := range []string{logOtherAdminInfoKey, logOtherRootInfoKey, logOtherAuditInfoKey} {
 			if _, exists := values[key]; exists {
 				delete(values, key)

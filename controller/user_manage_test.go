@@ -275,7 +275,7 @@ func TestManageUserQuotaRecordsTopupAndAudit(t *testing.T) {
 			require.NoError(t, common.UnmarshalJsonStr(logs[0].Other, &other))
 			assert.Equal(t, &model.AuditAdminInfo{AdminID: 9999, AdminUsername: "root-operator", AdminRole: common.RoleRootUser, AuthMethod: "session"}, other.AdminInfo)
 
-			logs, total, err = model.GetUserLogs(user.Id, model.LogFilter{Type: model.LogTypeTopup}, 0, 20)
+			logs, total, err = model.GetUserLogs(user.Id, model.LogFilter{Type: model.LogTypeTopup}, 0, 20, common.RoleCommonUser)
 			require.NoError(t, err)
 			assert.EqualValues(t, 1, total)
 			require.Len(t, logs, 1)
@@ -296,7 +296,7 @@ func TestManageUserQuotaRecordsTopupAndAudit(t *testing.T) {
 			assert.Equal(t, "quota-test-request", logs[0].RequestId)
 			assert.Empty(t, logs[0].Ip, "recipient logs must not disclose the administrator IP")
 
-			logs, total, err = model.GetUserLogs(9999, model.LogFilter{Type: model.LogTypeTopup}, 0, 20)
+			logs, total, err = model.GetUserLogs(9999, model.LogFilter{Type: model.LogTypeTopup}, 0, 20, common.RoleCommonUser)
 			require.NoError(t, err)
 			assert.Zero(t, total)
 			assert.Empty(t, logs)

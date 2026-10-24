@@ -52,6 +52,7 @@ const logSettingsSchema = z.object({
   LogConsumeEnabled: z.boolean(),
   log_setting: z.object({
     user_export_enabled: z.boolean(),
+    user_response_model_enabled: z.boolean(),
     max_range_days: z.number().int().min(1),
   }),
 })
@@ -62,6 +63,7 @@ type LogSettingsSectionProps = {
   defaultValues: {
     LogConsumeEnabled: boolean
     'log_setting.user_export_enabled': boolean
+    'log_setting.user_response_model_enabled': boolean
     'log_setting.max_range_days': number
   }
 }
@@ -77,6 +79,8 @@ export function LogSettingsSection(props: LogSettingsSectionProps) {
       log_setting: {
         user_export_enabled:
           props.defaultValues['log_setting.user_export_enabled'],
+        user_response_model_enabled:
+          props.defaultValues['log_setting.user_response_model_enabled'],
         max_range_days: props.defaultValues['log_setting.max_range_days'],
       },
     }),
@@ -98,11 +102,20 @@ export function LogSettingsSection(props: LogSettingsSectionProps) {
         'log_setting.user_export_enabled',
         values.log_setting.user_export_enabled,
       ],
+      [
+        'log_setting.user_response_model_enabled',
+        values.log_setting.user_response_model_enabled,
+      ],
       ['log_setting.max_range_days', values.log_setting.max_range_days],
     ] as const
     for (const [key, value] of changes) {
       if (value === props.defaultValues[key]) continue
-      await updateOption.mutateAsync({ key, value })
+      try {
+        await updateOption.mutateAsync({ key, value })
+      } catch {
+        // The mutation reports the error; stop without submitting later changes.
+        return
+      }
     }
   }
 
@@ -169,6 +182,31 @@ export function LogSettingsSection(props: LogSettingsSectionProps) {
                       <FormDescription>
                         {t(
                           'Users can download their own logs from the usage log page. Administrators can always export.'
+                        )}
+                      </FormDescription>
+                    </SettingsSwitchContent>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </SettingsSwitchItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name='log_setting.user_response_model_enabled'
+                render={({ field }) => (
+                  <SettingsSwitchItem>
+                    <SettingsSwitchContent>
+                      <FormLabel>
+                        {t('Show response models to users')}
+                      </FormLabel>
+                      <FormDescription>
+                        {t(
+                          'When disabled, response models and mismatch warnings are hidden from regular users in logs and exports. Administrators retain access. Stored logs are unchanged.'
                         )}
                       </FormDescription>
                     </SettingsSwitchContent>
