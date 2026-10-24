@@ -1,6 +1,6 @@
 <div align="center">
 
-![new-api](https://tc.ymeng.cc/2026/08/26/6a8f0564c7a85.png)
+<img src="https://tc.ymeng.cc/2026/08/26/6a8f0564c7a85.png" alt="new-api" width="120" height="120" />
 
 # New API
 

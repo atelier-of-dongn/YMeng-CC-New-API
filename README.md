@@ -2,7 +2,7 @@
 
 # YMeng CC New API
 
-![new-api](https://tc.ymeng.cc/2026/08/26/6a8f0564c7a85.png)
+<img src="https://tc.ymeng.cc/2026/08/26/6a8f0564c7a85.png" alt="new-api" width="120" height="120" />
 
 <h2><a href="https://ymeng.cc">YMeng API 中转站 · ymeng.cc</a></h2>
 
