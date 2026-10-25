@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -31,28 +31,24 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import { InvoiceStatus } from '@/features/invoices/components/invoice-status'
 
 import { createInvoice } from '../api'
-import { formatInvoiceAmount, formatInvoiceTime } from '../lib'
+import { formatInvoiceAmount } from '../lib'
 import { getInvoiceFormSchema, type InvoiceFormValues } from '../lib/schema'
 import type { InvoiceEligibility } from '../types'
 
-export function UserInvoiceForm(props: { eligibility: InvoiceEligibility }) {
+export function UserInvoiceForm(props: {
+  eligibility: InvoiceEligibility
+  selectedIds: Set<number>
+  onSubmitted: () => void
+}) {
   const { t } = useTranslation()
   const queryClient = useQueryClient()
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set())
+  const selectedOrders = props.eligibility.orders.filter(
+    (order) => props.selectedIds.has(order.id) && !order.invoice_status
+  )
   const schema = getInvoiceFormSchema(t)
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(schema),
@@ -67,16 +63,9 @@ export function UserInvoiceForm(props: { eligibility: InvoiceEligibility }) {
     })
   }, [form, props.eligibility.profile])
 
-  const selectedAmount = useMemo(
-    () =>
-      props.eligibility.orders.reduce(
-        (total, order) =>
-          selectedIds.has(order.id) && !order.invoice_status
-            ? total + order.amount
-            : total,
-        0
-      ),
-    [props.eligibility.orders, selectedIds]
+  const selectedAmount = selectedOrders.reduce(
+    (total, order) => total + order.amount,
+    0
   )
   const refundAmount = useMemo(
     () =>
@@ -88,20 +77,21 @@ export function UserInvoiceForm(props: { eligibility: InvoiceEligibility }) {
   )
   const netAmount = selectedAmount - refundAmount
   const canSubmit =
-    selectedIds.size > 0 && netAmount > props.eligibility.minimum_amount
+    selectedOrders.length > 0 && netAmount > props.eligibility.minimum_amount
 
   const mutation = useMutation({
     mutationFn: async (values: InvoiceFormValues) => {
+      if (!canSubmit) throw new Error(t('No invoiceable recharge orders'))
       const response = await createInvoice({
         title: values.title.trim(),
         tax_id: values.taxId.trim(),
-        top_up_ids: [...selectedIds],
+        top_up_ids: selectedOrders.map((order) => order.id),
       })
       if (!response.success) throw new Error(response.message)
       return response.data
     },
     onSuccess: async () => {
-      setSelectedIds(new Set())
+      props.onSubmitted()
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['invoice-eligibility'] }),
         queryClient.invalidateQueries({ queryKey: ['user-invoices'] }),
@@ -109,15 +99,6 @@ export function UserInvoiceForm(props: { eligibility: InvoiceEligibility }) {
       toast.success(t('Invoice application submitted'))
     },
   })
-
-  const toggleOrder = (id: number, checked: boolean) => {
-    setSelectedIds((current) => {
-      const next = new Set(current)
-      if (checked) next.add(id)
-      else next.delete(id)
-      return next
-    })
-  }
 
   return (
     <Card>
@@ -162,84 +143,6 @@ export function UserInvoiceForm(props: { eligibility: InvoiceEligibility }) {
                 </p>
               )}
             </div>
-          </div>
-
-          <div className='overflow-hidden rounded-lg border'>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className='w-12'>{t('Select')}</TableHead>
-                  <TableHead>{t('Order number')}</TableHead>
-                  <TableHead>{t('Completed at')}</TableHead>
-                  <TableHead>{t('Amount')}</TableHead>
-                  <TableHead>{t('Status')}</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {props.eligibility.orders.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className='text-center'>
-                      {t('No invoiceable recharge orders')}
-                    </TableCell>
-                  </TableRow>
-                )}
-                {props.eligibility.orders.map((order) => (
-                  <TableRow key={order.id}>
-                    <TableCell>
-                      <Checkbox
-                        aria-label={t('Select order {{number}}', {
-                          number: order.trade_no,
-                        })}
-                        checked={
-                          order.invoice_status
-                            ? true
-                            : selectedIds.has(order.id)
-                        }
-                        disabled={Boolean(order.invoice_status)}
-                        onCheckedChange={(checked) =>
-                          toggleOrder(order.id, checked === true)
-                        }
-                      />
-                    </TableCell>
-                    <TableCell className='max-w-64 truncate'>
-                      {order.trade_no}
-                    </TableCell>
-                    <TableCell className='tabular-nums'>
-                      {formatInvoiceTime(order.completed_at)}
-                    </TableCell>
-                    <TableCell className='tabular-nums'>
-                      {formatInvoiceAmount(order.amount)}
-                    </TableCell>
-                    <TableCell>
-                      {order.invoice_status ? (
-                        <InvoiceStatus status={order.invoice_status} />
-                      ) : (
-                        t('Available')
-                      )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {props.eligibility.pending_refunds.map((refund) => (
-                  <TableRow key={`refund-${refund.id}`}>
-                    <TableCell>
-                      <Checkbox
-                        checked
-                        disabled
-                        aria-label={t('Mandatory refund')}
-                      />
-                    </TableCell>
-                    <TableCell>{t('Refund adjustment')}</TableCell>
-                    <TableCell className='tabular-nums'>
-                      {formatInvoiceTime(refund.created_at)}
-                    </TableCell>
-                    <TableCell className='text-destructive tabular-nums'>
-                      -{formatInvoiceAmount(refund.amount)}
-                    </TableCell>
-                    <TableCell>{t('Mandatory')}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
           </div>
 
           <div className='bg-muted/30 grid gap-3 rounded-lg border p-4 sm:grid-cols-3'>

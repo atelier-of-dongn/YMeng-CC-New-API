@@ -1,5 +1,6 @@
 {
   "translation": {
+    "Invoice orders": "Commandes à facturer",
     "BaoCode Link": "Lien BaoCode",
     "Link opened by the Get BaoCode button on the home page": "Lien ouvert par le bouton Obtenir BaoCode sur la page d’accueil",
     "Enter an absolute HTTP(S) URL": "Saisissez une URL HTTP(S) absolue",

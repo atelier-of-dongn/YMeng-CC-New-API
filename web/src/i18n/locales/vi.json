@@ -1,5 +1,6 @@
 {
   "translation": {
+    "Invoice orders": "Đơn hàng yêu cầu hóa đơn",
     "BaoCode Link": "Liên kết BaoCode",
     "Link opened by the Get BaoCode button on the home page": "Liên kết được mở bằng nút Tải BaoCode trên trang chủ",
     "Enter an absolute HTTP(S) URL": "Nhập URL HTTP(S) tuyệt đối",

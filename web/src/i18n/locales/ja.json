@@ -1,5 +1,6 @@
 {
   "translation": {
+    "Invoice orders": "請求書申請の注文",
     "BaoCode Link": "BaoCode リンク",
     "Link opened by the Get BaoCode button on the home page": "ホームページの「BaoCode を入手」ボタンで開くリンク",
     "Enter an absolute HTTP(S) URL": "絶対 HTTP(S) URL を入力してください",
