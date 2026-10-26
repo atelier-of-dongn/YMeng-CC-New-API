@@ -158,10 +158,13 @@ func TestLogExportDatabaseMatrix(t *testing.T) {
 // that both stat endpoints average per-request cache rates.
 func verifyLogCacheRateStats(t *testing.T, now int64) {
 	t.Helper()
-	// Seeded in range: alice a-1 (100 input + 100 cache read = 0.5, cache
-	// writes ignored) and bob b-1 (no other = 0).
+	// Seeded in range: alice a-1 (cache write fields present: 100 cache read
+	// over 100 input + 100 cache read = 0.5) and bob b-1 (no other = 0).
 	logs := []model.Log{
-		{UserId: 1, Username: "alice", CreatedAt: now - 3500, Type: model.LogTypeConsume, PromptTokens: 999900, RequestId: "cache-low", Other: `{"cache_tokens":100}`},
+		// A zero cache write field still marks input that excludes cache reads.
+		{UserId: 1, Username: "alice", CreatedAt: now - 3600, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-read-only", Other: `{"cache_tokens":300,"cache_creation_tokens":0}`},
+		// Without cache write fields the input already includes cache reads.
+		{UserId: 1, Username: "alice", CreatedAt: now - 3500, Type: model.LogTypeConsume, PromptTokens: 1000, RequestId: "cache-included", Other: `{"cache_tokens":900}`},
 		{UserId: 1, Username: "alice", CreatedAt: now - 3400, Type: model.LogTypeConsume, RequestId: "cache-zero-denominator", Other: `{"cache_tokens":0}`},
 		{UserId: 1, Username: "alice", CreatedAt: now - 3300, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-missing", Other: `{}`},
 		{UserId: 1, Username: "alice", CreatedAt: now - 3200, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-empty"},
@@ -169,14 +172,13 @@ func verifyLogCacheRateStats(t *testing.T, now int64) {
 		{UserId: 1, Username: "alice", CreatedAt: now - 3000, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-text", Other: `{"cache_tokens":"x"}`},
 		{UserId: 1, Username: "alice", CreatedAt: now - 2900, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-null", Other: `{"cache_tokens":null}`},
 		{UserId: 1, Username: "alice", CreatedAt: now - 2800, Type: model.LogTypeError, RequestId: "cache-error", Other: `{"cache_tokens":100}`},
-		{UserId: 2, Username: "bob", CreatedAt: now - 2700, Type: model.LogTypeConsume, RequestId: "cache-full", Other: `{"cache_tokens":100}`},
+		{UserId: 2, Username: "bob", CreatedAt: now - 2700, Type: model.LogTypeConsume, RequestId: "cache-full", Other: `{"cache_tokens":100,"cache_creation_tokens":0}`},
+		{UserId: 4, Username: "carol", CreatedAt: now - 2700, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-carol-miss", Other: `{"cache_tokens":0}`},
 	}
-	aliceRequests := 8
 	// PostgreSQL 9.6 cannot parse text without risking an error, so the
 	// statistics there only promise to skip text that is not shaped like JSON.
 	if !common.UsingLogDatabase(common.DatabaseTypePostgreSQL) {
 		logs = append(logs, model.Log{UserId: 1, Username: "alice", CreatedAt: now - 2600, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-malformed", Other: `{malformed`})
-		aliceRequests++
 	}
 	for i := range logs {
 		require.NoError(t, model.LOG_DB.Create(&logs[i]).Error)
@@ -200,10 +202,12 @@ func verifyLogCacheRateStats(t *testing.T, now int64) {
 	}
 
 	query := fmt.Sprintf("start_timestamp=%d&end_timestamp=%d", now-2*24*3600, now+3600)
-	// Weighted by tokens, alice would be 200/1000200 ≈ 0.0002.
-	assert.InDelta(t, (0.5+0.0001)/float64(aliceRequests), cacheRate(GetLogsSelfStat, "alice", common.RoleCommonUser, query), 1e-9)
-	assert.InDelta(t, 0.5, cacheRate(GetLogsSelfStat, "bob", common.RoleCommonUser, query), 1e-9, "bob's average excludes alice's logs")
-	assert.InDelta(t, (0.5+0.0001+1)/float64(aliceRequests+2), cacheRate(GetLogsStat, "admin", common.RoleAdminUser, query), 1e-9)
+	// alice: 0.5 (a-1), 0.75 (300 / (100+300)) and 0.9 (900 / 1000); her
+	// 0% consume logs stay out of the average.
+	assert.InDelta(t, (0.5+0.75+0.9)/3, cacheRate(GetLogsSelfStat, "alice", common.RoleCommonUser, query), 1e-9)
+	assert.InDelta(t, 1.0, cacheRate(GetLogsSelfStat, "bob", common.RoleCommonUser, query), 1e-9, "bob's average excludes b-1 at 0% and alice's logs")
+	assert.InDelta(t, (0.5+0.75+0.9+1)/4, cacheRate(GetLogsStat, "admin", common.RoleAdminUser, query), 1e-9)
+	assert.InDelta(t, 0.0, cacheRate(GetLogsSelfStat, "carol", common.RoleCommonUser, query), 0, "only 0% requests average to 0")
 	assert.InDelta(t, 0.0, cacheRate(GetLogsSelfStat, "alice", common.RoleCommonUser, query+"&model_name=none"), 0)
 }
 

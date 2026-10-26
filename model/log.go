@@ -695,26 +695,44 @@ type Stat struct {
 }
 
 func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, channel int, group string) (stat Stat, err error) {
-	// other.cache_tokens counts only when it is a JSON number; a missing,
-	// non-numeric or unparsable value reads as 0. Nested CASE keeps the JSON
-	// parse behind the validity check on every dialect.
-	var cacheTokens string
+	// JSON access on other per dialect. Every parse sits behind parsable;
+	// PostgreSQL 9.6 has no non-throwing validity test, so it only parses
+	// object-shaped text (the gateway always writes valid JSON). A field
+	// counts only when it is a JSON number.
+	var parsable, isNumber, cacheValue, falseValue string
 	switch common.LogDatabaseType() {
 	case common.DatabaseTypeMySQL:
-		cacheTokens = `CASE WHEN JSON_VALID(other) THEN CASE WHEN JSON_TYPE(JSON_EXTRACT(other, '$.cache_tokens')) IN ('INTEGER', 'UNSIGNED INTEGER', 'DOUBLE', 'DECIMAL') THEN CAST(JSON_UNQUOTE(JSON_EXTRACT(other, '$.cache_tokens')) AS DECIMAL(65, 18)) ELSE 0 END ELSE 0 END`
+		parsable = `JSON_VALID(other)`
+		isNumber = `JSON_TYPE(JSON_EXTRACT(other, '$.%s')) IN ('INTEGER', 'UNSIGNED INTEGER', 'DOUBLE', 'DECIMAL')`
+		cacheValue = `CAST(JSON_UNQUOTE(JSON_EXTRACT(other, '$.cache_tokens')) AS DECIMAL(65, 18))`
+		falseValue = `0`
 	case common.DatabaseTypePostgreSQL:
-		// PostgreSQL 9.6 has no non-throwing JSON validity test, so only text
-		// shaped like an object is parsed. The gateway always writes valid JSON.
-		cacheTokens = `CASE WHEN other NOT LIKE '{%' THEN 0 WHEN jsonb_typeof(other::jsonb -> 'cache_tokens') = 'number' THEN (other::jsonb ->> 'cache_tokens')::double precision ELSE 0 END`
+		parsable = `other LIKE '{%'`
+		isNumber = `jsonb_typeof(other::jsonb -> '%s') = 'number'`
+		cacheValue = `(other::jsonb ->> 'cache_tokens')::double precision`
+		falseValue = `false`
 	case common.DatabaseTypeClickHouse:
-		cacheTokens = `COALESCE(JSONExtract(other, 'cache_tokens', 'Nullable(Float64)'), 0)`
+		parsable = `isValidJSON(other)`
+		isNumber = `JSONType(other, '%s') IN ('Int64', 'UInt64', 'Double')`
+		cacheValue = `JSONExtractFloat(other, 'cache_tokens')`
+		falseValue = `0`
 	default:
-		cacheTokens = `CASE WHEN json_valid(other) THEN CASE WHEN json_type(other, '$.cache_tokens') IN ('integer', 'real') THEN CAST(json_extract(other, '$.cache_tokens') AS REAL) ELSE 0 END ELSE 0 END`
+		parsable = `json_valid(other)`
+		isNumber = `json_type(other, '$.%s') IN ('integer', 'real')`
+		cacheValue = `CAST(json_extract(other, '$.cache_tokens') AS REAL)`
+		falseValue = `0`
 	}
-	// Every request weighs the same: average the per-request rates rather than
-	// dividing summed tokens. The explicit zero avoids NULL/NaN on empty sets.
-	cacheRate := fmt.Sprintf(`CASE WHEN prompt_tokens + (%[1]s) > 0 THEN (%[1]s) / (prompt_tokens + (%[1]s)) ELSE 0 END`, cacheTokens)
-	tx := LOG_DB.Table("logs").Select(fmt.Sprintf("COALESCE(sum(quota), 0) quota, CASE WHEN count(*) = 0 THEN 0 ELSE sum(%s) / count(*) END cache_rate", cacheRate))
+	cacheRead := fmt.Sprintf(`CASE WHEN %s THEN CASE WHEN %s THEN %s ELSE 0 END ELSE 0 END`, parsable, fmt.Sprintf(isNumber, "cache_tokens"), cacheValue)
+	// Anthropic-semantic logs always record cache_creation_tokens (even 0) and
+	// their prompt_tokens exclude cache reads; OpenAI-semantic logs omit the
+	// cache write fields when nothing was written and their prompt_tokens
+	// already include cache reads.
+	writeFields := make([]string, 0, 3)
+	for _, key := range []string{"cache_creation_tokens", "cache_creation_tokens_5m", "cache_creation_tokens_1h"} {
+		writeFields = append(writeFields, fmt.Sprintf(isNumber, key))
+	}
+	hasCacheWrite := fmt.Sprintf(`CASE WHEN %s THEN (%s) ELSE %s END`, parsable, strings.Join(writeFields, " OR "), falseValue)
+	tx := LOG_DB.Table("logs").Select(fmt.Sprintf("quota, prompt_tokens, %s AS cache_read, %s AS has_cache_write", cacheRead, hasCacheWrite))
 
 	// 为rpm和tpm创建单独的查询
 	rpmTpmQuery := LOG_DB.Table("logs").Select("count(*) rpm, COALESCE(sum(prompt_tokens), 0) + COALESCE(sum(completion_tokens), 0) tpm")
@@ -757,7 +775,15 @@ func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelNa
 	rpmTpmQuery = rpmTpmQuery.Where("created_at >= ?", time.Now().Add(-60*time.Second).Unix())
 
 	// 执行查询
-	if err := tx.Scan(&stat).Error; err != nil {
+	// Every request with a cache hit weighs the same: average the per-request
+	// rates rather than dividing summed tokens, leaving out 0% requests. The
+	// explicit zero avoids NULL/NaN when no request hit the cache.
+	cacheRate := `CASE WHEN has_cache_write THEN CASE WHEN prompt_tokens + cache_read > 0 THEN cache_read / (prompt_tokens + cache_read) ELSE 0 END ` +
+		`WHEN prompt_tokens > 0 THEN cache_read / prompt_tokens ELSE 0 END`
+	hitRequests := fmt.Sprintf(`sum(CASE WHEN %s > 0 THEN 1 ELSE 0 END)`, cacheRate)
+	statQuery := LOG_DB.Table("(?) AS filtered_logs", tx).Select(fmt.Sprintf(
+		`COALESCE(sum(quota), 0) quota, CASE WHEN COALESCE(%[1]s, 0) = 0 THEN 0 ELSE sum(%[2]s) / %[1]s END cache_rate`, hitRequests, cacheRate))
+	if err := statQuery.Scan(&stat).Error; err != nil {
 		common.SysError(common.LogText("failed to query log stat: %s", err.Error()))
 		return stat, common.NewMessage("Failed to query statistics")
 	}

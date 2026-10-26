@@ -63,6 +63,7 @@ import {
   formatModelName,
   decodeBillingExprB64,
   getTieredBillingSummary,
+  getLogCacheRate,
   hasAnyCacheTokens,
   parseLogOther,
   isViolationFeeLog,
@@ -780,9 +781,10 @@ export function useCommonLogsColumns(
           const log = row.original
           if (!isDisplayableLogType(log.type)) return null
 
-          const cacheTokens = parseLogOther(log.other)?.cache_tokens || 0
-          const denominator = log.prompt_tokens + cacheTokens
-          const cacheRate = denominator > 0 ? cacheTokens / denominator : 0
+          const cacheRate = getLogCacheRate(
+            log.prompt_tokens,
+            parseLogOther(log.other)
+          )
           return (
             <span className='font-mono text-xs tabular-nums'>
               {formatPercent(cacheRate * 100)}

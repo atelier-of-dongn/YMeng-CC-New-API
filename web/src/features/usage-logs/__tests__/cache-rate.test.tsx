@@ -96,9 +96,14 @@ function CacheRateColumn(props: { log: UsageLog }) {
 }
 
 test.each([
-  ['cache read over input plus cache read', 300, { cache_tokens: 100 }, '25%'],
   [
-    'cache writes ignored',
+    'cache read over input plus cache read when a cache write field exists',
+    300,
+    { cache_tokens: 100, cache_creation_tokens: 0 },
+    '25%',
+  ],
+  [
+    'the same share whatever was written to the cache',
     300,
     {
       cache_tokens: 100,
@@ -107,8 +112,20 @@ test.each([
     },
     '25%',
   ],
+  [
+    'cache read over input when no cache write field exists',
+    1000,
+    { cache_tokens: 900 },
+    '90%',
+  ],
   ['no cache read', 300, {}, '0%'],
-  ['zero input and cache read', 0, {}, '0%'],
+  ['zero input without a cache write field', 0, { cache_tokens: 0 }, '0%'],
+  [
+    'zero input and cache read with a cache write field',
+    0,
+    { cache_creation_tokens: 0 },
+    '0%',
+  ],
 ])('self view cache rate column shows %s', (_case, prompt, other, rate) => {
   render(
     <UsageLogsProvider>

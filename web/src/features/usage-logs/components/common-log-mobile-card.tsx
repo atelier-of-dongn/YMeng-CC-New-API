@@ -36,7 +36,12 @@ import {
 } from '@/lib/format'
 
 import type { UsageLog } from '../data/schema'
-import { formatModelName, logTokenName, parseLogOther } from '../lib/format'
+import {
+  formatModelName,
+  getLogCacheRate,
+  logTokenName,
+  parseLogOther,
+} from '../lib/format'
 import {
   getLogTypeConfig,
   isDisplayableLogType,
@@ -145,8 +150,7 @@ export function CommonLogMobileCard<TData>(props: {
       cacheRead > 0 ||
       cacheWrite > 0)
   const showCacheRate = displayable && props.cells.has('cache_rate')
-  const cacheRateBase = log.prompt_tokens + cacheRead
-  const cacheRate = cacheRateBase > 0 ? cacheRead / cacheRateBase : 0
+  const cacheRate = getLogCacheRate(log.prompt_tokens, other)
 
   return (
     <div className='min-w-0 space-y-2.5 text-sm leading-5'>
