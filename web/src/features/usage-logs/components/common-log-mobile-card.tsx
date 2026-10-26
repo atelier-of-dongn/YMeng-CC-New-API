@@ -29,11 +29,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { getUserAvatarFallback, getUserAvatarStyle } from '@/lib/avatar'
 import dayjs from '@/lib/dayjs'
-import {
-  formatLogQuota,
-  formatPercent,
-  formatTimestampToDate,
-} from '@/lib/format'
+import { formatLogQuota, formatTimestampToDate } from '@/lib/format'
 
 import type { UsageLog } from '../data/schema'
 import {
@@ -47,6 +43,7 @@ import {
   isDisplayableLogType,
   isTimingLogType,
 } from '../lib/utils'
+import { CacheRateRing } from './cache-rate-ring'
 import { ModelBadge, ResponseModelDetails } from './model-badge'
 import { StreamTpsCell, TimingMetricsCell } from './timing-metrics-cell'
 import { useUsageLogsContext } from './usage-logs-provider'
@@ -328,11 +325,9 @@ export function CommonLogMobileCard<TData>(props: {
             </>
           )}
           {showCacheRate && (
-            <span>
-              {t('Cache Rate')}{' '}
-              <span className='text-foreground tabular-nums'>
-                {formatPercent(cacheRate * 100)}
-              </span>
+            <span className='inline-flex items-center gap-1.5'>
+              {t('Cache Rate')}
+              <CacheRateRing rate={cacheRate} label={t('Cache Rate')} />
             </span>
           )}
         </div>

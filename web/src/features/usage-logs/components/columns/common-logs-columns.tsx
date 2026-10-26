@@ -49,11 +49,7 @@ import { taskUsageUnitLabel } from '@/features/pricing/lib/task-price-display'
 import type { BillingUsageSchema } from '@/features/pricing/types'
 import { getUserAvatarFallback, getUserAvatarStyle } from '@/lib/avatar'
 import { formatBillingCurrencyFromUSD } from '@/lib/currency'
-import {
-  formatLogQuota,
-  formatPercent,
-  formatTimestampToDate,
-} from '@/lib/format'
+import { formatLogQuota, formatTimestampToDate } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useSystemConfigStore } from '@/stores/system-config-store'
 
@@ -78,6 +74,7 @@ import {
   isPerCallBilling,
 } from '../../lib/utils'
 import type { LogOtherData } from '../../types'
+import { CacheRateRing } from '../cache-rate-ring'
 import { DetailsDialog } from '../dialogs/details-dialog'
 import { LogCostDisplay } from '../log-cost-display'
 import { ModelBadge } from '../model-badge'
@@ -785,11 +782,7 @@ export function useCommonLogsColumns(
             log.prompt_tokens,
             parseLogOther(log.other)
           )
-          return (
-            <span className='font-mono text-xs tabular-nums'>
-              {formatPercent(cacheRate * 100)}
-            </span>
-          )
+          return <CacheRateRing rate={cacheRate} label={t('Cache Rate')} />
         },
       },
       {

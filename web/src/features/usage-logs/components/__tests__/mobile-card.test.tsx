@@ -224,7 +224,9 @@ it('keeps input, output and cache quantities readable without empty metric cells
   expect(screen.getByText('Output')).toBeVisible()
   expect(screen.getByText(/300/)).toBeVisible()
   expect(screen.getByText('Cache ↑ 200')).toBeVisible()
-  expect(screen.getByText(/Cache Rate/)).toHaveTextContent('Cache Rate 20%')
+  expect(
+    screen.getByRole('progressbar', { name: 'Cache Rate' })
+  ).toHaveTextContent('20%')
 })
 
 it('shows a zero cache rate when a request has no input or cache read', () => {
@@ -232,7 +234,13 @@ it('shows a zero cache rate when a request has no input or cache read', () => {
     admin: false,
     logs: [{ ...log, prompt_tokens: 0, completion_tokens: 0, other: '{}' }],
   })
-  expect(screen.getByText(/Cache Rate/)).toHaveTextContent('Cache Rate 0%')
+  expect(
+    screen.getByRole('progressbar', { name: 'Cache Rate' })
+  ).toHaveTextContent('0%')
+  expect(screen.getByRole('progressbar')).toHaveAttribute(
+    'data-cache-rate-band',
+    'empty'
+  )
   expect(screen.queryByText('Input')).not.toBeInTheDocument()
 })
 
@@ -244,6 +252,7 @@ it.each([
   (visibility, showsRate, showsTokens) => {
     renderLogs({ admin: false, visibility })
     expect(screen.queryByText('Cache Rate') !== null).toBe(showsRate)
+    expect(screen.queryByRole('progressbar') !== null).toBe(showsRate)
     expect(screen.queryByText('Input') !== null).toBe(showsTokens)
   }
 )

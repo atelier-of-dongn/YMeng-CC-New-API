@@ -35,6 +35,7 @@ import { afterEach, expect, test } from 'vitest'
 
 import { api } from '@/lib/api'
 
+import { CacheRateRing } from '../components/cache-rate-ring'
 import { useCommonLogsColumns } from '../components/columns/common-logs-columns'
 import { CommonLogsStats } from '../components/common-logs-stats'
 import { UsageLogsProvider } from '../components/usage-logs-provider'
@@ -133,7 +134,39 @@ test.each([
     </UsageLogsProvider>
   )
   expect(screen.getByRole('columnheader')).toHaveTextContent('Cache Rate')
-  expect(screen.getByRole('cell')).toHaveTextContent(rate)
+  const ring = screen.getByRole('progressbar', { name: 'Cache Rate' })
+  expect(ring).toHaveAttribute('aria-valuetext', rate)
+  expect(ring).toHaveTextContent(rate)
+})
+
+test.each([
+  [0, 'empty', 0, '0%'],
+  [0.01, 'low', 1, '1%'],
+  [0.6, 'low', 60, '60%'],
+  [0.6001, 'medium', 60.01, '60.01%'],
+  [0.9, 'medium', 90, '90%'],
+  [0.9001, 'high', 90.01, '90.01%'],
+  [1, 'high', 100, '100%'],
+])('cache rate ring at %s uses the %s band', (rate, band, ariaValue, text) => {
+  render(<CacheRateRing rate={rate} label='Cache Rate' />)
+  const ring = screen.getByRole('progressbar', { name: 'Cache Rate' })
+  expect(ring).toHaveAttribute('data-cache-rate-band', band)
+  expect(ring).toHaveAttribute('aria-valuenow', String(ariaValue))
+  expect(ring).toHaveAttribute('aria-valuetext', text)
+  expect(ring).toHaveTextContent(text)
+  const progress = ring.querySelector('[data-cache-rate-progress]')
+  if (rate === 0) {
+    expect(progress).not.toBeInTheDocument()
+    expect(ring.querySelector('[data-cache-rate-track]')).toBeInTheDocument()
+  } else {
+    expect(progress).toBeInTheDocument()
+    const colorClass = {
+      low: 'text-destructive',
+      medium: 'text-warning',
+      high: 'text-success',
+    }[band]
+    expect(progress).toHaveClass(colorClass as string)
+  }
 })
 
 async function renderStats() {
