@@ -1044,6 +1044,8 @@
     "Changes save on drop. You can undo the last move.": "Les changements sont enregistrés au dépôt. Vous pouvez annuler le dernier déplacement.",
     "Channel affinity settings are not initialized": "Les paramètres d'affinité de canal ne sont pas initialisés",
     "Cache": "Cache",
+    "Cache Rate": "Taux de cache",
+    "Average Cache Rate": "Taux moyen de cache",
     "Cache create (1h) price": "Prix de création du cache (1 h)",
     "Cache create price": "Prix de création du cache",
     "Cache Creation": "Création cache",

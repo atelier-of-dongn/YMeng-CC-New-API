@@ -57,7 +57,7 @@ func seedExportLogs(t *testing.T, mainDB *gorm.DB, logDB *gorm.DB, now int64) {
 	t.Helper()
 	require.NoError(t, mainDB.Create(&model.Channel{Id: 9, Name: "primary"}).Error)
 	logs := []model.Log{
-		{UserId: 1, Username: "alice", CreatedAt: now - 3600, Type: model.LogTypeConsume, ModelName: "gpt-a", ChannelId: 9, Quota: 10, RequestId: "a-1", Other: `{"admin_info":{"use_channel":["9"]}}`},
+		{UserId: 1, Username: "alice", CreatedAt: now - 3600, Type: model.LogTypeConsume, ModelName: "gpt-a", ChannelId: 9, Quota: 10, PromptTokens: 100, RequestId: "a-1", Other: `{"cache_tokens":100,"cache_creation_tokens":1000000,"cache_creation_tokens_5m":1000000,"admin_info":{"use_channel":["9"]}}`},
 		{UserId: 2, Username: "bob", CreatedAt: now - 1800, Type: model.LogTypeConsume, ModelName: "gpt-b", ChannelId: 9, Quota: 20, RequestId: "b-1"},
 		{UserId: 1, Username: "alice", CreatedAt: now - 60, Type: model.LogTypeError, ModelName: "gpt-a", RequestId: "a-2"},
 		{UserId: 1, Username: "alice", CreatedAt: now - 400*24*3600, Type: model.LogTypeConsume, ModelName: "gpt-a", RequestId: "a-old"},
@@ -140,6 +140,7 @@ func TestLogExportDatabaseMatrix(t *testing.T) {
 			assert.Equal(t, float64(1), own[0]["id"], "user exports carry list positions, not row ids")
 			assert.Empty(t, own[1]["channel_name"])
 			assert.NotContains(t, own[1]["other"], "admin_info")
+			assert.Contains(t, own[1]["other"], "cache_tokens", "users keep the public cache read count")
 
 			all := callLogHandler(t, ExportAllLogs, 3, common.RoleAdminUser, query+"&model_name=gpt-%25")
 			require.Len(t, all, 4)
@@ -147,8 +148,63 @@ func TestLogExportDatabaseMatrix(t *testing.T) {
 			assert.Equal(t, "primary", all[2]["channel_name"])
 			assert.Contains(t, all[2]["other"], "admin_info")
 			assert.Equal(t, true, all[3]["success"])
+
+			verifyLogCacheRateStats(t, now)
 		})
 	}
+}
+
+// verifyLogCacheRateStats adds consume logs beside the seeded ones and checks
+// that both stat endpoints average per-request cache rates.
+func verifyLogCacheRateStats(t *testing.T, now int64) {
+	t.Helper()
+	// Seeded in range: alice a-1 (100 input + 100 cache read = 0.5, cache
+	// writes ignored) and bob b-1 (no other = 0).
+	logs := []model.Log{
+		{UserId: 1, Username: "alice", CreatedAt: now - 3500, Type: model.LogTypeConsume, PromptTokens: 999900, RequestId: "cache-low", Other: `{"cache_tokens":100}`},
+		{UserId: 1, Username: "alice", CreatedAt: now - 3400, Type: model.LogTypeConsume, RequestId: "cache-zero-denominator", Other: `{"cache_tokens":0}`},
+		{UserId: 1, Username: "alice", CreatedAt: now - 3300, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-missing", Other: `{}`},
+		{UserId: 1, Username: "alice", CreatedAt: now - 3200, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-empty"},
+		{UserId: 1, Username: "alice", CreatedAt: now - 3100, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-object", Other: `{"cache_tokens":{"n":1}}`},
+		{UserId: 1, Username: "alice", CreatedAt: now - 3000, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-text", Other: `{"cache_tokens":"x"}`},
+		{UserId: 1, Username: "alice", CreatedAt: now - 2900, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-null", Other: `{"cache_tokens":null}`},
+		{UserId: 1, Username: "alice", CreatedAt: now - 2800, Type: model.LogTypeError, RequestId: "cache-error", Other: `{"cache_tokens":100}`},
+		{UserId: 2, Username: "bob", CreatedAt: now - 2700, Type: model.LogTypeConsume, RequestId: "cache-full", Other: `{"cache_tokens":100}`},
+	}
+	aliceRequests := 8
+	// PostgreSQL 9.6 cannot parse text without risking an error, so the
+	// statistics there only promise to skip text that is not shaped like JSON.
+	if !common.UsingLogDatabase(common.DatabaseTypePostgreSQL) {
+		logs = append(logs, model.Log{UserId: 1, Username: "alice", CreatedAt: now - 2600, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-malformed", Other: `{malformed`})
+		aliceRequests++
+	}
+	for i := range logs {
+		require.NoError(t, model.LOG_DB.Create(&logs[i]).Error)
+	}
+
+	cacheRate := func(handler gin.HandlerFunc, username string, role int, query string) any {
+		t.Helper()
+		recorder := httptest.NewRecorder()
+		ctx, _ := gin.CreateTestContext(recorder)
+		ctx.Request = httptest.NewRequest(http.MethodGet, "/api/log/stat?"+query, nil)
+		ctx.Set("username", username)
+		ctx.Set("role", role)
+		handler(ctx)
+		var response struct {
+			Success bool           `json:"success"`
+			Data    map[string]any `json:"data"`
+		}
+		require.NoError(t, common.UnmarshalJsonStr(recorder.Body.String(), &response))
+		require.True(t, response.Success, recorder.Body.String())
+		return response.Data["cache_rate"]
+	}
+
+	query := fmt.Sprintf("start_timestamp=%d&end_timestamp=%d", now-2*24*3600, now+3600)
+	// Weighted by tokens, alice would be 200/1000200 ≈ 0.0002.
+	assert.InDelta(t, (0.5+0.0001)/float64(aliceRequests), cacheRate(GetLogsSelfStat, "alice", common.RoleCommonUser, query), 1e-9)
+	assert.InDelta(t, 0.5, cacheRate(GetLogsSelfStat, "bob", common.RoleCommonUser, query), 1e-9, "bob's average excludes alice's logs")
+	assert.InDelta(t, (0.5+0.0001+1)/float64(aliceRequests+2), cacheRate(GetLogsStat, "admin", common.RoleAdminUser, query), 1e-9)
+	assert.InDelta(t, 0.0, cacheRate(GetLogsSelfStat, "alice", common.RoleCommonUser, query+"&model_name=none"), 0)
 }
 
 func TestLogExportRules(t *testing.T) {

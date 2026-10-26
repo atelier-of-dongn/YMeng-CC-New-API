@@ -1044,6 +1044,8 @@
     "Changes save on drop. You can undo the last move.": "Changes save on drop. You can undo the last move.",
     "Channel affinity settings are not initialized": "Channel affinity settings are not initialized",
     "Cache": "Cache",
+    "Cache Rate": "Cache Rate",
+    "Average Cache Rate": "Average Cache Rate",
     "Cache create (1h) price": "Cache create (1h) price",
     "Cache create price": "Cache create price",
     "Cache Creation": "Cache Creation",

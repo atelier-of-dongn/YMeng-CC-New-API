@@ -49,7 +49,11 @@ import { taskUsageUnitLabel } from '@/features/pricing/lib/task-price-display'
 import type { BillingUsageSchema } from '@/features/pricing/types'
 import { getUserAvatarFallback, getUserAvatarStyle } from '@/lib/avatar'
 import { formatBillingCurrencyFromUSD } from '@/lib/currency'
-import { formatLogQuota, formatTimestampToDate } from '@/lib/format'
+import {
+  formatLogQuota,
+  formatPercent,
+  formatTimestampToDate,
+} from '@/lib/format'
 import { cn } from '@/lib/utils'
 import { useSystemConfigStore } from '@/stores/system-config-store'
 
@@ -766,6 +770,23 @@ export function useCommonLogsColumns(
                 </div>
               )}
             </div>
+          )
+        },
+      },
+      {
+        id: 'cache_rate',
+        header: t('Cache Rate'),
+        cell: ({ row }) => {
+          const log = row.original
+          if (!isDisplayableLogType(log.type)) return null
+
+          const cacheTokens = parseLogOther(log.other)?.cache_tokens || 0
+          const denominator = log.prompt_tokens + cacheTokens
+          const cacheRate = denominator > 0 ? cacheTokens / denominator : 0
+          return (
+            <span className='font-mono text-xs tabular-nums'>
+              {formatPercent(cacheRate * 100)}
+            </span>
           )
         },
       },

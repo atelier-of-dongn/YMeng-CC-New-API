@@ -302,6 +302,7 @@ export interface LogStatistics {
   quota: number
   rpm: number
   tpm: number
+  cache_rate: number
 }
 
 // ============================================================================

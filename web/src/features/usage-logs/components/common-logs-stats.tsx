@@ -21,7 +21,7 @@ import { getRouteApi } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
 import { Skeleton } from '@/components/ui/skeleton'
-import { formatLogQuota } from '@/lib/format'
+import { formatLogQuota, formatPercent } from '@/lib/format'
 import { requireServerSuccess } from '@/lib/server-error-message'
 
 import { getLogStats, getUserLogStats } from '../api'
@@ -67,6 +67,7 @@ export function CommonLogsStats() {
         <Skeleton className='h-7 w-[150px] rounded-md' />
         <Skeleton className='h-7 w-[100px] rounded-md' />
         <Skeleton className='h-7 w-[120px] rounded-md' />
+        <Skeleton className='h-7 w-[160px] rounded-md' />
       </div>
     )
   }
@@ -87,6 +88,11 @@ export function CommonLogsStats() {
         label={t('TPM')}
         value={stats?.tpm || 0}
         accent='bg-slate-400/70'
+      />
+      <StatBadge
+        label={t('Average Cache Rate')}
+        value={formatPercent((stats?.cache_rate || 0) * 100)}
+        accent='bg-emerald-500/65'
       />
       {isAdmin && <UpstreamCostStats totalQuota={stats?.quota || 0} />}
     </div>

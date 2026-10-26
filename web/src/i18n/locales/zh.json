@@ -1044,6 +1044,8 @@
     "Changes save on drop. You can undo the last move.": "松手后自动保存，可撤销上一次调整。",
     "Channel affinity settings are not initialized": "渠道亲和性设置未初始化",
     "Cache": "缓存",
+    "Cache Rate": "缓存率",
+    "Average Cache Rate": "平均缓存率",
     "Cache create (1h) price": "1 小时缓存写入价格",
     "Cache create price": "缓存写入价格",
     "Cache Creation": "缓存创建",

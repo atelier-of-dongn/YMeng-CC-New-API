@@ -219,12 +219,34 @@ it('respects hidden columns and omits admin fields in the self view', () => {
 })
 
 it('keeps input, output and cache quantities readable without empty metric cells', () => {
-  renderLogs()
+  renderLogs({ admin: false })
   expect(screen.getByText('Input')).toBeVisible()
   expect(screen.getByText('Output')).toBeVisible()
   expect(screen.getByText(/300/)).toBeVisible()
   expect(screen.getByText('Cache ↑ 200')).toBeVisible()
+  expect(screen.getByText(/Cache Rate/)).toHaveTextContent('Cache Rate 20%')
 })
+
+it('shows a zero cache rate when a request has no input or cache read', () => {
+  renderLogs({
+    admin: false,
+    logs: [{ ...log, prompt_tokens: 0, completion_tokens: 0, other: '{}' }],
+  })
+  expect(screen.getByText(/Cache Rate/)).toHaveTextContent('Cache Rate 0%')
+  expect(screen.queryByText('Input')).not.toBeInTheDocument()
+})
+
+it.each([
+  [{ cache_rate: false }, false, true],
+  [{ prompt_tokens: false }, true, false],
+])(
+  'mobile token summary follows column visibility %o',
+  (visibility, showsRate, showsTokens) => {
+    renderLogs({ admin: false, visibility })
+    expect(screen.queryByText('Cache Rate') !== null).toBe(showsRate)
+    expect(screen.queryByText('Input') !== null).toBe(showsTokens)
+  }
+)
 
 it('shows the established empty state when no logs exist', () => {
   renderLogs({ logs: [] })

@@ -1044,6 +1044,8 @@
     "Changes save on drop. You can undo the last move.": "Изменения сохраняются при отпускании. Последнее перемещение можно отменить.",
     "Channel affinity settings are not initialized": "Настройки привязки к каналу не инициализированы",
     "Cache": "Кэш",
+    "Cache Rate": "Доля кэша",
+    "Average Cache Rate": "Средняя доля кэша",
     "Cache create (1h) price": "Цена создания кэша (1 ч)",
     "Cache create price": "Цена создания кэша",
     "Cache Creation": "Создание кэша",

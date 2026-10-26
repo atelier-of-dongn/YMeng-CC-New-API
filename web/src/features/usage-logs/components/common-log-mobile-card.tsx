@@ -29,7 +29,11 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { getUserAvatarFallback, getUserAvatarStyle } from '@/lib/avatar'
 import dayjs from '@/lib/dayjs'
-import { formatLogQuota, formatTimestampToDate } from '@/lib/format'
+import {
+  formatLogQuota,
+  formatPercent,
+  formatTimestampToDate,
+} from '@/lib/format'
 
 import type { UsageLog } from '../data/schema'
 import { formatModelName, logTokenName, parseLogOther } from '../lib/format'
@@ -140,6 +144,9 @@ export function CommonLogMobileCard<TData>(props: {
       log.completion_tokens > 0 ||
       cacheRead > 0 ||
       cacheWrite > 0)
+  const showCacheRate = displayable && props.cells.has('cache_rate')
+  const cacheRateBase = log.prompt_tokens + cacheRead
+  const cacheRate = cacheRateBase > 0 ? cacheRead / cacheRateBase : 0
 
   return (
     <div className='min-w-0 space-y-2.5 text-sm leading-5'>
@@ -288,28 +295,40 @@ export function CommonLogMobileCard<TData>(props: {
             )}
         </div>
       )}
-      {showTokens && (
+      {(showTokens || showCacheRate) && (
         <div className='text-muted-foreground flex flex-wrap gap-x-3 gap-y-1 text-xs [overflow-wrap:anywhere]'>
-          <span>
-            {t('Input')}{' '}
-            <span className='text-foreground tabular-nums'>
-              {log.prompt_tokens.toLocaleString()}
-            </span>
-          </span>
-          <span>
-            {t('Output')}{' '}
-            <span className='text-foreground tabular-nums'>
-              {log.completion_tokens.toLocaleString()}
-            </span>
-          </span>
-          {cacheRead > 0 && (
-            <span>
-              {t('Cache')} ↓ {cacheRead.toLocaleString()}
-            </span>
+          {showTokens && (
+            <>
+              <span>
+                {t('Input')}{' '}
+                <span className='text-foreground tabular-nums'>
+                  {log.prompt_tokens.toLocaleString()}
+                </span>
+              </span>
+              <span>
+                {t('Output')}{' '}
+                <span className='text-foreground tabular-nums'>
+                  {log.completion_tokens.toLocaleString()}
+                </span>
+              </span>
+              {cacheRead > 0 && (
+                <span>
+                  {t('Cache')} ↓ {cacheRead.toLocaleString()}
+                </span>
+              )}
+              {cacheWrite > 0 && (
+                <span>
+                  {t('Cache')} ↑ {cacheWrite.toLocaleString()}
+                </span>
+              )}
+            </>
           )}
-          {cacheWrite > 0 && (
+          {showCacheRate && (
             <span>
-              {t('Cache')} ↑ {cacheWrite.toLocaleString()}
+              {t('Cache Rate')}{' '}
+              <span className='text-foreground tabular-nums'>
+                {formatPercent(cacheRate * 100)}
+              </span>
             </span>
           )}
         </div>

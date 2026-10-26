@@ -1044,6 +1044,8 @@
     "Changes save on drop. You can undo the last move.": "ドロップすると自動保存されます。直前の移動は元に戻せます。",
     "Channel affinity settings are not initialized": "チャネルアフィニティ設定が初期化されていません",
     "Cache": "キャッシュ",
+    "Cache Rate": "キャッシュ率",
+    "Average Cache Rate": "平均キャッシュ率",
     "Cache create (1h) price": "キャッシュ作成価格 (1時間)",
     "Cache create price": "キャッシュ作成価格",
     "Cache Creation": "キャッシュ作成",

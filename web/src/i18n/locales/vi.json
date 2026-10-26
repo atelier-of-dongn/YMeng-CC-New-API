@@ -1044,6 +1044,8 @@
     "Changes save on drop. You can undo the last move.": "Thay đổi được lưu khi thả. Bạn có thể hoàn tác lần di chuyển gần nhất.",
     "Channel affinity settings are not initialized": "Cài đặt ưu tiên kênh chưa được khởi tạo",
     "Cache": "Bộ nhớ đệm",
+    "Cache Rate": "Tỷ lệ bộ nhớ đệm",
+    "Average Cache Rate": "Tỷ lệ bộ nhớ đệm trung bình",
     "Cache create (1h) price": "Giá tạo cache (1 giờ)",
     "Cache create price": "Giá tạo cache",
     "Cache Creation": "Tạo cache",
