@@ -17,7 +17,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { useMutation } from '@tanstack/react-query'
-import { Download } from 'lucide-react'
+import { Download, Eye } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -34,10 +35,13 @@ import {
 import { downloadInvoicePDF } from '../api'
 import { formatInvoiceAmount, formatInvoiceTime } from '../lib'
 import type { InvoiceApplication } from '../types'
+import { InvoicePdfPreviewDialog } from './invoice-pdf-preview-dialog'
 import { InvoiceStatusDetails } from './invoice-status-details'
 
 export function InvoiceHistory(props: { applications: InvoiceApplication[] }) {
   const { t } = useTranslation()
+  const [previewApplication, setPreviewApplication] =
+    useState<InvoiceApplication | null>(null)
   const download = useMutation({
     mutationFn: (application: InvoiceApplication) =>
       downloadInvoicePDF(application, 'self'),
@@ -46,89 +50,113 @@ export function InvoiceHistory(props: { applications: InvoiceApplication[] }) {
   })
 
   return (
-    <StaticDataTable
-      className='overflow-x-auto'
-      tableProps={{ withContainer: false }}
-    >
-      <TableHeader>
-        <TableRow>
-          <TableHead>{t('Application ID')}</TableHead>
-          <TableHead>{t('Invoice title')}</TableHead>
-          <TableHead>{t('Net invoice amount')}</TableHead>
-          <TableHead>{t('Refund deduction')}</TableHead>
-          <TableHead>{t('Applied at')}</TableHead>
-          <TableHead>{t('Status')}</TableHead>
-          <TableHead className='text-right'>{t('Actions')}</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {props.applications.length === 0 && (
+    <>
+      <StaticDataTable
+        className='overflow-x-auto'
+        tableProps={{ withContainer: false }}
+      >
+        <TableHeader>
           <TableRow>
-            <TableCell colSpan={7} className='text-center'>
-              {t('No invoice applications')}
-            </TableCell>
+            <TableHead>{t('Application ID')}</TableHead>
+            <TableHead>{t('Invoice title')}</TableHead>
+            <TableHead>{t('Net invoice amount')}</TableHead>
+            <TableHead>{t('Refund deduction')}</TableHead>
+            <TableHead>{t('Applied at')}</TableHead>
+            <TableHead>{t('Status')}</TableHead>
+            <TableHead className='text-right'>{t('Actions')}</TableHead>
           </TableRow>
-        )}
-        {props.applications.map((application) => {
-          const refundItems = application.items.filter(
-            (item) => item.type === 'refund'
-          )
-          return (
-            <TableRow key={application.id}>
-              <TableCell className='tabular-nums'>#{application.id}</TableCell>
-              <TableCell
-                className='max-w-64 truncate'
-                title={application.title}
-              >
-                {application.title}
-              </TableCell>
-              <TableCell className='tabular-nums'>
-                {formatInvoiceAmount(application.net_amount)}
-              </TableCell>
-              <TableCell>
-                {refundItems.length > 0 ? (
-                  <div className='flex flex-col gap-1'>
-                    {refundItems.map((item) => (
-                      <div key={item.id} className='text-sm'>
-                        <div className='tabular-nums'>
-                          {formatInvoiceAmount(item.amount)}
-                        </div>
-                        <div className='text-muted-foreground text-xs'>
-                          {formatInvoiceTime(item.occurred_at)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  '-'
-                )}
-              </TableCell>
-              <TableCell className='tabular-nums'>
-                {formatInvoiceTime(application.created_at)}
-              </TableCell>
-              <TableCell>
-                <InvoiceStatusDetails
-                  status={application.status}
-                  rejectReason={application.reject_reason}
-                />
-              </TableCell>
-              <TableCell className='text-right'>
-                {application.status === 'issued' && application.file_name ? (
-                  <Button
-                    variant='outline'
-                    size='sm'
-                    disabled={download.isPending}
-                    onClick={() => download.mutate(application)}
-                  >
-                    <Download data-icon='inline-start' aria-hidden='true' />
-                    {t('Download')}
-                  </Button>
-                ) : null}
+        </TableHeader>
+        <TableBody>
+          {props.applications.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={7} className='text-center'>
+                {t('No invoice applications')}
               </TableCell>
             </TableRow>
-          )
-        })}
-      </TableBody>
-    </StaticDataTable>
+          )}
+          {props.applications.map((application) => {
+            const refundItems = application.items.filter(
+              (item) => item.type === 'refund'
+            )
+            return (
+              <TableRow key={application.id}>
+                <TableCell className='tabular-nums'>
+                  #{application.id}
+                </TableCell>
+                <TableCell
+                  className='max-w-64 truncate'
+                  title={application.title}
+                >
+                  {application.title}
+                </TableCell>
+                <TableCell className='tabular-nums'>
+                  {formatInvoiceAmount(application.net_amount)}
+                </TableCell>
+                <TableCell>
+                  {refundItems.length > 0 ? (
+                    <div className='flex flex-col gap-1'>
+                      {refundItems.map((item) => (
+                        <div key={item.id} className='text-sm'>
+                          <div className='tabular-nums'>
+                            {formatInvoiceAmount(item.amount)}
+                          </div>
+                          <div className='text-muted-foreground text-xs'>
+                            {formatInvoiceTime(item.occurred_at)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    '-'
+                  )}
+                </TableCell>
+                <TableCell className='tabular-nums'>
+                  {formatInvoiceTime(application.created_at)}
+                </TableCell>
+                <TableCell>
+                  <InvoiceStatusDetails
+                    status={application.status}
+                    rejectReason={application.reject_reason}
+                  />
+                </TableCell>
+                <TableCell className='text-right'>
+                  {application.status === 'issued' && application.file_name ? (
+                    <div className='flex flex-wrap justify-end gap-2'>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        onClick={() => setPreviewApplication(application)}
+                      >
+                        <Eye data-icon='inline-start' aria-hidden='true' />
+                        {t('Preview PDF')}
+                      </Button>
+                      <Button
+                        variant='outline'
+                        size='sm'
+                        disabled={download.isPending}
+                        onClick={() => download.mutate(application)}
+                      >
+                        <Download data-icon='inline-start' aria-hidden='true' />
+                        {t('Download')}
+                      </Button>
+                    </div>
+                  ) : null}
+                </TableCell>
+              </TableRow>
+            )
+          })}
+        </TableBody>
+      </StaticDataTable>
+      {previewApplication ? (
+        <InvoicePdfPreviewDialog
+          key={previewApplication.id}
+          application={previewApplication}
+          scope='self'
+          onOpenChange={(open) => {
+            if (!open) setPreviewApplication(null)
+          }}
+        />
+      ) : null}
+    </>
   )
 }

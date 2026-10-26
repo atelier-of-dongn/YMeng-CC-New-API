@@ -17,24 +17,120 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, expect, test, vi } from 'vitest'
 
 import { api } from '@/lib/api'
 
+import { InvoiceHistory } from '../components/invoice-history'
 import { InvoiceOrdersTable } from '../components/invoice-orders-table'
 import { UserInvoiceForm } from '../components/user-invoice-form'
-import type { InvoiceEligibility } from '../types'
+import type { InvoiceApplication, InvoiceEligibility } from '../types'
 import { UserInvoicePage } from '../user-page'
 
 const clients: QueryClient[] = []
+
+const invoiceApplication: InvoiceApplication = {
+  id: 7,
+  user_id: 3,
+  title: 'Example Company',
+  tax_id: '91350000TEST',
+  gross_amount: 600_000_000,
+  refund_amount: 0,
+  net_amount: 600_000_000,
+  status: 'issued',
+  created_at: 1_700_000_000,
+  updated_at: 1_700_000_100,
+  issued_at: 1_700_000_100,
+  rejected_at: 0,
+  file_name: 'invoice-7.pdf',
+  file_size: 14,
+  items: [],
+}
+
+function renderHistory(applications: InvoiceApplication[]) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false } },
+  })
+  clients.push(client)
+  render(
+    <QueryClientProvider client={client}>
+      <InvoiceHistory applications={applications} />
+    </QueryClientProvider>
+  )
+}
 
 afterEach(() => {
   cleanup()
   for (const client of clients) client.clear()
   clients.length = 0
   vi.restoreAllMocks()
+  vi.unstubAllGlobals()
+})
+
+test('opens and closes a self invoice PDF preview from an issued record', async () => {
+  const get = vi.spyOn(api, 'get').mockResolvedValue({
+    data: new Blob(['%PDF-1.7\n%%EOF']),
+  })
+  vi.stubGlobal(
+    'URL',
+    Object.assign(class extends URL {}, {
+      createObjectURL: vi.fn(() => 'blob:invoice-7'),
+      revokeObjectURL: vi.fn(),
+    })
+  )
+  renderHistory([invoiceApplication])
+  const user = userEvent.setup()
+
+  await user.click(screen.getByRole('button', { name: 'Preview PDF' }))
+
+  const preview = await screen.findByLabelText('Invoice PDF preview', {
+    selector: 'object',
+  })
+  expect(preview).toHaveAttribute('data', 'blob:invoice-7')
+  expect(get).toHaveBeenCalledWith(
+    '/api/invoice/self/7/file',
+    expect.objectContaining({ responseType: 'blob' })
+  )
+
+  const closeButtons = screen.getAllByRole('button', { name: 'Close' })
+  await user.click(closeButtons[0] as HTMLElement)
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  )
+})
+
+test('shows preview and download only for issued applications with files', () => {
+  const withoutFile = { ...invoiceApplication, id: 8, file_name: undefined }
+  const processing = {
+    ...invoiceApplication,
+    id: 9,
+    status: 'processing' as const,
+  }
+  renderHistory([invoiceApplication, withoutFile, processing])
+
+  const issuedRow = screen.getByText('#7').closest('tr') as HTMLElement
+  const withoutFileRow = screen.getByText('#8').closest('tr') as HTMLElement
+  const processingRow = screen.getByText('#9').closest('tr') as HTMLElement
+  expect(issuedRow).not.toBeNull()
+  expect(withoutFileRow).not.toBeNull()
+  expect(processingRow).not.toBeNull()
+  expect(
+    within(issuedRow).getByRole('button', { name: 'Preview PDF' })
+  ).toBeVisible()
+  expect(
+    within(issuedRow).getByRole('button', { name: 'Download' })
+  ).toBeVisible()
+  for (const row of [withoutFileRow, processingRow]) {
+    expect(within(row).queryByRole('button')).not.toBeInTheDocument()
+  }
 })
 
 test('hides issued orders and keeps the application form and selection when switching lists', async () => {
