@@ -59,15 +59,20 @@ export function TodayTopUpAmount() {
         <TooltipTrigger
           render={
             <output
-              className='text-muted-foreground hidden h-7 max-w-48 min-w-0 shrink-0 items-center gap-1 rounded-md px-2 text-sm font-medium whitespace-nowrap tabular-nums sm:flex'
+              className='border-primary/15 bg-accent/60 hidden h-7 max-w-48 min-w-0 shrink-0 items-center gap-1.5 rounded-full border px-2.5 text-sm font-medium whitespace-nowrap tabular-nums shadow-xs sm:flex'
               aria-label={`${label}: ¥${amount}`}
             />
           }
         >
-          <span aria-hidden='true' className='shrink-0'>
+          <span
+            aria-hidden='true'
+            className='text-muted-foreground shrink-0 font-semibold'
+          >
             ¥
           </span>
-          <span className='min-w-0 truncate'>{amount}</span>
+          <span className='text-foreground/90 min-w-0 truncate font-mono font-semibold'>
+            {amount}
+          </span>
         </TooltipTrigger>
         <TooltipContent side='bottom'>
           <p>
