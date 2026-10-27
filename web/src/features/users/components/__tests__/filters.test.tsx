@@ -39,6 +39,8 @@ import { UsersTable } from '../users-table'
 const clients: QueryClient[] = []
 const premiumSearchUrl =
   '/api/user/search?keyword=&group=premium&p=1&page_size=20'
+const userIdSearchUrl =
+  '/api/user/search?keyword=&group=&user_id=2&p=1&page_size=20'
 
 beforeEach(() => {
   vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
@@ -151,4 +153,44 @@ it('restores the user group filter from the page URL on load', async () => {
   expect(get).toHaveBeenCalledWith(premiumSearchUrl)
   expect(get).not.toHaveBeenCalledWith('/api/user/', expect.anything())
   expect(getGroupFilterTrigger()).toHaveTextContent('premium')
+})
+
+it('searches by exact user ID and clears the filter on reset', async () => {
+  const user = userEvent.setup()
+  const { get, router } = await renderUsers()
+
+  const input = screen.getByRole('textbox', { name: 'Filter by user ID...' })
+  await user.type(input, '2')
+
+  await waitFor(() => expect(get).toHaveBeenLastCalledWith(userIdSearchUrl))
+  expect(router.state.location.search).toMatchObject({ userId: '2' })
+
+  await user.click(screen.getByRole('button', { name: /^Reset/ }))
+
+  await waitFor(() =>
+    expect(get).toHaveBeenLastCalledWith('/api/user/', {
+      params: { p: 1, page_size: 20 },
+    })
+  )
+  expect(router.state.location.search).not.toHaveProperty('userId')
+  expect(input).toHaveValue('')
+
+  await user.type(input, '3')
+
+  await waitFor(() =>
+    expect(get).toHaveBeenLastCalledWith(
+      '/api/user/search?keyword=&group=&user_id=3&p=1&page_size=20'
+    )
+  )
+})
+
+it('restores a numeric user ID from the page URL on load', async () => {
+  const { get } = await renderUsers('/users/?userId=42')
+
+  expect(get).toHaveBeenCalledWith(
+    '/api/user/search?keyword=&group=&user_id=42&p=1&page_size=20'
+  )
+  expect(
+    screen.getByRole('textbox', { name: 'Filter by user ID...' })
+  ).toHaveValue('42')
 })

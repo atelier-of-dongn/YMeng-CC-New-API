@@ -27,7 +27,9 @@ import {
   DISABLED_ROW_MOBILE,
   DataTablePage,
   useDataTable,
+  useDebouncedColumnFilter,
 } from '@/components/data-table'
+import { Input } from '@/components/ui/input'
 import { useMediaQuery } from '@/hooks'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import {
@@ -86,7 +88,19 @@ export function UsersTable() {
       { columnId: 'status', searchKey: 'status', type: 'array' },
       { columnId: 'role', searchKey: 'role', type: 'array' },
       { columnId: 'group', searchKey: 'group', type: 'array' },
+      { columnId: '_userIdSearch', searchKey: 'userId', type: 'string' },
     ],
+  })
+  const {
+    inputValue: userIdInput,
+    onChange: onUserIdInputChange,
+    onCompositionStart: onUserIdCompositionStart,
+    onCompositionEnd: onUserIdCompositionEnd,
+    resetInput: resetUserIdInput,
+  } = useDebouncedColumnFilter({
+    columnFilters,
+    columnId: '_userIdSearch',
+    onColumnFiltersChange,
   })
   const statusFilter =
     (columnFilters.find((filter) => filter.id === 'status')?.value as
@@ -100,6 +114,11 @@ export function UsersTable() {
     (columnFilters.find((filter) => filter.id === 'group')?.value as
       | string[]
       | undefined) ?? []
+  const userIdFilter = (
+    (columnFilters.find((filter) => filter.id === '_userIdSearch')?.value as
+      | string
+      | undefined) ?? ''
+  ).trim()
 
   const { data: groupsData } = useQuery({
     queryKey: ['groups'],
@@ -139,6 +158,7 @@ export function UsersTable() {
       statusFilter,
       roleFilter,
       groupFilter,
+      userIdFilter,
       sortParams,
       refreshTrigger,
     ],
@@ -147,7 +167,8 @@ export function UsersTable() {
       const hasColumnFilter =
         statusFilter.length > 0 ||
         roleFilter.length > 0 ||
-        groupFilter.length > 0
+        groupFilter.length > 0 ||
+        userIdFilter !== ''
       const params = {
         p: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
@@ -162,13 +183,18 @@ export function UsersTable() {
               status: statusFilter[0] ?? '',
               role: roleFilter[0] ?? '',
               group: groupFilter[0] ?? '',
+              userId: userIdFilter,
             })
           : await getUsers(params)
 
       if (!result.success) {
         throw createServerError(
           result,
-          t(hasFilter ? 'Failed to search users' : 'Failed to load users')
+          t(
+            hasFilter || hasColumnFilter
+              ? 'Failed to search users'
+              : 'Failed to load users'
+          )
         )
       }
 
@@ -229,6 +255,20 @@ export function UsersTable() {
       toolbarProps={{
         searchPlaceholder: t('Filter by username, name or email...'),
         searchDebounceMs: 500,
+        onReset: () => resetUserIdInput(),
+        hasAdditionalFilters: userIdInput.trim() !== '',
+        additionalSearch: (
+          <Input
+            placeholder={t('Filter by user ID...')}
+            aria-label={t('Filter by user ID...')}
+            inputMode='numeric'
+            value={userIdInput}
+            onChange={onUserIdInputChange}
+            onCompositionStart={onUserIdCompositionStart}
+            onCompositionEnd={onUserIdCompositionEnd}
+            className='w-full sm:w-[130px] lg:w-[150px]'
+          />
+        ),
         filters: [
           {
             columnId: 'status',

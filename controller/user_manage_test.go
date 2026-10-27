@@ -724,3 +724,55 @@ func TestUpdateUserSettingKeepsWhatTheRequestLeavesOut(t *testing.T) {
 		})
 	}
 }
+
+func TestSearchUsersFiltersByUserIdQuery(t *testing.T) {
+	db := setupManageUserTestDB(t)
+	for id := 1; id <= 3; id++ {
+		user := model.User{
+			Id:       id,
+			Username: fmt.Sprintf("search-user-%d", id),
+			Role:     common.RoleCommonUser,
+			Status:   common.UserStatusEnabled,
+			AffCode:  fmt.Sprintf("search-user-aff-%d", id),
+		}
+		require.NoError(t, db.Create(&user).Error)
+	}
+
+	type searchResponse struct {
+		Success    bool   `json:"success"`
+		MessageKey string `json:"message_key"`
+		Data       struct {
+			Total int          `json:"total"`
+			Items []model.User `json:"items"`
+		} `json:"data"`
+	}
+	perform := func(query string) searchResponse {
+		t.Helper()
+		recorder := httptest.NewRecorder()
+		c, _ := gin.CreateTestContext(recorder)
+		c.Request = httptest.NewRequest(http.MethodGet, "/api/user/search?"+query, nil)
+		SearchUsers(c)
+		var body searchResponse
+		require.NoError(t, common.UnmarshalJsonStr(recorder.Body.String(), &body))
+		return body
+	}
+
+	for _, query := range []string{"user_id=2", "user_id=%202%20", "keyword=&group=&user_id=2"} {
+		body := perform(query)
+		assert.True(t, body.Success, query)
+		assert.Empty(t, body.MessageKey, query)
+		assert.Equal(t, 1, body.Data.Total, query)
+		require.Len(t, body.Data.Items, 1, query)
+		assert.Equal(t, 2, body.Data.Items[0].Id, query)
+	}
+
+	body := perform("keyword=search-user")
+	assert.True(t, body.Success)
+	assert.Equal(t, 3, body.Data.Total)
+
+	for _, query := range []string{"user_id=abc", "user_id=0", "user_id=-1", "user_id=1.5"} {
+		body := perform(query)
+		assert.False(t, body.Success, query)
+		assert.Equal(t, "Invalid user ID", body.MessageKey, query)
+	}
+}

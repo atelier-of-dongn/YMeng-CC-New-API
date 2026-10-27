@@ -2830,6 +2830,7 @@
     "Filter by request ID": "Фильтр по ID запроса",
     "Filter by task ID": "Фильтр по ID задачи",
     "Filter by token name": "Фильтр по имени токена",
+    "Filter by user ID...": "Фильтр по ID пользователя...",
     "Filter by username": "Фильтр по имени пользователя",
     "Filter by username, name or email...": "Фильтр по имени пользователя, имени или email...",
     "Filter Dashboard Models": "Фильтровать модели панели управления",

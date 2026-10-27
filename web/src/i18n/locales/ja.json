@@ -2830,6 +2830,7 @@
     "Filter by request ID": "リクエストIDで絞り込み",
     "Filter by task ID": "タスクIDでフィルター",
     "Filter by token name": "トークン名でフィルター",
+    "Filter by user ID...": "ユーザー ID でフィルター...",
     "Filter by username": "ユーザー名でフィルター",
     "Filter by username, name or email...": "ユーザー名、名前またはメールアドレスでフィルター...",
     "Filter Dashboard Models": "ダッシュボードモデルをフィルタリング",

@@ -59,8 +59,34 @@ func TestSearchUsersSortsBeforePagination(t *testing.T) {
 	truncateTables(t)
 	insertUsersForPaginationTest(t, 42)
 
-	users, total, err := SearchUsers("user", "", nil, nil, 20, 20, NewUserSortOptions("id", "asc"))
+	users, total, err := SearchUsers("user", "", nil, nil, nil, 20, 20, NewUserSortOptions("id", "asc"))
 	require.NoError(t, err)
 	assert.Equal(t, int64(42), total)
 	assert.Equal(t, []int{21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40}, collectUserIDs(users))
+}
+
+func TestSearchUsersFiltersByUserId(t *testing.T) {
+	truncateTables(t)
+	insertUsersForPaginationTest(t, 42)
+	userId := 15
+
+	tests := []struct {
+		name    string
+		keyword string
+		userId  *int
+		want    []int
+	}{
+		{name: "exact id without keyword", keyword: "", userId: &userId, want: []int{15}},
+		{name: "id narrows the keyword match", keyword: "user1", userId: &userId, want: []int{15}},
+		{name: "no id keeps the keyword match", keyword: "user1", userId: nil, want: []int{10, 11, 12, 13, 14, 15, 16, 17, 18, 19}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			users, total, err := SearchUsers(test.keyword, "", nil, nil, test.userId, 0, 20, NewUserSortOptions("id", "asc"))
+			require.NoError(t, err)
+			assert.Equal(t, int64(len(test.want)), total)
+			assert.Equal(t, test.want, collectUserIDs(users))
+		})
+	}
 }

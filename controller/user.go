@@ -366,9 +366,18 @@ func SearchUsers(c *gin.Context) {
 			status = &parsed
 		}
 	}
+	var userId *int
+	if raw := strings.TrimSpace(c.Query("user_id")); raw != "" {
+		parsed, err := strconv.Atoi(raw)
+		if err != nil || parsed <= 0 {
+			common.ApiErrorT(c, "Invalid user ID")
+			return
+		}
+		userId = &parsed
+	}
 	pageInfo := common.GetPageQuery(c)
 	sortOptions := model.NewUserSortOptions(c.Query("sort_by"), c.Query("sort_order"))
-	users, total, err := model.SearchUsers(keyword, group, role, status, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), sortOptions)
+	users, total, err := model.SearchUsers(keyword, group, role, status, userId, pageInfo.GetStartIdx(), pageInfo.GetPageSize(), sortOptions)
 	if err != nil {
 		common.ApiError(c, err)
 		return

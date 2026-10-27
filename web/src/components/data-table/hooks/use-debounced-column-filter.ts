@@ -57,6 +57,10 @@ export function useDebouncedColumnFilter({
 
   React.useEffect(() => {
     if (debouncedValue === value) return
+    // The debounce still holds the value from before an external reset or URL
+    // change. Wait for it to catch up with the pending value, otherwise the
+    // stale value would put the cleared filter back.
+    if (debouncedValue !== pendingValue) return
 
     onColumnFiltersChangeRef.current((previous) => {
       const filters = previous.filter((filter) => filter.id !== columnId)
@@ -64,7 +68,7 @@ export function useDebouncedColumnFilter({
         ? [...filters, { id: columnId, value: debouncedValue }]
         : filters
     })
-  }, [columnId, debouncedValue, value])
+  }, [columnId, debouncedValue, pendingValue, value])
 
   const updateInputValue = React.useCallback((nextValue: string) => {
     setInputValue(nextValue)
