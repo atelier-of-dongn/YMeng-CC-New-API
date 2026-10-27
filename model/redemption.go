@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
@@ -69,7 +70,9 @@ func GetAllRedemptions(startIdx int, num int) (redemptions []*Redemption, total 
 	return redemptions, total, nil
 }
 
-func SearchRedemptions(keyword string, status string, startIdx int, num int) (redemptions []*Redemption, total int64, err error) {
+func SearchRedemptions(keyword string, status string, key string, startIdx int, num int) (redemptions []*Redemption, total int64, err error) {
+	key = strings.ToLower(strings.TrimSpace(key))
+
 	tx := DB.Begin()
 	if tx.Error != nil {
 		return nil, 0, tx.Error
@@ -88,6 +91,10 @@ func SearchRedemptions(keyword string, status string, startIdx int, num int) (re
 		} else {
 			query = query.Where("name LIKE ?", keyword+"%")
 		}
+	}
+
+	if key != "" {
+		query = query.Where(commonKeyCol+" = ?", key)
 	}
 
 	if status != "" {

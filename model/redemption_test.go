@@ -30,7 +30,7 @@ func TestSearchRedemptionsFiltersAndPaginates(t *testing.T) {
 		{Id: 1, Name: "alpha-active", Key: "00000000000000000000000000000001", Status: common.RedemptionCodeStatusEnabled, ExpiredTime: 0},
 		{Id: 2, Name: "alpha-future", Key: "00000000000000000000000000000002", Status: common.RedemptionCodeStatusEnabled, ExpiredTime: now + 3600},
 		{Id: 3, Name: "alpha-expired", Key: "00000000000000000000000000000003", Status: common.RedemptionCodeStatusEnabled, ExpiredTime: now - 10},
-		{Id: 4, Name: "beta-disabled", Key: "00000000000000000000000000000004", Status: common.RedemptionCodeStatusDisabled, ExpiredTime: 0},
+		{Id: 4, Name: "beta-disabled", Key: "0000000000000000000000000000000a", Status: common.RedemptionCodeStatusDisabled, ExpiredTime: 0},
 		{Id: 5, Name: "beta-used", Key: "00000000000000000000000000000005", Status: common.RedemptionCodeStatusUsed, ExpiredTime: 0},
 	}
 	require.NoError(t, DB.Create(&redemptions).Error)
@@ -39,6 +39,7 @@ func TestSearchRedemptionsFiltersAndPaginates(t *testing.T) {
 		name      string
 		keyword   string
 		status    string
+		key       string
 		startIdx  int
 		num       int
 		wantTotal int64
@@ -92,11 +93,48 @@ func TestSearchRedemptionsFiltersAndPaginates(t *testing.T) {
 			wantTotal: 5,
 			wantIds:   []int{4, 3},
 		},
+		{
+			name:      "exact key returns one row",
+			key:       "00000000000000000000000000000002",
+			num:       10,
+			wantTotal: 1,
+			wantIds:   []int{2},
+		},
+		{
+			name:      "key is combined with keyword",
+			keyword:   "alpha",
+			key:       "00000000000000000000000000000003",
+			num:       10,
+			wantTotal: 1,
+			wantIds:   []int{3},
+		},
+		{
+			name:      "key is combined with status",
+			status:    "1",
+			key:       "00000000000000000000000000000003",
+			num:       10,
+			wantTotal: 0,
+			wantIds:   []int{},
+		},
+		{
+			name:      "key is trimmed and lowercased",
+			key:       "  0000000000000000000000000000000A  ",
+			num:       10,
+			wantTotal: 1,
+			wantIds:   []int{4},
+		},
+		{
+			name:      "unknown key returns no rows",
+			key:       "ffffffffffffffffffffffffffffffff",
+			num:       10,
+			wantTotal: 0,
+			wantIds:   []int{},
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			rows, total, err := SearchRedemptions(tt.keyword, tt.status, tt.startIdx, tt.num)
+			rows, total, err := SearchRedemptions(tt.keyword, tt.status, tt.key, tt.startIdx, tt.num)
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantTotal, total)
 			gotIds := make([]int, 0, len(rows))

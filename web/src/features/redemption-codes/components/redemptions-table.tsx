@@ -26,7 +26,9 @@ import {
   DISABLED_ROW_MOBILE,
   DataTablePage,
   useDataTable,
+  useDebouncedColumnFilter,
 } from '@/components/data-table'
+import { Input } from '@/components/ui/input'
 import { useMediaQuery } from '@/hooks'
 import { useTableUrlState } from '@/hooks/use-table-url-state'
 import { createServerError } from '@/lib/server-error-message'
@@ -72,13 +74,32 @@ export function RedemptionsTable() {
     navigate: route.useNavigate(),
     pagination: { defaultPage: 1, defaultPageSize: isMobile ? 10 : 20 },
     globalFilter: { enabled: true, key: 'filter' },
-    columnFilters: [{ columnId: 'status', searchKey: 'status', type: 'array' }],
+    columnFilters: [
+      { columnId: 'status', searchKey: 'status', type: 'array' },
+      { columnId: '_keySearch', searchKey: 'key', type: 'string' },
+    ],
+  })
+  const {
+    inputValue: keyInput,
+    onChange: onKeyInputChange,
+    onCompositionStart: onKeyCompositionStart,
+    onCompositionEnd: onKeyCompositionEnd,
+    resetInput: resetKeyInput,
+  } = useDebouncedColumnFilter({
+    columnFilters,
+    columnId: '_keySearch',
+    onColumnFiltersChange,
   })
   const statusFilter =
     (columnFilters.find((filter) => filter.id === 'status')?.value as
       | string[]
       | undefined) ?? []
   const statusFilterValue = statusFilter[0] ?? ''
+  const keyFilter = (
+    (columnFilters.find((filter) => filter.id === '_keySearch')?.value as
+      | string
+      | undefined) ?? ''
+  ).trim()
 
   // Fetch data with React Query
   const { data, isLoading, isFetching } = useQuery({
@@ -88,30 +109,33 @@ export function RedemptionsTable() {
       pagination.pageSize,
       globalFilter,
       statusFilterValue,
+      keyFilter,
       refreshTrigger,
     ],
     queryFn: async () => {
-      const hasFilter = globalFilter?.trim()
       const hasStatusFilter = statusFilterValue !== ''
+      const hasKeyFilter = keyFilter !== ''
+      const isSearching =
+        Boolean(globalFilter?.trim()) || hasStatusFilter || hasKeyFilter
       const params = {
         p: pagination.pageIndex + 1,
         page_size: pagination.pageSize,
       }
 
-      const result =
-        hasFilter || hasStatusFilter
-          ? await searchRedemptions({
-              ...params,
-              keyword: globalFilter,
-              status: statusFilterValue,
-            })
-          : await getRedemptions(params)
+      const result = isSearching
+        ? await searchRedemptions({
+            ...params,
+            keyword: globalFilter,
+            status: statusFilterValue,
+            key: keyFilter,
+          })
+        : await getRedemptions(params)
 
       if (!result.success) {
         throw createServerError(
           result,
           t(
-            hasFilter || hasStatusFilter
+            isSearching
               ? ERROR_MESSAGES.SEARCH_FAILED
               : ERROR_MESSAGES.LOAD_FAILED
           )
@@ -172,6 +196,21 @@ export function RedemptionsTable() {
       toolbarProps={{
         searchPlaceholder: t('Filter by name or ID...'),
         searchDebounceMs: 500,
+        onReset: () => resetKeyInput(),
+        hasAdditionalFilters: keyInput.trim() !== '',
+        additionalSearch: (
+          <Input
+            placeholder={t('Filter by redemption code...')}
+            aria-label={t('Filter by redemption code...')}
+            autoComplete='off'
+            spellCheck={false}
+            value={keyInput}
+            onChange={onKeyInputChange}
+            onCompositionStart={onKeyCompositionStart}
+            onCompositionEnd={onKeyCompositionEnd}
+            className='w-full sm:w-[260px] lg:w-[300px]'
+          />
+        ),
         filters: [
           {
             columnId: 'status',
