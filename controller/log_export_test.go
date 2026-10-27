@@ -287,7 +287,7 @@ func TestLogResponseModelVisibility(t *testing.T) {
 	settings.MaxRangeDays = 365
 	assert.Equal(t, "true", config.GlobalConfig.ExportAllConfigs()["log_setting.user_response_model_enabled"])
 
-	const other = `{"response_model":{"requested_model":"requested","upstream_model":"mapped","returned_model":"returned"},"actual_model":"mapped","request_path":"/v1/responses","exact_integer":9007199254740993,"admin_info":{"private":"admin"},"root_info":{"private":"root"},"audit_info":{"private":"audit"}}`
+	const other = `{"response_model":{"requested_model":"requested","upstream_model":"mapped","returned_model":"returned"},"is_model_mapped":true,"upstream_model_name":"mapped","actual_model":"mapped","po":["set model = mapped"],"request_path":"/v1/responses","exact_integer":9007199254740993,"admin_info":{"private":"admin"},"root_info":{"private":"root"},"audit_info":{"private":"audit"}}`
 	entry := model.Log{UserId: 1, TokenId: 7, CreatedAt: time.Now().Unix() - 60, Type: model.LogTypeConsume, ModelName: "requested", Other: other}
 	require.NoError(t, db.Create(&entry).Error)
 
@@ -347,8 +347,10 @@ func TestLogResponseModelVisibility(t *testing.T) {
 				if visible {
 					assert.Equal(t, map[string]any{"requested_model": "requested", "upstream_model": "mapped", "returned_model": "returned"}, metadata["response_model"])
 				}
+				for _, key := range []string{"is_model_mapped", "upstream_model_name", "actual_model", "po"} {
+					assert.Equal(t, visible, metadata[key] != nil, "user-visible model metadata key %s", key)
+				}
 				assert.Equal(t, "requested", row["model_name"])
-				assert.Equal(t, "mapped", metadata["actual_model"])
 				assert.Equal(t, "/v1/responses", metadata["request_path"])
 				assert.Contains(t, raw, "9007199254740993")
 				assert.Equal(t, tc.all, metadata["admin_info"] != nil)

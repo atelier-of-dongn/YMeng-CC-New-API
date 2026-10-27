@@ -202,11 +202,11 @@ export function LogSettingsSection(props: LogSettingsSectionProps) {
                   <SettingsSwitchItem>
                     <SettingsSwitchContent>
                       <FormLabel>
-                        {t('Show response models to users')}
+                        {t('Show response and upstream models to users')}
                       </FormLabel>
                       <FormDescription>
                         {t(
-                          'When disabled, response models and mismatch warnings are hidden from regular users in logs and exports. Administrators retain access. Stored logs are unchanged.'
+                          'When disabled, response models, upstream model names, model mapping details, and mismatch warnings are hidden from regular users in logs, task details, and exports. Administrators retain access. Stored logs are unchanged.'
                         )}
                       </FormDescription>
                     </SettingsSwitchContent>

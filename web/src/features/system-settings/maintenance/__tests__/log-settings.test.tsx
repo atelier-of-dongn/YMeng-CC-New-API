@@ -180,9 +180,14 @@ test('the response model switch defaults to enabled and submits only its changed
   const user = userEvent.setup()
   await renderSettings()
   const toggle = screen.getByRole('switch', {
-    name: 'Show response models to users',
+    name: 'Show response and upstream models to users',
   })
   expect(toggle).toBeChecked()
+  expect(
+    screen.getByText(
+      'When disabled, response models, upstream model names, model mapping details, and mismatch warnings are hidden from regular users in logs, task details, and exports. Administrators retain access. Stored logs are unchanged.'
+    )
+  ).toBeVisible()
 
   toggle.focus()
   await user.keyboard('[Space]')
@@ -208,7 +213,7 @@ test('loading and refreshing saved response model settings updates the switch', 
     </QueryClientProvider>
   )
   const toggle = await screen.findByRole('switch', {
-    name: 'Show response models to users',
+    name: 'Show response and upstream models to users',
   })
   expect(toggle).not.toBeChecked()
 
@@ -234,7 +239,9 @@ test('a rejected response model setting save shows an error and allows retry', a
   })
   await renderSettings()
   await user.click(
-    screen.getByRole('switch', { name: 'Show response models to users' })
+    screen.getByRole('switch', {
+      name: 'Show response and upstream models to users',
+    })
   )
   await user.click(screen.getByRole('button', { name: 'Save log settings' }))
 

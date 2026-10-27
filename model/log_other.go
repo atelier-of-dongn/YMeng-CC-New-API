@@ -248,9 +248,21 @@ func formatLogOtherJSON(value string, visibility logOtherVisibility) string {
 	changed := false
 	if visibility == logOtherVisibilityUser || visibility == logOtherVisibilityAdminSelf {
 		if visibility == logOtherVisibilityUser && !operation_setting.GetLogSetting().UserResponseModelEnabled {
-			if _, exists := values["response_model"]; exists {
-				delete(values, "response_model")
-				changed = true
+			// Model diagnostics, upstream model names, and the parameter override
+			// audit can all reveal the upstream model, so one setting hides them
+			// together. actual_model is the legacy spelling of upstream_model_name.
+			hiddenModelKeys := []string{
+				"response_model",
+				"is_model_mapped",
+				"upstream_model_name",
+				"actual_model",
+				"po",
+			}
+			for _, key := range hiddenModelKeys {
+				if _, exists := values[key]; exists {
+					delete(values, key)
+					changed = true
+				}
 			}
 		}
 		for _, key := range []string{logOtherAdminInfoKey, logOtherRootInfoKey, logOtherAuditInfoKey} {

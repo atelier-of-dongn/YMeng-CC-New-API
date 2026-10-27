@@ -1,11 +1,13 @@
 package controller
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/setting/operation_setting"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -134,4 +136,33 @@ func TestTaskLogDTOKeepsFailureReasonAndDoesNotMarkPluginTaskLegacy(t *testing.T
 	assert.False(t, pluginView.LegacyVideoAvailable)
 	assert.Empty(t, pluginView.ResultURL)
 	assert.Empty(t, pluginView.FailReason)
+}
+
+func TestTaskLogDTOHidesUpstreamModelFromRegularUsers(t *testing.T) {
+	settings := operation_setting.GetLogSetting()
+	previous := *settings
+	t.Cleanup(func() { *settings = previous })
+
+	task := &model.Task{
+		TaskID:   "task_mapped_model",
+		Platform: "jimeng",
+		Properties: model.Properties{
+			Input:             "prompt",
+			OriginModelName:   "requested-model",
+			UpstreamModelName: "mapped-model",
+		},
+	}
+
+	for _, enabled := range []bool{true, false} {
+		settings.UserResponseModelEnabled = enabled
+		userJSON, err := common.Marshal(tasksToDto([]*model.Task{task}, false, common.RoleCommonUser)[0])
+		require.NoError(t, err)
+		assert.Equal(t, enabled, strings.Contains(string(userJSON), "mapped-model"), "regular user upstream model visibility with enabled=%v", enabled)
+		assert.Contains(t, string(userJSON), "requested-model")
+		assert.Contains(t, string(userJSON), "prompt")
+
+		adminJSON, err := common.Marshal(tasksToDto([]*model.Task{task}, false, common.RoleAdminUser)[0])
+		require.NoError(t, err)
+		assert.Contains(t, string(adminJSON), "mapped-model", "administrators keep the upstream model")
+	}
 }
