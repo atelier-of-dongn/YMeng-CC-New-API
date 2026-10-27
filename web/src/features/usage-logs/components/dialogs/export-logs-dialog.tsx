@@ -61,21 +61,28 @@ export function ExportLogsDialog() {
   if (!canManageScope && status?.log_export_enabled === false) return null
 
   const maxDays = status?.log_max_range_days || DEFAULT_MAX_RANGE_DAYS
+  // Administrators may export every stored log, so the longest range and the
+  // required time range only apply to the user view.
+  const unlimitedRange = isAdminView
   const startMs = range.start?.getTime()
   const endMs = range.end?.getTime()
   let rangeError: string | null = null
   if (startMs !== undefined && endMs !== undefined) {
     if (endMs < startMs) {
       rangeError = t('End time must be after start time')
-    } else if (Math.min(endMs, Date.now()) - startMs > maxDays * DAY_MS) {
+    } else if (
+      !unlimitedRange &&
+      Math.min(endMs, Date.now()) - startMs > maxDays * DAY_MS
+    ) {
       rangeError = t('The time range cannot exceed {{days}} days', {
         days: maxDays,
       })
     }
   }
   const exporting = exportedCount !== null
+  const hasCompleteRange = startMs !== undefined && endMs !== undefined
   const canExport =
-    startMs !== undefined && endMs !== undefined && !rangeError && !exporting
+    (unlimitedRange || hasCompleteRange) && !rangeError && !exporting
 
   const handleOpenChange = (nextOpen: boolean) => {
     if (nextOpen) {
@@ -95,7 +102,7 @@ export function ExportLogsDialog() {
   }
 
   const handleExport = async () => {
-    if (!range.start || !range.end) return
+    if (!unlimitedRange && (!range.start || !range.end)) return
     const controller = new AbortController()
     abortRef.current = controller
     const lines = [toCsvLine(getLogCsvHeader(isAdminView, t))]
@@ -111,8 +118,14 @@ export function ExportLogsDialog() {
           }),
           p: undefined,
           page_size: undefined,
-          start_timestamp: Math.floor(range.start.getTime() / 1000),
-          end_timestamp: Math.floor(range.end.getTime() / 1000),
+          // An empty administrator range exports every matching log, so the
+          // page's own time filter must not leak into the request.
+          start_timestamp: range.start
+            ? Math.floor(range.start.getTime() / 1000)
+            : undefined,
+          end_timestamp: range.end
+            ? Math.floor(range.end.getTime() / 1000)
+            : undefined,
         },
         isAdminView,
         {
@@ -147,10 +160,16 @@ export function ExportLogsDialog() {
         </Button>
       }
       title={t('Export logs')}
-      description={t(
-        'Choose a time range of up to {{days}} days. The other filters on this page also apply.',
-        { days: maxDays }
-      )}
+      description={
+        unlimitedRange
+          ? t(
+              'Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.'
+            )
+          : t(
+              'Choose a time range of up to {{days}} days. The other filters on this page also apply.',
+              { days: maxDays }
+            )
+      }
       contentClassName='sm:max-w-md'
       footer={
         <>
@@ -179,6 +198,16 @@ export function ExportLogsDialog() {
           end={range.end}
           onChange={setRange}
         />
+        {unlimitedRange && (
+          <Button
+            type='button'
+            variant='secondary'
+            size='sm'
+            onClick={() => setRange({})}
+          >
+            {t('All time')}
+          </Button>
+        )}
         {rangeError && (
           <p role='alert' className='text-destructive text-sm'>
             {rangeError}

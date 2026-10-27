@@ -193,6 +193,13 @@ export function buildApiParams(config: {
     ...(isAdmin && searchParams.username
       ? { username: String(searchParams.username) }
       : {}),
+    ...(isAdmin && searchParams.userId
+      ? { user_id: String(searchParams.userId) }
+      : {}),
+    ...(isAdmin && searchParams.tokenId
+      ? { token_id: String(searchParams.tokenId) }
+      : {}),
+    ...(isAdmin && searchParams.ip ? { ip: String(searchParams.ip) } : {}),
     ...(searchParams.requestId
       ? { request_id: String(searchParams.requestId) }
       : {}),

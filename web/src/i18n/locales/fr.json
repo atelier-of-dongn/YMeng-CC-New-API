@@ -6206,7 +6206,7 @@
     "Task plugins": "Plugins de tâche",
     "Task Plugins": "Plugins de tâches",
     "The longest log time range must be at least 1 day": "La plage maximale des journaux doit être d'au moins 1 jour",
-    "The longest time range a user can view at once in the logs and on the dashboard, and the longest range any export can cover.": "La plus longue période qu'un utilisateur peut consulter en une fois dans les journaux et le tableau de bord, et la plus longue période couverte par un export.",
+    "The longest time range a regular user can view at once in the logs and on the dashboard, and the longest range a user export can cover.": "La plus longue période qu'un utilisateur ordinaire peut consulter en une fois dans les journaux et le tableau de bord, et la plus longue période couverte par un export utilisateur.",
     "Task pricing": "Tarification des tâches",
     "Task pricing must be converted manually using the task usage schema.": "La tarification des tâches doit être convertie manuellement selon leur schéma d’utilisation.",
     "Task pricing not configured": "Tarification des tâches non configurée",
@@ -7766,6 +7766,10 @@
     "How do I connect this model?": "Comment connecter ce modèle ?",
     "Grab a key in the console and paste it into your client": "Récupérez une clé dans la console et collez-la dans votre client",
     "How do I report an error?": "Comment signaler une erreur ?",
-    "Post the logs in the group and we will take a look": "Postez les logs dans le groupe, on y jettera un œil"
+    "Post the logs in the group and we will take a look": "Postez les logs dans le groupe, on y jettera un œil",
+    "Invalid pagination": "Pagination invalide",
+    "Invalid token ID": "ID de jeton invalide",
+    "All time": "Toute la période",
+    "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.": "Choisissez une période, ou laissez-la vide pour exporter tous les journaux correspondants. Les autres filtres de la page s'appliquent aussi."
   }
 }

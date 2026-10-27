@@ -49,6 +49,10 @@ export function UpstreamCostStats(props: UpstreamCostStatsProps) {
   const searchParams = route.useSearch()
   const { sensitiveVisible, internalAccounting } = useUsageLogsContext()
 
+  // The cost ledger has no token id or client IP, so those two filters cannot
+  // narrow these totals; hide them rather than show an unrelated number.
+  const unsupportedFilter = Boolean(searchParams.tokenId || searchParams.ip)
+
   // The key must start with 'usage-logs-stats' so the filter bar refreshes it.
   const { data: stats, isError } = useQuery({
     queryKey: [
@@ -57,6 +61,7 @@ export function UpstreamCostStats(props: UpstreamCostStatsProps) {
       searchParams,
       internalAccounting,
     ],
+    enabled: !unsupportedFilter,
     queryFn: async () => {
       const params = {
         ...buildApiParams({
@@ -77,7 +82,7 @@ export function UpstreamCostStats(props: UpstreamCostStatsProps) {
     meta: { errorToast: false },
   })
 
-  if (!stats || isError) {
+  if (unsupportedFilter || !stats || isError) {
     return null
   }
   const summary = summarizeUpstreamCost(stats, props.totalQuota)

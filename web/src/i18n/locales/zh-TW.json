@@ -6206,7 +6206,7 @@
     "Task plugins": "任務外掛",
     "Task Plugins": "任务外掛",
     "The longest log time range must be at least 1 day": "日誌最長時間範圍至少為 1 天",
-    "The longest time range a user can view at once in the logs and on the dashboard, and the longest range any export can cover.": "使用者在日誌和數據看板中一次最多能查看的時間範圍，也是每次匯出的最長時間範圍。",
+    "The longest time range a regular user can view at once in the logs and on the dashboard, and the longest range a user export can cover.": "一般使用者在日誌和數據看板中一次最多能查看的時間範圍，也是一般使用者匯出的最長時間範圍。",
     "Task pricing": "任務定價",
     "Task pricing must be converted manually using the task usage schema.": "任務定價需根據任務用量定義手動轉換。",
     "Task pricing not configured": "尚未設定任務定價",
@@ -7766,6 +7766,10 @@
     "How do I connect this model?": "這個模型怎麼接入？",
     "Grab a key in the console and paste it into your client": "在主控台拿個 key，填到用戶端就能用",
     "How do I report an error?": "有錯誤怎麼回饋？",
-    "Post the logs in the group and we will take a look": "把日誌貼到群裡，我們幫你看看"
+    "Post the logs in the group and we will take a look": "把日誌貼到群裡，我們幫你看看",
+    "Invalid pagination": "無效的分頁參數",
+    "Invalid token ID": "無效的權杖 ID",
+    "All time": "全部時間",
+    "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.": "選擇要匯出的時間範圍，留空則匯出所有符合的日誌。頁面上的其他篩選條件同樣生效。"
   }
 }

@@ -139,16 +139,16 @@ func testAffiliateCostAttribution(t *testing.T) {
 	encoded, err := common.Marshal(items[7])
 	require.NoError(t, err)
 	assert.Contains(t, string(encoded), `"affiliate_cost":null`)
-	stat, err := model.SumUpstreamCost(90, 110, "a", "al%", "token", 1, "vip", false)
+	stat, err := model.SumUpstreamCost(model.LogFilter{StartTimestamp: 90, EndTimestamp: 110, ModelName: "a", Username: "al%", TokenName: "token", Channel: 1, Group: "vip"}, false)
 	require.NoError(t, err)
 	assert.InDelta(t, 0.123456, stat.AffiliateCost, 1e-9, "use consumption date, not settlement date")
 	assert.Equal(t, int64(100), stat.Revenue)
-	stat, err = model.SumUpstreamCost(0, 0, "", "", "", 0, "", true)
+	stat, err = model.SumUpstreamCost(model.LogFilter{}, true)
 	require.NoError(t, err)
 	assert.InDelta(t, 8.493824, stat.AffiliateCost, 1e-9, "exclude unknown upstream costs and unmonitored consumption")
 	assert.Equal(t, int64(250), stat.Revenue)
 	assert.Equal(t, int64(100), stat.Cost)
-	stat, err = model.SumUpstreamCost(150, 250, "a", "", "", 1, "", false)
+	stat, err = model.SumUpstreamCost(model.LogFilter{StartTimestamp: 150, EndTimestamp: 250, ModelName: "a", Channel: 1}, false)
 	require.NoError(t, err)
 	assert.InDelta(t, 3.123456, stat.AffiliateCost, 1e-9)
 }
@@ -169,7 +169,7 @@ func testAffiliateCostAmbiguity(t *testing.T) {
 			require.NoError(t, model.DB.Create(&model.AffiliateCommission{InviterId: 10, InviteeId: 2, SourceKey: "duplicate", ModelName: "a", ConsumedQuota: 100, RewardAmount: 2, Status: status}).Error)
 		}
 		items := AttachUpstreamCostToLogs([]*model.Log{log})
-		stat, err := model.SumUpstreamCost(90, 110, "a", "", "", 1, "", false)
+		stat, err := model.SumUpstreamCost(model.LogFilter{StartTimestamp: 90, EndTimestamp: 110, ModelName: "a", Channel: 1}, false)
 		if status == model.AffiliateCommissionStatusCompleted {
 			assert.Nil(t, items[0].AffiliateCost, "off-page unknown-cost mirror makes paid tuple ambiguous")
 			require.ErrorContains(t, err, "Affiliate cost attribution is ambiguous")
@@ -200,7 +200,7 @@ func testAffiliateCostReadFailures(t *testing.T) {
 	items = AttachUpstreamCostToLogs(logs)
 	assert.Nil(t, items[0].AffiliateCost)
 	require.NotNil(t, items[0].UpstreamCost, "ledger failure must not hide known upstream costs")
-	_, err := model.SumUpstreamCost(0, 0, "", "", "", 0, "", false)
+	_, err := model.SumUpstreamCost(model.LogFilter{}, false)
 	assert.Error(t, err)
 }
 
@@ -773,7 +773,7 @@ func TestSumUpstreamCostOnlyCountsKnownCosts(t *testing.T) {
 		{RequestId: "d", CreatedAt: 400, Username: "bob", ChannelId: 2, Quota: 1000, CostQuota: 10, Status: model.UpstreamCostRecordMatched},
 	}))
 
-	stat, err := model.SumUpstreamCost(0, 350, "", "al%", "", 1, "", false)
+	stat, err := model.SumUpstreamCost(model.LogFilter{EndTimestamp: 350, Username: "al%", Channel: 1}, false)
 
 	require.NoError(t, err)
 	assert.Equal(t, model.UpstreamCostStat{Revenue: 150, Cost: 140, CoveredQuota: 150, Matched: 1, Estimated: 1, Unknown: 1}, stat)
@@ -1069,11 +1069,11 @@ func TestAffiliateCostAttributionAndFilters(t *testing.T) {
 	encoded, err := common.Marshal(items[6])
 	require.NoError(t, err)
 	assert.Contains(t, string(encoded), `"affiliate_cost":null`)
-	stat, err := model.SumUpstreamCost(90, 110, "a", "al%", "token", 1, "vip", false)
+	stat, err := model.SumUpstreamCost(model.LogFilter{StartTimestamp: 90, EndTimestamp: 110, ModelName: "a", Username: "al%", TokenName: "token", Channel: 1, Group: "vip"}, false)
 	require.NoError(t, err)
 	assert.InDelta(t, 0.123456, stat.AffiliateCost, 1e-9)
 	assert.Equal(t, int64(100), stat.Revenue)
-	stat, err = model.SumUpstreamCost(0, 0, "", "", "", 0, "", true)
+	stat, err = model.SumUpstreamCost(model.LogFilter{}, true)
 	require.NoError(t, err)
 	assert.InDelta(t, 8.493824, stat.AffiliateCost, 1e-9)
 	assert.Equal(t, int64(250), stat.Revenue)

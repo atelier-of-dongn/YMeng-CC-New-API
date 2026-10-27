@@ -54,6 +54,9 @@ export function buildSearchParams(
         ...(commonFilters.token && { token: commonFilters.token }),
         ...(commonFilters.group && { group: commonFilters.group }),
         ...(commonFilters.username && { username: commonFilters.username }),
+        ...(commonFilters.userId && { userId: commonFilters.userId }),
+        ...(commonFilters.tokenId && { tokenId: commonFilters.tokenId }),
+        ...(commonFilters.ip && { ip: commonFilters.ip }),
         ...(commonFilters.requestId && { requestId: commonFilters.requestId }),
         ...(commonFilters.upstreamRequestId && {
           upstreamRequestId: commonFilters.upstreamRequestId,

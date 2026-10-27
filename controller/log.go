@@ -3,6 +3,7 @@ package controller
 import (
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/i18n"
@@ -13,9 +14,10 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// logFilterFromQuery reads the log search shared by the log list and the log
-// export. Username and channel are read only for administrators.
-func logFilterFromQuery(c *gin.Context, admin bool) model.LogFilter {
+// logFilterFromQuery reads the log search shared by the log list, the log
+// export, and the log statistics. Username, user ID, token ID, channel, and IP
+// are read only for administrators.
+func logFilterFromQuery(c *gin.Context, admin bool) (model.LogFilter, error) {
 	logType, _ := strconv.Atoi(c.Query("type"))
 	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
 	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
@@ -29,11 +31,37 @@ func logFilterFromQuery(c *gin.Context, admin bool) model.LogFilter {
 		RequestId:         c.Query("request_id"),
 		UpstreamRequestId: c.Query("upstream_request_id"),
 	}
-	if admin {
-		filter.Username = c.Query("username")
-		filter.Channel, _ = strconv.Atoi(c.Query("channel"))
+	if !admin {
+		return filter, nil
 	}
-	return filter
+	filter.Username = c.Query("username")
+	filter.Channel, _ = strconv.Atoi(c.Query("channel"))
+	filter.Ip = strings.TrimSpace(c.Query("ip"))
+	if raw := strings.TrimSpace(c.Query("user_id")); raw != "" {
+		userId, err := strconv.Atoi(raw)
+		if err != nil || userId <= 0 {
+			return filter, common.NewMessage("Invalid user ID")
+		}
+		filter.UserId = userId
+	}
+	if raw := strings.TrimSpace(c.Query("token_id")); raw != "" {
+		tokenId, err := strconv.Atoi(raw)
+		if err != nil || tokenId <= 0 {
+			return filter, common.NewMessage("Invalid token ID")
+		}
+		filter.TokenId = tokenId
+	}
+	return filter, nil
+}
+
+// logPageQuery returns the pagination of a log endpoint and rejects the
+// negative values that would otherwise remove the SQL LIMIT.
+func logPageQuery(c *gin.Context) (*common.PageInfo, error) {
+	pageInfo := common.GetPageQuery(c)
+	if pageInfo.GetPage() < 1 || pageInfo.GetPageSize() < 1 {
+		return nil, common.NewMessage("Invalid pagination")
+	}
+	return pageInfo, nil
 }
 
 // limitLogTimeRange returns the start of a log or dashboard search kept within
@@ -55,8 +83,17 @@ func limitLogTimeRange(startTimestamp int64, endTimestamp int64) (int64, error) 
 }
 
 func GetAllLogs(c *gin.Context) {
-	pageInfo := common.GetPageQuery(c)
-	logs, total, err := model.GetAllLogs(logFilterFromQuery(c, true), pageInfo.GetStartIdx(), pageInfo.GetPageSize())
+	pageInfo, err := logPageQuery(c)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	filter, err := logFilterFromQuery(c, true)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	logs, total, err := model.GetAllLogs(filter, pageInfo.GetStartIdx(), pageInfo.GetPageSize())
 	if err != nil {
 		common.ApiError(c, err)
 		return
@@ -73,8 +110,16 @@ func GetAllLogs(c *gin.Context) {
 }
 
 func GetUserLogs(c *gin.Context) {
-	pageInfo := common.GetPageQuery(c)
-	filter := logFilterFromQuery(c, false)
+	pageInfo, err := logPageQuery(c)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	filter, err := logFilterFromQuery(c, false)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
 	if c.GetInt("role") < common.RoleAdminUser {
 		startTimestamp, err := limitLogTimeRange(filter.StartTimestamp, filter.EndTimestamp)
 		if err != nil {
@@ -108,18 +153,29 @@ func ExportUserLogs(c *gin.Context) {
 	exportLogs(c, false)
 }
 
+// logExportBatchSize bounds the rows held while attaching upstream cost to an
+// administrator export.
+const logExportBatchSize = 200
+
 // exportLogs writes one JSON log per line, newest first, and ends with an API
 // response object: success with the log count, or the failure. Each user runs
-// one export at a time, and every export stays within the longest log time
-// range.
+// one export at a time. Regular users stay within the longest log time range;
+// administrators may export every matching log.
 func exportLogs(c *gin.Context, all bool) {
-	filter := logFilterFromQuery(c, all)
-	startTimestamp, err := limitLogTimeRange(filter.StartTimestamp, filter.EndTimestamp)
+	filter, err := logFilterFromQuery(c, all)
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
-	filter.StartTimestamp = startTimestamp
+	role := c.GetInt("role")
+	if role < common.RoleAdminUser {
+		startTimestamp, err := limitLogTimeRange(filter.StartTimestamp, filter.EndTimestamp)
+		if err != nil {
+			common.ApiError(c, err)
+			return
+		}
+		filter.StartTimestamp = startTimestamp
+	}
 
 	userId := c.GetInt("id")
 	release, ok, err := service.AcquireLogExportLock(userId)
@@ -140,27 +196,63 @@ func exportLogs(c *gin.Context, all bool) {
 	c.Status(http.StatusOK)
 
 	count := 0
-	writeLog := func(log *model.Log) error {
-		line, err := common.Marshal(log)
-		if err != nil {
-			return err
+	// The administrator export carries the same upstream cost fields as the
+	// list. Rows are buffered so cost lookups stay batched per request id.
+	batch := make([]*model.Log, 0, logExportBatchSize)
+	writeBatch := func() error {
+		if len(batch) == 0 {
+			return nil
 		}
-		if _, err := c.Writer.Write(append(line, '\n')); err != nil {
-			return err
+		if all && common.UsingLogDatabase(common.DatabaseTypeClickHouse) {
+			// ClickHouse rows have no stable row id; exports follow the list and
+			// number rows by their position in the file.
+			for i, item := range batch {
+				item.Id = count + i + 1
+			}
 		}
-		count++
+		items := make([]any, len(batch))
+		if all {
+			for i, item := range service.AttachUpstreamCostToLogs(batch) {
+				items[i] = item
+			}
+		} else {
+			for i, item := range batch {
+				items[i] = item
+			}
+		}
+		for _, item := range items {
+			line, err := common.Marshal(item)
+			if err != nil {
+				return err
+			}
+			if _, err := c.Writer.Write(append(line, '\n')); err != nil {
+				return err
+			}
+			count++
+		}
+		batch = batch[:0]
 		return nil
+	}
+	writeLog := func(log *model.Log) error {
+		batch = append(batch, log)
+		if len(batch) < logExportBatchSize {
+			return nil
+		}
+		return writeBatch()
 	}
 	ctx := c.Request.Context()
 	if all {
-		err = model.StreamAllLogs(ctx, filter, c.GetInt("role"), writeLog)
+		err = model.StreamAllLogs(ctx, filter, role, writeLog)
 	} else {
-		err = model.StreamUserLogs(ctx, userId, filter, c.GetInt("role"), writeLog)
+		err = model.StreamUserLogs(ctx, userId, filter, role, writeLog)
 	}
 	if ctx.Err() != nil {
 		return
 	}
 	// The status is already sent, so the result object becomes the last line.
+	if err == nil {
+		err = writeBatch()
+	}
 	if err != nil {
 		common.SysError(common.LogText("failed to export logs: %s", err.Error()))
 		common.ApiErrorT(c, "Failed to export logs")
@@ -201,20 +293,16 @@ func GetLogByKey(c *gin.Context) {
 }
 
 func GetLogsStat(c *gin.Context) {
-	logType, _ := strconv.Atoi(c.Query("type"))
-	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
-	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
-	tokenName := c.Query("token_name")
-	username := c.Query("username")
-	modelName := c.Query("model_name")
-	channel, _ := strconv.Atoi(c.Query("channel"))
-	group := c.Query("group")
-	stat, err := model.SumUsedQuota(logType, startTimestamp, endTimestamp, modelName, username, tokenName, channel, group)
+	filter, err := logFilterFromQuery(c, true)
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
-	//tokenNum := model.SumUsedToken(logType, startTimestamp, endTimestamp, modelName, username, "")
+	stat, err := model.SumUsedQuota(filter)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
 		"success": true,
 		"message": "",
@@ -229,27 +317,25 @@ func GetLogsStat(c *gin.Context) {
 }
 
 func GetLogsSelfStat(c *gin.Context) {
-	username := c.GetString("username")
-	logType, _ := strconv.Atoi(c.Query("type"))
-	startTimestamp, _ := strconv.ParseInt(c.Query("start_timestamp"), 10, 64)
-	endTimestamp, _ := strconv.ParseInt(c.Query("end_timestamp"), 10, 64)
-	if c.GetInt("role") < common.RoleAdminUser {
-		var err error
-		if startTimestamp, err = limitLogTimeRange(startTimestamp, endTimestamp); err != nil {
-			common.ApiError(c, err)
-			return
-		}
-	}
-	tokenName := c.Query("token_name")
-	modelName := c.Query("model_name")
-	channel, _ := strconv.Atoi(c.Query("channel"))
-	group := c.Query("group")
-	quotaNum, err := model.SumUsedQuota(logType, startTimestamp, endTimestamp, modelName, username, tokenName, channel, group)
+	filter, err := logFilterFromQuery(c, false)
 	if err != nil {
 		common.ApiError(c, err)
 		return
 	}
-	//tokenNum := model.SumUsedToken(logType, startTimestamp, endTimestamp, modelName, username, tokenName)
+	// The caller's own logs are selected by user id, so a renamed user keeps
+	// the same statistics.
+	filter.UserId = c.GetInt("id")
+	if c.GetInt("role") < common.RoleAdminUser {
+		if filter.StartTimestamp, err = limitLogTimeRange(filter.StartTimestamp, filter.EndTimestamp); err != nil {
+			common.ApiError(c, err)
+			return
+		}
+	}
+	quotaNum, err := model.SumUsedQuota(filter)
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
 	c.JSON(200, gin.H{
 		"success": true,
 		"message": "",
@@ -258,7 +344,6 @@ func GetLogsSelfStat(c *gin.Context) {
 			"rpm":        quotaNum.Rpm,
 			"tpm":        quotaNum.Tpm,
 			"cache_rate": quotaNum.CacheRate,
-			//"token": tokenNum,
 		},
 	})
 	return

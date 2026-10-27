@@ -94,6 +94,9 @@ function buildSearchSourceKey(values: {
   token?: unknown
   group?: unknown
   username?: unknown
+  userId?: unknown
+  tokenId?: unknown
+  ip?: unknown
   requestId?: unknown
   upstreamRequestId?: unknown
   type?: unknown
@@ -106,6 +109,9 @@ function buildSearchSourceKey(values: {
     values.token,
     values.group,
     values.username,
+    values.userId,
+    values.tokenId,
+    values.ip,
     values.requestId,
     values.upstreamRequestId,
     Array.isArray(values.type) ? values.type.join(',') : values.type,
@@ -163,6 +169,9 @@ export function CommonLogsFilterBar<TData>(
       token: searchParams.token,
       group: searchParams.group,
       username: searchParams.username,
+      userId: searchParams.userId,
+      tokenId: searchParams.tokenId,
+      ip: searchParams.ip,
       requestId: searchParams.requestId,
       upstreamRequestId: searchParams.upstreamRequestId,
       type: searchParams.type,
@@ -177,6 +186,9 @@ export function CommonLogsFilterBar<TData>(
       token: searchParams.token || undefined,
       group: searchParams.group || undefined,
       username: searchParams.username || undefined,
+      userId: searchParams.userId || undefined,
+      tokenId: searchParams.tokenId || undefined,
+      ip: searchParams.ip || undefined,
       requestId: searchParams.requestId || undefined,
       upstreamRequestId: searchParams.upstreamRequestId || undefined,
     }
@@ -193,6 +205,9 @@ export function CommonLogsFilterBar<TData>(
     searchParams.token,
     searchParams.group,
     searchParams.username,
+    searchParams.userId,
+    searchParams.tokenId,
+    searchParams.ip,
     searchParams.requestId,
     searchParams.upstreamRequestId,
     searchParams.type,
@@ -272,6 +287,9 @@ export function CommonLogsFilterBar<TData>(
   const hasExpandedFilters =
     !!filters.token ||
     !!filters.username ||
+    !!filters.userId ||
+    !!filters.tokenId ||
+    !!filters.ip ||
     !!filters.channel ||
     !!filters.requestId ||
     !!filters.upstreamRequestId
@@ -283,6 +301,9 @@ export function CommonLogsFilterBar<TData>(
   const expandedFilterCount = [
     filters.token,
     isAdmin ? filters.username : undefined,
+    isAdmin ? filters.userId : undefined,
+    isAdmin ? filters.tokenId : undefined,
+    isAdmin ? filters.ip : undefined,
     isAdmin ? filters.channel : undefined,
     filters.requestId,
     filters.upstreamRequestId,
@@ -477,6 +498,39 @@ export function CommonLogsFilterBar<TData>(
             className={sensitiveInputClass}
             value={filters.username || ''}
             onChange={(e) => handleChange('username', e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+        </LogsFilterField>
+      )}
+      {isAdmin && (
+        <LogsFilterField>
+          <LogsFilterInput
+            inputMode='numeric'
+            placeholder={t('User ID')}
+            value={filters.userId || ''}
+            onChange={(e) => handleChange('userId', e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+        </LogsFilterField>
+      )}
+      {isAdmin && (
+        <LogsFilterField>
+          <LogsFilterInput
+            inputMode='numeric'
+            placeholder={t('Token ID')}
+            value={filters.tokenId || ''}
+            onChange={(e) => handleChange('tokenId', e.target.value)}
+            onKeyDown={handleKeyDown}
+          />
+        </LogsFilterField>
+      )}
+      {isAdmin && (
+        <LogsFilterField>
+          <LogsFilterInput
+            inputMode='text'
+            placeholder={t('IP Address')}
+            value={filters.ip || ''}
+            onChange={(e) => handleChange('ip', e.target.value)}
             onKeyDown={handleKeyDown}
           />
         </LogsFilterField>

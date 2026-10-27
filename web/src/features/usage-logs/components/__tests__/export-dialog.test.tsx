@@ -165,6 +165,49 @@ it('blocks a range longer than the configured limit before any request', async (
   expect(fetchSpy).not.toHaveBeenCalled()
 })
 
+it('lets administrators export a range longer than the user limit', async () => {
+  const fetchSpy = mockExportResponse([
+    { success: true, message: '', data: { count: 0 } },
+  ])
+  const user = userEvent.setup()
+  renderExport({
+    role: ROLE.ADMIN,
+    status: { log_max_range_days: 7 },
+    search: { startTime: Date.now() - 10 * DAY_MS, endTime: Date.now() },
+  })
+
+  await user.click(await screen.findByRole('button', { name: 'Export' }))
+  const dialog = within(await screen.findByRole('dialog'))
+  expect(dialog.queryByRole('alert')).toBeNull()
+  await user.click(dialog.getByRole('button', { name: 'Export' }))
+
+  await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
+  expect(String(fetchSpy.mock.calls[0][0])).toMatch(/^\/api\/log\/export\?/)
+})
+
+it('exports every matching log when an administrator clears the range', async () => {
+  const fetchSpy = mockExportResponse([
+    { success: true, message: '', data: { count: 0 } },
+  ])
+  const user = userEvent.setup()
+  renderExport({
+    role: ROLE.ADMIN,
+    status: { log_max_range_days: 7 },
+    search: recentRange(),
+  })
+
+  await user.click(await screen.findByRole('button', { name: 'Export' }))
+  const dialog = within(await screen.findByRole('dialog'))
+  await user.click(dialog.getByRole('button', { name: 'All time' }))
+  await user.click(dialog.getByRole('button', { name: 'Export' }))
+
+  await waitFor(() => expect(fetchSpy).toHaveBeenCalledTimes(1))
+  const params = new URL(String(fetchSpy.mock.calls[0][0]), 'http://localhost')
+    .searchParams
+  expect(params.has('start_timestamp')).toBe(false)
+  expect(params.has('end_timestamp')).toBe(false)
+})
+
 it('downloads the streamed logs of the current filters as CSV', async () => {
   const fetchSpy = mockExportResponse([
     {

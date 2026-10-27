@@ -16,10 +16,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { formatUpstreamRatio } from '@/features/channels/lib/upstream-cost'
 import { formatLogQuota, formatTimestampToDate } from '@/lib/format'
 
 import type { UsageLog } from '../data/schema'
 import { logTokenName, parseLogOther, renderLogContent } from './format'
+import { hasKnownUpstreamCost } from './upstream-cost'
 import {
   getLogTypeConfig,
   isDisplayableLogType,
@@ -28,9 +30,25 @@ import {
 
 type Translate = (key: string, options?: Record<string, unknown>) => string
 
+/** Upstream group and ratio of one log, as shown in the admin table cell. */
+function upstreamRatioText(
+  cost: UsageLog['upstream_cost'],
+  t: Translate
+): string {
+  if (!cost) return ''
+  if (cost.cost_mode === 'request') return t('Per request cost')
+  const ratio = formatUpstreamRatio(cost.upstream_group_ratio)
+  const hasRatio = cost.upstream_group_ratio > 0
+  if (cost.upstream_group && hasRatio) {
+    return `${cost.upstream_group} ${ratio}`
+  }
+  return cost.upstream_group || (hasRatio ? ratio : '')
+}
+
 /**
  * Column titles of the exported log file. User and channel columns are only
- * in the administrator view, matching the log table.
+ * in the administrator view, matching the log table. Administrators also get
+ * the upstream cost columns the admin list shows.
  */
 export function getLogCsvHeader(isAdmin: boolean, t: Translate): string[] {
   return [
@@ -47,9 +65,13 @@ export function getLogCsvHeader(isAdmin: boolean, t: Translate): string[] {
     t('Cache Read'),
     t('Cache Write'),
     t('Cost'),
+    ...(isAdmin
+      ? [t('Upstream Ratio'), t('Upstream Amount'), t('Affiliate Rebate')]
+      : []),
     t('Duration'),
     t('IP'),
     t('Request ID'),
+    t('Upstream Request ID'),
     t('Details'),
   ]
 }
@@ -73,6 +95,7 @@ export function getLogCsvRow(
       ? `#${log.channel} ${log.channel_name}`
       : `#${log.channel}`
   }
+  const upstreamCost = log.upstream_cost
   return [
     formatTimestampToDate(log.created_at),
     t(getLogTypeConfig(log.type).label),
@@ -87,9 +110,19 @@ export function getLogCsvRow(
     usage ? String(other?.cache_tokens ?? 0) : '',
     usage ? String(cacheWrite) : '',
     usage ? formatLogQuota(log.quota ?? 0) : '',
+    ...(isAdmin
+      ? [
+          upstreamRatioText(upstreamCost, t),
+          hasKnownUpstreamCost(upstreamCost)
+            ? formatLogQuota(upstreamCost.cost_quota)
+            : '',
+          log.affiliate_cost == null ? '' : formatLogQuota(log.affiliate_cost),
+        ]
+      : []),
     isTimingLogType(log.type) ? `${log.use_time ?? 0}s` : '',
     log.ip ?? '',
     log.request_id ?? '',
+    log.upstream_request_id ?? '',
     renderLogContent(other, t) ?? log.content ?? '',
   ]
 }

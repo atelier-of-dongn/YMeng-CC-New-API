@@ -476,31 +476,40 @@ func RecordTaskBillingLog(params RecordTaskBillingLogParams) {
 	}
 }
 
-// LogFilter is the usage-log search shared by the log list and the log export.
-// Username and Channel are administrator filters.
+// LogFilter is the usage-log search shared by the log list, the log export,
+// and the log statistics. Username, UserId, TokenId, Channel, and Ip are
+// administrator filters.
 type LogFilter struct {
 	Type              int
 	StartTimestamp    int64
 	EndTimestamp      int64
 	ModelName         string
 	Username          string
+	UserId            int
+	TokenId           int
 	TokenName         string
 	Channel           int
 	Group             string
 	RequestId         string
 	UpstreamRequestId string
+	Ip                string
 }
 
-func (f LogFilter) apply(tx *gorm.DB) (*gorm.DB, error) {
+// applyCommon applies every filter except the log type, so statistics that
+// always target consume logs can share the exact same search.
+func (f LogFilter) applyCommon(tx *gorm.DB) (*gorm.DB, error) {
 	var err error
-	if f.Type != LogTypeUnknown {
-		tx = tx.Where("logs.type = ?", f.Type)
-	}
 	if tx, err = applyExplicitLogTextFilter(tx, "logs.model_name", f.ModelName); err != nil {
 		return nil, err
 	}
 	if tx, err = applyExplicitLogTextFilter(tx, "logs.username", f.Username); err != nil {
 		return nil, err
+	}
+	if f.UserId > 0 {
+		tx = tx.Where("logs.user_id = ?", f.UserId)
+	}
+	if f.TokenId > 0 {
+		tx = tx.Where("logs.token_id = ?", f.TokenId)
 	}
 	if f.TokenName != "" {
 		tx = tx.Where("logs.token_name = ?", f.TokenName)
@@ -510,6 +519,9 @@ func (f LogFilter) apply(tx *gorm.DB) (*gorm.DB, error) {
 	}
 	if f.UpstreamRequestId != "" {
 		tx = tx.Where("logs.upstream_request_id = ?", f.UpstreamRequestId)
+	}
+	if f.Ip != "" {
+		tx = tx.Where("logs.ip = ?", f.Ip)
 	}
 	if f.StartTimestamp != 0 {
 		tx = tx.Where("logs.created_at >= ?", f.StartTimestamp)
@@ -524,6 +536,13 @@ func (f LogFilter) apply(tx *gorm.DB) (*gorm.DB, error) {
 		tx = tx.Where("logs."+logGroupCol+" = ?", f.Group)
 	}
 	return tx, nil
+}
+
+func (f LogFilter) apply(tx *gorm.DB) (*gorm.DB, error) {
+	if f.Type != LogTypeUnknown {
+		tx = tx.Where("logs.type = ?", f.Type)
+	}
+	return f.applyCommon(tx)
 }
 
 func GetAllLogs(filter LogFilter, startIdx int, num int) (logs []*Log, total int64, err error) {
@@ -694,7 +713,10 @@ type Stat struct {
 	CacheRate float64 `json:"cache_rate"`
 }
 
-func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, channel int, group string) (stat Stat, err error) {
+// SumUsedQuota aggregates the consume logs matching filter. The filter's Type
+// is ignored because quota is only meaningful for consumption; the same search
+// as the log list is applied so the stat badges always describe the listed rows.
+func SumUsedQuota(filter LogFilter) (stat Stat, err error) {
 	// JSON access on other per dialect. Every parse sits behind parsable;
 	// PostgreSQL 9.6 has no non-throwing validity test, so it only parses
 	// object-shaped text (the gateway always writes valid JSON). A field
@@ -737,35 +759,11 @@ func SumUsedQuota(logType int, startTimestamp int64, endTimestamp int64, modelNa
 	// 为rpm和tpm创建单独的查询
 	rpmTpmQuery := LOG_DB.Table("logs").Select("count(*) rpm, COALESCE(sum(prompt_tokens), 0) + COALESCE(sum(completion_tokens), 0) tpm")
 
-	if tx, err = applyExplicitLogTextFilter(tx, "username", username); err != nil {
+	if tx, err = filter.applyCommon(tx); err != nil {
 		return stat, err
 	}
-	if rpmTpmQuery, err = applyExplicitLogTextFilter(rpmTpmQuery, "username", username); err != nil {
+	if rpmTpmQuery, err = filter.applyCommon(rpmTpmQuery); err != nil {
 		return stat, err
-	}
-	if tokenName != "" {
-		tx = tx.Where("token_name = ?", tokenName)
-		rpmTpmQuery = rpmTpmQuery.Where("token_name = ?", tokenName)
-	}
-	if startTimestamp != 0 {
-		tx = tx.Where("created_at >= ?", startTimestamp)
-	}
-	if endTimestamp != 0 {
-		tx = tx.Where("created_at <= ?", endTimestamp)
-	}
-	if tx, err = applyExplicitLogTextFilter(tx, "model_name", modelName); err != nil {
-		return stat, err
-	}
-	if rpmTpmQuery, err = applyExplicitLogTextFilter(rpmTpmQuery, "model_name", modelName); err != nil {
-		return stat, err
-	}
-	if channel != 0 {
-		tx = tx.Where("channel_id = ?", channel)
-		rpmTpmQuery = rpmTpmQuery.Where("channel_id = ?", channel)
-	}
-	if group != "" {
-		tx = tx.Where(logGroupCol+" = ?", group)
-		rpmTpmQuery = rpmTpmQuery.Where(logGroupCol+" = ?", group)
 	}
 
 	tx = tx.Where("type = ?", LogTypeConsume)

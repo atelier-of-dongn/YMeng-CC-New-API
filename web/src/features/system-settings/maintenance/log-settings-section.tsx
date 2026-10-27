@@ -236,7 +236,7 @@ export function LogSettingsSection(props: LogSettingsSectionProps) {
                     </FormControl>
                     <FormDescription>
                       {t(
-                        'The longest time range a user can view at once in the logs and on the dashboard, and the longest range any export can cover.'
+                        'The longest time range a regular user can view at once in the logs and on the dashboard, and the longest range a user export can cover.'
                       )}
                     </FormDescription>
                     <FormMessage />

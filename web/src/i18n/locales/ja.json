@@ -6206,7 +6206,7 @@
     "Task plugins": "タスクプラグイン",
     "Task Plugins": "タスクプラグイン",
     "The longest log time range must be at least 1 day": "ログの最長期間は 1 日以上にしてください",
-    "The longest time range a user can view at once in the logs and on the dashboard, and the longest range any export can cover.": "ユーザーがログとダッシュボードで一度に表示できる最長の期間です。どのエクスポートもこの期間を超えられません。",
+    "The longest time range a regular user can view at once in the logs and on the dashboard, and the longest range a user export can cover.": "一般ユーザーがログとダッシュボードで一度に表示できる最長の期間です。ユーザーのエクスポートもこの期間を超えられません。",
     "Task pricing": "タスク料金",
     "Task pricing must be converted manually using the task usage schema.": "タスク料金はタスクの使用量スキーマに基づいて手動で変換してください。",
     "Task pricing not configured": "タスク料金が未設定",
@@ -7766,6 +7766,10 @@
     "How do I connect this model?": "このモデルはどう接続しますか？",
     "Grab a key in the console and paste it into your client": "コンソールでキーを取得してクライアントに貼り付けるだけです",
     "How do I report an error?": "エラーはどう報告しますか？",
-    "Post the logs in the group and we will take a look": "グループにログを貼ってください。確認します"
+    "Post the logs in the group and we will take a look": "グループにログを貼ってください。確認します",
+    "Invalid pagination": "ページ指定が無効です",
+    "Invalid token ID": "トークン ID が無効です",
+    "All time": "全期間",
+    "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.": "期間を選択してください。空のままにすると、条件に一致するすべてのログをエクスポートします。ページ上のほかのフィルターも適用されます。"
   }
 }

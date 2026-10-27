@@ -64,6 +64,11 @@ async function chineseTranslator() {
           'Top-up': '充值',
           Yes: '是',
           'Recharged {{amount}}': '充值 {{amount}}',
+          'Upstream Request ID': '上游请求 ID',
+          'Upstream Ratio': '上游倍率',
+          'Upstream Amount': '上游金额',
+          'Affiliate Rebate': '推广返利',
+          'Per request cost': '按次成本',
         },
       },
     },
@@ -112,7 +117,47 @@ describe('usage log CSV export', () => {
       '203.0.113.9',
       'req-1',
       '',
+      '',
     ])
+  })
+
+  test('administrator row includes upstream cost and affiliate rebate', async () => {
+    const t = await chineseTranslator()
+    const header = getLogCsvHeader(true, t)
+    const row = getLogCsvRow(
+      {
+        ...consumeLog,
+        upstream_request_id: 'upstream-req-1',
+        upstream_cost: {
+          status: 2,
+          cost_mode: 'ratio',
+          upstream_group: 'vip',
+          upstream_group_ratio: 1.5,
+          upstream_quota: 120,
+          cost_quota: 80,
+          internal_use: false,
+        },
+        affiliate_cost: 2,
+      },
+      true,
+      t
+    )
+
+    expect(row).toHaveLength(header.length)
+    expect(row[header.indexOf('上游倍率')]).toBe('vip ×1.5')
+    expect(row[header.indexOf('上游金额')]).toBe('$0.00016')
+    expect(row[header.indexOf('推广返利')]).toBe('$0.000004')
+    expect(row[header.indexOf('上游请求 ID')]).toBe('upstream-req-1')
+  })
+
+  test('user row omits the administrator cost columns', async () => {
+    const t = await chineseTranslator()
+    const header = getLogCsvHeader(false, t)
+
+    expect(header).not.toContain('上游倍率')
+    expect(header).not.toContain('上游金额')
+    expect(header).not.toContain('推广返利')
+    expect(header).toContain('上游请求 ID')
   })
 
   test('top-up log row leaves usage cells empty and shows the translated content', async () => {

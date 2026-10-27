@@ -57,8 +57,8 @@ func seedExportLogs(t *testing.T, mainDB *gorm.DB, logDB *gorm.DB, now int64) {
 	t.Helper()
 	require.NoError(t, mainDB.Create(&model.Channel{Id: 9, Name: "primary"}).Error)
 	logs := []model.Log{
-		{UserId: 1, Username: "alice", CreatedAt: now - 3600, Type: model.LogTypeConsume, ModelName: "gpt-a", ChannelId: 9, Quota: 10, PromptTokens: 100, RequestId: "a-1", Other: `{"cache_tokens":100,"cache_creation_tokens":1000000,"cache_creation_tokens_5m":1000000,"admin_info":{"use_channel":["9"]}}`},
-		{UserId: 2, Username: "bob", CreatedAt: now - 1800, Type: model.LogTypeConsume, ModelName: "gpt-b", ChannelId: 9, Quota: 20, RequestId: "b-1"},
+		{UserId: 1, Username: "alice", CreatedAt: now - 3600, Type: model.LogTypeConsume, ModelName: "gpt-a", ChannelId: 9, Quota: 10, PromptTokens: 100, TokenId: 5, Ip: "203.0.113.9", RequestId: "a-1", Other: `{"cache_tokens":100,"cache_creation_tokens":1000000,"cache_creation_tokens_5m":1000000,"admin_info":{"use_channel":["9"]}}`},
+		{UserId: 2, Username: "bob", CreatedAt: now - 1800, Type: model.LogTypeConsume, ModelName: "gpt-b", ChannelId: 9, Quota: 20, TokenId: 8, Ip: "198.51.100.4", RequestId: "b-1"},
 		{UserId: 1, Username: "alice", CreatedAt: now - 60, Type: model.LogTypeError, ModelName: "gpt-a", RequestId: "a-2"},
 		{UserId: 1, Username: "alice", CreatedAt: now - 400*24*3600, Type: model.LogTypeConsume, ModelName: "gpt-a", RequestId: "a-old"},
 	}
@@ -184,11 +184,12 @@ func verifyLogCacheRateStats(t *testing.T, now int64) {
 		require.NoError(t, model.LOG_DB.Create(&logs[i]).Error)
 	}
 
-	cacheRate := func(handler gin.HandlerFunc, username string, role int, query string) any {
+	cacheRate := func(handler gin.HandlerFunc, userId int, username string, role int, query string) any {
 		t.Helper()
 		recorder := httptest.NewRecorder()
 		ctx, _ := gin.CreateTestContext(recorder)
 		ctx.Request = httptest.NewRequest(http.MethodGet, "/api/log/stat?"+query, nil)
+		ctx.Set("id", userId)
 		ctx.Set("username", username)
 		ctx.Set("role", role)
 		handler(ctx)
@@ -204,11 +205,11 @@ func verifyLogCacheRateStats(t *testing.T, now int64) {
 	query := fmt.Sprintf("start_timestamp=%d&end_timestamp=%d", now-2*24*3600, now+3600)
 	// alice: 0.5 (a-1), 0.75 (300 / (100+300)) and 0.9 (900 / 1000); her
 	// 0% consume logs stay out of the average.
-	assert.InDelta(t, (0.5+0.75+0.9)/3, cacheRate(GetLogsSelfStat, "alice", common.RoleCommonUser, query), 1e-9)
-	assert.InDelta(t, 1.0, cacheRate(GetLogsSelfStat, "bob", common.RoleCommonUser, query), 1e-9, "bob's average excludes b-1 at 0% and alice's logs")
-	assert.InDelta(t, (0.5+0.75+0.9+1)/4, cacheRate(GetLogsStat, "admin", common.RoleAdminUser, query), 1e-9)
-	assert.InDelta(t, 0.0, cacheRate(GetLogsSelfStat, "carol", common.RoleCommonUser, query), 0, "only 0% requests average to 0")
-	assert.InDelta(t, 0.0, cacheRate(GetLogsSelfStat, "alice", common.RoleCommonUser, query+"&model_name=none"), 0)
+	assert.InDelta(t, (0.5+0.75+0.9)/3, cacheRate(GetLogsSelfStat, 1, "alice", common.RoleCommonUser, query), 1e-9)
+	assert.InDelta(t, 1.0, cacheRate(GetLogsSelfStat, 2, "bob", common.RoleCommonUser, query), 1e-9, "bob's average excludes b-1 at 0% and alice's logs")
+	assert.InDelta(t, (0.5+0.75+0.9+1)/4, cacheRate(GetLogsStat, 3, "admin", common.RoleAdminUser, query), 1e-9)
+	assert.InDelta(t, 0.0, cacheRate(GetLogsSelfStat, 4, "carol", common.RoleCommonUser, query), 0, "only 0% requests average to 0")
+	assert.InDelta(t, 0.0, cacheRate(GetLogsSelfStat, 1, "alice", common.RoleCommonUser, query+"&model_name=none"), 0)
 }
 
 func TestLogExportRules(t *testing.T) {
@@ -225,7 +226,17 @@ func TestLogExportRules(t *testing.T) {
 	tooLong := fmt.Sprintf("start_timestamp=%d&end_timestamp=%d", now-366*24*3600, now)
 
 	t.Run("time range", func(t *testing.T) {
-		rejected := callLogHandler(t, ExportAllLogs, 3, common.RoleAdminUser, tooLong)
+		// Administrators export a range longer than a regular user may search,
+		// and without a start they export every stored log.
+		exported := callLogHandler(t, ExportAllLogs, 3, common.RoleAdminUser, tooLong)
+		require.NotEmpty(t, exported)
+		assert.Equal(t, true, exported[len(exported)-1]["success"])
+		assert.EqualValues(t, 3, exported[len(exported)-1]["data"].(map[string]any)["count"], "rows inside the requested range still export")
+		everything := callLogHandler(t, ExportAllLogs, 3, common.RoleAdminUser, "")
+		require.NotEmpty(t, everything)
+		assert.EqualValues(t, 4, everything[len(everything)-1]["data"].(map[string]any)["count"], "a start-less admin export reaches the oldest log")
+
+		rejected := callLogHandler(t, ExportUserLogs, 1, common.RoleCommonUser, tooLong)
 		require.Len(t, rejected, 1)
 		assert.Equal(t, false, rejected[0]["success"])
 		assert.Equal(t, "The time range cannot exceed {{days}} days", rejected[0]["message_key"])
@@ -362,6 +373,110 @@ func TestLogResponseModelVisibility(t *testing.T) {
 	var stored model.Log
 	require.NoError(t, db.First(&stored, entry.Id).Error)
 	assert.Equal(t, other, stored.Other, "view settings must not alter stored logs")
+}
+
+// TestLogAdminExactFilters checks the administrator filters that locate a
+// single user's, token's, or IP's logs, and that the same search drives the
+// statistics badges.
+func TestLogAdminExactFilters(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db, _ := newAuditTestDatabase(t, "sqlite", "")
+	useLogExportDatabases(t, db, db, common.DatabaseTypeSQLite, common.DatabaseTypeSQLite)
+	require.NoError(t, db.AutoMigrate(&model.Channel{}, &model.Log{}))
+	now := time.Now().Unix()
+	seedExportLogs(t, db, db, now)
+	query := fmt.Sprintf("start_timestamp=%d&end_timestamp=%d", now-2*24*3600, now+3600)
+
+	listRequestIds := func(extra string) []any {
+		t.Helper()
+		lines := callLogHandler(t, GetAllLogs, 3, common.RoleAdminUser, query+extra)
+		require.Len(t, lines, 1)
+		require.Equal(t, true, lines[0]["success"], lines[0])
+		items := lines[0]["data"].(map[string]any)["items"].([]any)
+		ids := make([]any, 0, len(items))
+		for _, item := range items {
+			ids = append(ids, item.(map[string]any)["request_id"])
+		}
+		return ids
+	}
+
+	assert.ElementsMatch(t, []any{"a-1", "a-2"}, listRequestIds("&user_id=1"))
+	assert.ElementsMatch(t, []any{"b-1"}, listRequestIds("&token_id=8"))
+	assert.ElementsMatch(t, []any{"a-1"}, listRequestIds("&ip=203.0.113.9"))
+	assert.ElementsMatch(t, []any{"a-1"}, listRequestIds("&user_id=1&token_id=5&ip=203.0.113.9"))
+	assert.Empty(t, listRequestIds("&user_id=1&ip=198.51.100.4"), "filters combine with AND")
+
+	statQuota := func(handler gin.HandlerFunc, extra string) any {
+		t.Helper()
+		recorder := httptest.NewRecorder()
+		ctx, _ := gin.CreateTestContext(recorder)
+		ctx.Request = httptest.NewRequest(http.MethodGet, "/api/log/stat?"+query+extra, nil)
+		ctx.Set("id", 3)
+		ctx.Set("role", common.RoleAdminUser)
+		handler(ctx)
+		var response struct {
+			Success bool           `json:"success"`
+			Data    map[string]any `json:"data"`
+		}
+		require.NoError(t, common.UnmarshalJsonStr(recorder.Body.String(), &response))
+		require.True(t, response.Success, recorder.Body.String())
+		return response.Data["quota"]
+	}
+	assert.EqualValues(t, 10, statQuota(GetLogsStat, "&user_id=1"))
+	assert.EqualValues(t, 20, statQuota(GetLogsStat, "&token_id=8"))
+	assert.EqualValues(t, 10, statQuota(GetLogsStat, "&ip=203.0.113.9"))
+	assert.EqualValues(t, 0, statQuota(GetLogsStat, "&user_id=2&token_id=5"))
+
+	for _, tc := range []struct{ name, query, key string }{
+		{"user id", "&user_id=abc", "Invalid user ID"},
+		{"user id zero", "&user_id=0", "Invalid user ID"},
+		{"token id", "&token_id=abc", "Invalid token ID"},
+		{"negative page size", "&page_size=-1", "Invalid pagination"},
+		{"negative page", "&p=-1", "Invalid pagination"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			lines := callLogHandler(t, GetAllLogs, 3, common.RoleAdminUser, query+tc.query)
+			require.Len(t, lines, 1)
+			assert.Equal(t, false, lines[0]["success"])
+			assert.Equal(t, tc.key, lines[0]["message_key"])
+		})
+	}
+}
+
+// TestLogExportIncludesUpstreamCost checks that an administrator export carries
+// the same upstream cost fields as the list, while a user export does not.
+func TestLogExportIncludesUpstreamCost(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	db, _ := newAuditTestDatabase(t, "sqlite", "")
+	useLogExportDatabases(t, db, db, common.DatabaseTypeSQLite, common.DatabaseTypeSQLite)
+	require.NoError(t, db.AutoMigrate(&model.Channel{}, &model.Log{}, &model.UpstreamCostRecord{}, &model.AffiliateCommission{}))
+	now := time.Now().Unix()
+	require.NoError(t, db.Create(&model.Channel{Id: 9, Name: "primary"}).Error)
+	require.NoError(t, db.Create(&model.Log{
+		UserId: 1, Username: "alice", CreatedAt: now - 60, Type: model.LogTypeConsume,
+		ModelName: "gpt-a", ChannelId: 9, Quota: 100, TokenId: 5, RequestId: "cost-1",
+	}).Error)
+	require.NoError(t, db.Create(&model.UpstreamCostRecord{
+		RequestId: "cost-1", UserId: 1, ModelName: "gpt-a", ChannelId: 9, Quota: 100,
+		CreatedAt: now - 60, CostQuota: 70, Status: model.UpstreamCostRecordMatched,
+	}).Error)
+	require.NoError(t, db.Create(&model.AffiliateCommission{
+		InviterId: 10, InviteeId: 1, SourceKey: "cost-1", ModelName: "gpt-a",
+		ConsumedQuota: 100, RewardAmount: 2, Status: model.AffiliateCommissionStatusCompleted,
+	}).Error)
+	query := fmt.Sprintf("start_timestamp=%d&end_timestamp=%d", now-3600, now+3600)
+
+	adminRows := callLogHandler(t, ExportAllLogs, 3, common.RoleAdminUser, query)
+	require.Len(t, adminRows, 2)
+	cost, ok := adminRows[0]["upstream_cost"].(map[string]any)
+	require.True(t, ok, "administrator export must carry upstream_cost: %v", adminRows[0])
+	assert.EqualValues(t, 70, cost["cost_quota"])
+	assert.EqualValues(t, 2, adminRows[0]["affiliate_cost"])
+
+	userRows := callLogHandler(t, ExportUserLogs, 1, common.RoleCommonUser, query)
+	require.Len(t, userRows, 2)
+	assert.NotContains(t, userRows[0], "upstream_cost")
+	assert.NotContains(t, userRows[0], "affiliate_cost")
 }
 
 func TestAcquireLogExportLock(t *testing.T) {

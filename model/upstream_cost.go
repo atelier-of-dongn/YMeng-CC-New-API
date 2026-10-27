@@ -379,30 +379,42 @@ func GetAffiliateCostsByRequestIds(requestIds []string) (map[AffiliateCostKey]fl
 // SumUpstreamCost aggregates records with the same filters as SumUsedQuota.
 // Revenue and cost only cover records whose upstream cost is known. In the
 // internal accounting view, user 1 contributes cost but not revenue.
-func SumUpstreamCost(startTimestamp int64, endTimestamp int64, modelName string, username string, tokenName string, channel int, group string, internalAccounting bool) (UpstreamCostStat, error) {
+//
+// The ledger has no token id or client IP columns, so those two log filters
+// cannot narrow it; callers must not show these totals for such a search.
+func SumUpstreamCost(filter LogFilter, internalAccounting bool) (UpstreamCostStat, error) {
 	stat := UpstreamCostStat{}
 	tx := DB.Model(&UpstreamCostRecord{})
 	var err error
-	if tx, err = applyUpstreamCostTextFilter(tx, "username", username); err != nil {
+	if tx, err = applyUpstreamCostTextFilter(tx, "username", filter.Username); err != nil {
 		return stat, err
 	}
-	if tokenName != "" {
-		tx = tx.Where("token_name = ?", tokenName)
+	if filter.UserId > 0 {
+		tx = tx.Where("user_id = ?", filter.UserId)
 	}
-	if startTimestamp != 0 {
-		tx = tx.Where("created_at >= ?", startTimestamp)
+	if filter.TokenName != "" {
+		tx = tx.Where("token_name = ?", filter.TokenName)
 	}
-	if endTimestamp != 0 {
-		tx = tx.Where("created_at <= ?", endTimestamp)
+	if filter.RequestId != "" {
+		tx = tx.Where("request_id = ?", filter.RequestId)
 	}
-	if tx, err = applyUpstreamCostTextFilter(tx, "model_name", modelName); err != nil {
+	if filter.UpstreamRequestId != "" {
+		tx = tx.Where("upstream_request_id = ?", filter.UpstreamRequestId)
+	}
+	if filter.StartTimestamp != 0 {
+		tx = tx.Where("created_at >= ?", filter.StartTimestamp)
+	}
+	if filter.EndTimestamp != 0 {
+		tx = tx.Where("created_at <= ?", filter.EndTimestamp)
+	}
+	if tx, err = applyUpstreamCostTextFilter(tx, "model_name", filter.ModelName); err != nil {
 		return stat, err
 	}
-	if channel != 0 {
-		tx = tx.Where("channel_id = ?", channel)
+	if filter.Channel != 0 {
+		tx = tx.Where("channel_id = ?", filter.Channel)
 	}
-	if group != "" {
-		tx = tx.Where("using_group = ?", group)
+	if filter.Group != "" {
+		tx = tx.Where("using_group = ?", filter.Group)
 	}
 	filtered := tx.Session(&gorm.Session{})
 	var rows []struct {
