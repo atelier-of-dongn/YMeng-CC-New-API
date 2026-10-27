@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/logger"
@@ -381,6 +382,20 @@ func GetAllTopUps(pageInfo *common.PageInfo) (topups []*TopUp, total int64, err 
 	}
 
 	return topups, total, nil
+}
+
+// GetTodayTopUpAmount sums immutable credited recharge snapshots in the given local day.
+func GetTodayTopUpAmount(now time.Time) (int64, error) {
+	start := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	end := start.AddDate(0, 0, 1)
+	var amount int64
+	err := DB.Model(&TopUp{}).
+		Where("status = ?", common.TopUpStatusSuccess).
+		Where("payment_provider IN ?", invoiceEligiblePaymentMethod).
+		Where("complete_time >= ? AND complete_time < ?", start.Unix(), end.Unix()).
+		Select("COALESCE(SUM(invoice_amount), 0)").
+		Scan(&amount).Error
+	return amount, err
 }
 
 // searchTopUpCountHardLimit 搜索充值记录时 COUNT 的安全上限，

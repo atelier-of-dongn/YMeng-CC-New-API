@@ -159,6 +159,8 @@ func SetApiRouter(router *gin.Engine) {
 				selfRoute.DELETE("/oauth/bindings/:provider_id", controller.UnbindCustomOAuth)
 			}
 
+			userRoute.GET("/topup/today", middleware.DisableCache(), middleware.RootAuth(), controller.GetTodayTopUpAmount)
+
 			adminRoute := userRoute.Group("/")
 			adminRoute.Use(middleware.AdminAuth())
 			{

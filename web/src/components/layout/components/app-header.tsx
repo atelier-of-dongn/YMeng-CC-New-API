@@ -22,6 +22,7 @@ import { NotificationPopover } from '@/components/notification-popover'
 import { ProfileDropdown } from '@/components/profile-dropdown'
 import { Search } from '@/components/search'
 import { SystemUpdateAction } from '@/features/system-update/system-update-action'
+import { TodayTopUpAmount } from '@/features/wallet/components/today-topup-amount'
 import { useNotifications } from '@/hooks/use-notifications'
 import { useTopNavLinks } from '@/hooks/use-top-nav-links'
 
@@ -148,6 +149,7 @@ export function AppHeader({
           )}
           <LanguageSwitcher />
           {showConfigDrawer && <ConfigDrawer />}
+          {showProfileDropdown && <TodayTopUpAmount />}
           {showProfileDropdown && <ProfileDropdown />}
         </div>
       )}

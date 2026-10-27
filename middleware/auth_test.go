@@ -135,6 +135,53 @@ func TestUserAuthAllowsOpaqueDottedPAT(t *testing.T) {
 	assert.Equal(t, user.Id, body.ID)
 }
 
+func TestRootAuthRejectsAdminAndAnonymousTopUpTotalRequests(t *testing.T) {
+	setupDashboardAuthMiddlewareTest(t)
+	gin.SetMode(gin.TestMode)
+	router := gin.New()
+	handlerCalls := 0
+	router.GET("/api/user/topup/today", RootAuth(), func(c *gin.Context) {
+		handlerCalls++
+		c.JSON(http.StatusOK, gin.H{"success": true, "data": gin.H{"amount": 123_500_000}})
+	})
+	for _, tc := range []struct {
+		name       string
+		role       int
+		token      string
+		wantStatus int
+		wantCalls  int
+	}{
+		{name: "root", role: common.RoleRootUser, token: "topup-total-root-pat", wantStatus: http.StatusOK, wantCalls: 1},
+		{name: "admin", role: common.RoleAdminUser, token: "topup-total-admin-pat", wantStatus: http.StatusForbidden},
+		{name: "user", role: common.RoleCommonUser, token: "topup-total-user-pat", wantStatus: http.StatusForbidden},
+		{name: "anonymous", wantStatus: http.StatusUnauthorized},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			beforeCalls := handlerCalls
+			request := httptest.NewRequest(http.MethodGet, "/api/user/topup/today", nil)
+			if tc.token != "" {
+				user := createMiddlewarePATUser(t, "topup-total-"+tc.name, tc.token)
+				user.Role = tc.role
+				require.NoError(t, model.DB.Save(user).Error)
+				request.Header.Set("Authorization", "Bearer "+tc.token)
+			}
+			response := httptest.NewRecorder()
+			router.ServeHTTP(response, request)
+			assert.Equal(t, tc.wantStatus, response.Code)
+			assert.Equal(t, beforeCalls+tc.wantCalls, handlerCalls)
+			if tc.wantStatus == http.StatusOK {
+				var body struct {
+					Data struct {
+						Amount int64 `json:"amount"`
+					} `json:"data"`
+				}
+				require.NoError(t, common.Unmarshal(response.Body.Bytes(), &body))
+				assert.Equal(t, int64(123_500_000), body.Data.Amount)
+			}
+		})
+	}
+}
+
 func TestUserAuthNeverFallsBackForRecognizedInvalidInternalJWT(t *testing.T) {
 	setupDashboardAuthMiddlewareTest(t)
 	identity := service.AuthIdentity{UserID: 42, SessionID: "session-42", UserAuthVersion: 1, SessionVersion: 1}

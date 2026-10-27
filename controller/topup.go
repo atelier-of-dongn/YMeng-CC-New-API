@@ -576,6 +576,16 @@ func GetAllTopUps(c *gin.Context) {
 	common.ApiSuccess(c, pageInfo)
 }
 
+// GetTodayTopUpAmount returns the platform's credited recharge total for the server-local day.
+func GetTodayTopUpAmount(c *gin.Context) {
+	amount, err := model.GetTodayTopUpAmount(time.Now())
+	if err != nil {
+		common.ApiError(c, err)
+		return
+	}
+	common.ApiSuccess(c, gin.H{"amount": amount})
+}
+
 type AdminCompleteTopupRequest struct {
 	TradeNo string `json:"trade_no"`
 }

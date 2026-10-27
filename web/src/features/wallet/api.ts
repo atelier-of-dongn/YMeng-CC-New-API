@@ -33,6 +33,7 @@ import type {
   AffiliateTransferResponse,
   BillingHistoryResponse,
   CompleteOrderRequest,
+  TodayTopUpAmount,
   CreemPaymentRequest,
   CreemPaymentResponse,
   WaffoPaymentRequest,
@@ -234,6 +235,16 @@ export async function getAllBillingHistory(
     params.append('keyword', keyword)
   }
   const res = await api.get(`/api/user/topup?${params.toString()}`)
+  return res.data
+}
+
+/**
+ * Get today's credited recharge amount for all users (root only)
+ */
+export async function getTodayTopUpAmount(): Promise<
+  ApiResponse<TodayTopUpAmount>
+> {
+  const res = await api.get('/api/user/topup/today')
   return res.data
 }
 

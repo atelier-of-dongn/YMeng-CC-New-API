@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/QuantumNous/new-api/common"
 
@@ -113,6 +114,7 @@ func TestCatFKInvoiceDatabaseMatrix(t *testing.T) {
 			}
 			t.Run("eligibility_and_application", TestCatFKInvoiceEligibilityAndApplication)
 			t.Run("legacy_backfill", TestCatFKInvoiceBackfillPreservesOneOrderPerRecharge)
+			t.Run("today_topup_amount", TestTodayTopUpAmountUsesCompletedCreditedSnapshots)
 		})
 	}
 }
@@ -211,6 +213,46 @@ func TestCatFKInvoiceBackfillPreservesOneOrderPerRecharge(t *testing.T) {
 	var user User
 	require.NoError(t, DB.First(&user, userID).Error)
 	assert.Equal(t, 500, user.Quota, "invoice backfills must not credit quota again")
+}
+
+// TestTodayTopUpAmountUsesCompletedCreditedSnapshots also runs in the real database matrix below.
+func TestTodayTopUpAmountUsesCompletedCreditedSnapshots(t *testing.T) {
+	require.NoError(t, DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&TopUp{}).Error)
+	t.Cleanup(func() {
+		require.NoError(t, DB.Session(&gorm.Session{AllowGlobalUpdate: true}).Delete(&TopUp{}).Error)
+	})
+	now := time.Date(2026, time.October, 26, 12, 0, 0, 0, time.Local)
+	start := time.Date(2026, time.October, 26, 0, 0, 0, 0, time.Local).Unix()
+	end := time.Date(2026, time.October, 27, 0, 0, 0, 0, time.Local).Unix()
+	for _, topUp := range []TopUp{
+		{UserId: 1, TradeNo: "today-start", PaymentProvider: PaymentProviderEpay, Status: common.TopUpStatusSuccess, CreditedQuota: 1, InvoiceAmount: 100_000_000, Money: 9999, CreateTime: start - 3600, CompleteTime: start},
+		{UserId: 2, TradeNo: "today-redemption", PaymentProvider: PaymentProviderRedemption, Status: common.TopUpStatusSuccess, CreditedQuota: 1, InvoiceAmount: 23_450_000, Money: 9999, CompleteTime: end - 1},
+		{UserId: 1, TradeNo: "today-stripe", PaymentProvider: PaymentProviderStripe, Status: common.TopUpStatusSuccess, CreditedQuota: 1, InvoiceAmount: 50_000, CompleteTime: now.Unix()},
+		{UserId: 2, TradeNo: "before-day", PaymentProvider: PaymentProviderEpay, Status: common.TopUpStatusSuccess, CreditedQuota: 1, InvoiceAmount: 900_000_000, CompleteTime: start - 1},
+		{UserId: 2, TradeNo: "next-day", PaymentProvider: PaymentProviderEpay, Status: common.TopUpStatusSuccess, CreditedQuota: 1, InvoiceAmount: 900_000_000, CompleteTime: end},
+		{UserId: 2, TradeNo: "pending", PaymentProvider: PaymentProviderEpay, Status: common.TopUpStatusPending, CreditedQuota: 1, InvoiceAmount: 900_000_000, CompleteTime: now.Unix()},
+		{UserId: 2, TradeNo: "balance", PaymentProvider: PaymentProviderBalance, Status: common.TopUpStatusSuccess, CreditedQuota: 1, InvoiceAmount: 900_000_000, CompleteTime: now.Unix()},
+		{UserId: 2, TradeNo: "affiliate", PaymentProvider: "affiliate", Status: common.TopUpStatusSuccess, CreditedQuota: 1, InvoiceAmount: 900_000_000, CompleteTime: now.Unix()},
+		{UserId: 2, TradeNo: "subscription", PaymentProvider: "", Status: common.TopUpStatusSuccess, CreditedQuota: 1, InvoiceAmount: 900_000_000, CompleteTime: now.Unix()},
+	} {
+		require.NoError(t, DB.Create(&topUp).Error)
+	}
+
+	amount, err := GetTodayTopUpAmount(now)
+	require.NoError(t, err)
+	assert.Equal(t, int64(123_500_000), amount)
+
+	originalQuotaPerUnit := common.QuotaPerUnit
+	common.QuotaPerUnit = originalQuotaPerUnit + 1
+	defer func() { common.QuotaPerUnit = originalQuotaPerUnit }()
+	amount, err = GetTodayTopUpAmount(now)
+	require.NoError(t, err)
+	assert.Equal(t, int64(123_500_000), amount, "current quota settings must not change historical recharge snapshots")
+
+	require.NoError(t, DB.Where("status = ?", common.TopUpStatusSuccess).Delete(&TopUp{}).Error)
+	amount, err = GetTodayTopUpAmount(now)
+	require.NoError(t, err)
+	assert.Zero(t, amount)
 }
 
 func TestCreateInvoiceApplicationRequiresNetAmountGreaterThan500(t *testing.T) {

@@ -360,6 +360,14 @@ export interface BillingHistoryResponse {
 }
 
 /**
+ * Today's credited recharge amount for all users (root only).
+ */
+export interface TodayTopUpAmount {
+  /** Amount in immutable 1/1,000,000 credited-balance units */
+  amount: number
+}
+
+/**
  * Complete order request (admin only)
  */
 export interface CompleteOrderRequest {

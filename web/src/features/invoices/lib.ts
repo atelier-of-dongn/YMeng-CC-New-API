@@ -22,8 +22,11 @@ import type { InvoiceStatus } from './types'
 
 export const INVOICE_AMOUNT_SCALE = 1_000_000
 
-export function formatInvoiceAmount(value: number): string {
-  return (value / INVOICE_AMOUNT_SCALE).toLocaleString(undefined, {
+export function formatInvoiceAmount(
+  value: number,
+  locale?: Intl.LocalesArgument
+): string {
+  return (value / INVOICE_AMOUNT_SCALE).toLocaleString(locale, {
     minimumFractionDigits: 2,
     maximumFractionDigits: 6,
   })
