@@ -278,7 +278,7 @@ it.each([false, true])(
     const row = screen
       .getByRole('button', { name: /^Time:/ })
       .closest('[data-slot="log-time-and-timing"]')
-    expect(row).toHaveClass('grid', 'grid-cols-2')
+    expect(row).toHaveClass('grid', 'grid-cols-[minmax(0,1fr)_minmax(0,1fr)]')
     expect(
       screen.getByRole('button', { name: /^Time:/ }).parentElement
     ).toHaveClass('flex-col', 'justify-between')
@@ -298,6 +298,36 @@ it('retains the user avatar and model badge in the mobile summary', () => {
   expect(screen.getByText('P')).toBeVisible()
   const modelButton = screen.getByRole('button', { name: `Model: ${longName}` })
   expect(modelButton.querySelector('[data-slot="status-badge"]')).not.toBeNull()
+})
+
+it('places the cost below the model so long names do not squeeze it', () => {
+  renderLogs()
+  const modelButton = screen.getByRole('button', { name: `Model: ${longName}` })
+  const header = modelButton.parentElement?.parentElement
+  expect(header).toHaveClass('flex-col')
+})
+
+it('marks quota saturation cards with the same warning tint as the desktop table', () => {
+  renderLogs({
+    logs: [
+      {
+        ...log,
+        other: JSON.stringify({
+          admin_info: {
+            quota_saturation: {
+              op: 'QuotaRound',
+              kind: 'overflow',
+              original: 1e20,
+              clamped: 1,
+            },
+          },
+        }),
+      },
+    ],
+  })
+  const modelButton = screen.getByRole('button', { name: `Model: ${longName}` })
+  const card = modelButton.closest('.rounded-xl')
+  expect(card).toHaveClass('bg-amber-50/60', 'dark:bg-amber-950/25')
 })
 
 it('omits unused token and throughput placeholders for async jobs', () => {

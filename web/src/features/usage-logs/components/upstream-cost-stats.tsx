@@ -18,6 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
+import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import {
@@ -41,6 +42,8 @@ const SENSITIVE_MASK = '••••'
 type UpstreamCostStatsProps = {
   /** Total usage (`quota`) of the regular log stats for the same filters. */
   totalQuota: number
+  /** Lay out the badges in a two-column grid for narrow screens. */
+  compact?: boolean
 }
 
 /** Admin-only revenue/cost/profit badges for the filtered consume logs. */
@@ -94,9 +97,13 @@ export function UpstreamCostStats(props: UpstreamCostStatsProps) {
     sensitiveVisible ? formatLogQuota(quota) : SENSITIVE_MASK
   const formatShare = (value: number | null) =>
     value === null ? '-' : formatPercent(value * 100)
+  const Wrapper = props.compact ? 'div' : Fragment
+  const wrapperProps = props.compact
+    ? { className: 'col-span-2 grid grid-cols-2 gap-1.5' }
+    : {}
 
   return (
-    <>
+    <Wrapper {...wrapperProps}>
       <StatBadge
         label={t('Revenue')}
         value={formatMoney(stats.revenue)}
@@ -122,35 +129,37 @@ export function UpstreamCostStats(props: UpstreamCostStatsProps) {
         value={formatShare(summary.grossMargin)}
         accent='bg-chart-4/70'
       />
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <button
-              type='button'
-              className='focus-visible:ring-ring/50 cursor-help rounded-md outline-none focus-visible:ring-2'
+      <div className={props.compact ? 'col-span-2' : undefined}>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <button
+                type='button'
+                className='focus-visible:ring-ring/50 w-full cursor-help rounded-md outline-none focus-visible:ring-2'
+              />
+            }
+          >
+            <StatBadge
+              label={t('Coverage')}
+              value={formatShare(summary.coverage)}
+              accent='bg-info/70'
             />
-          }
-        >
-          <StatBadge
-            label={t('Coverage')}
-            value={formatShare(summary.coverage)}
-            accent='bg-info/70'
-          />
-        </TooltipTrigger>
-        <TooltipContent>
-          <div className='space-y-1'>
-            <p>{t('Share of total usage with a known upstream cost')}</p>
-            <p>
-              {t(
-                'Profit deducts upstream cost and affiliate rebates for usage with a known upstream cost only'
-              )}
-            </p>
-            <p>{t('Matched: {{count}}', { count: stats.matched })}</p>
-            <p>{t('Estimated: {{count}}', { count: stats.estimated })}</p>
-            <p>{t('Unknown cost: {{count}}', { count: stats.unknown })}</p>
-          </div>
-        </TooltipContent>
-      </Tooltip>
-    </>
+          </TooltipTrigger>
+          <TooltipContent>
+            <div className='space-y-1'>
+              <p>{t('Share of total usage with a known upstream cost')}</p>
+              <p>
+                {t(
+                  'Profit deducts upstream cost and affiliate rebates for usage with a known upstream cost only'
+                )}
+              </p>
+              <p>{t('Matched: {{count}}', { count: stats.matched })}</p>
+              <p>{t('Estimated: {{count}}', { count: stats.estimated })}</p>
+              <p>{t('Unknown cost: {{count}}', { count: stats.unknown })}</p>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    </Wrapper>
   )
 }

@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils'
 
 import { LOG_TYPE_ENUM } from '../constants'
 import type { UsageLog } from '../data/schema'
+import { parseLogOther } from '../lib/format'
 import { TASK_MOBILE_SUMMARY_FIELDS } from '../lib/task-mobile-layout'
 import type { LogCategory } from '../types'
 import { CommonLogMobileCard } from './common-log-mobile-card'
@@ -42,6 +43,8 @@ const logTypeRowTint: Record<number, string> = {
   [LOG_TYPE_ENUM.REFUND]:
     'bg-blue-50/30 dark:bg-blue-950/15 border-blue-200/50 dark:border-blue-900/30',
 }
+
+const quotaSaturationRowTint = 'bg-amber-50/60 dark:bg-amber-950/25'
 
 interface UsageLogsMobileListProps<TData> {
   table: Table<TData>
@@ -105,7 +108,7 @@ function CompactCell<TData>({
   return (
     <div
       className={cn(
-        'min-w-0 overflow-hidden leading-tight [&_button]:max-w-full [&_span]:max-w-full',
+        'min-w-0 leading-tight [overflow-wrap:anywhere] [&_button]:max-w-full [&_button]:[overflow-wrap:anywhere] [&_button]:whitespace-normal [&_span]:max-w-full',
         primaryOnly &&
           '[&_.flex-col]:min-w-0 [&_.flex-col>*:not(:first-child)]:hidden',
         className
@@ -137,7 +140,10 @@ function SummaryField<TData>({
 
   return (
     <div
-      className={cn('bg-muted/20 min-w-0 rounded-md px-2 py-1.5', className)}
+      className={cn(
+        'bg-muted/20 min-w-0 rounded-md px-2 py-1.5 [overflow-wrap:anywhere]',
+        className
+      )}
     >
       {label != null && label !== '' && (
         <div className='text-muted-foreground mb-1 text-[11px] leading-none font-medium select-none'>
@@ -170,7 +176,7 @@ function TaskLogsCard<TData>({
         <CompactCell cell={statusCell} className='shrink-0 text-right' />
       </div>
 
-      <div className='grid grid-cols-2 gap-1.5'>
+      <div className='grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-1.5'>
         {TASK_MOBILE_SUMMARY_FIELDS.map((field) => (
           <SummaryField
             key={field.id}
@@ -207,7 +213,7 @@ function DrawingLogsCard<TData>({
         <CompactCell cell={codeCell} className='shrink-0 text-right' />
       </div>
 
-      <div className='grid grid-cols-2 gap-1.5'>
+      <div className='grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-1.5'>
         <SummaryField label={t('Submit Time')} cell={submitTimeCell} />
         <SummaryField
           label={t('Channel')}
@@ -288,7 +294,15 @@ export function UsageLogsMobileList<TData>({
         const logType = (row.original as Record<string, unknown>).type as
           | number
           | undefined
-        const tintClass = logType != null ? (logTypeRowTint[logType] ?? '') : ''
+        let tintClass = logType != null ? (logTypeRowTint[logType] ?? '') : ''
+        if (logCategory === 'common') {
+          const other = parseLogOther(
+            ((row.original as Record<string, unknown>).other as string) ?? ''
+          )
+          if (other?.admin_info?.quota_saturation) {
+            tintClass = quotaSaturationRowTint
+          }
+        }
 
         return (
           <div

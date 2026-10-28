@@ -25,10 +25,12 @@ export function StatBadge(props: {
   accent: string
 }) {
   return (
-    <span className='border-border/60 bg-muted/25 inline-flex h-7 items-center gap-2 rounded-md border px-2.5 text-xs shadow-xs'>
-      <span className={cn('h-3.5 w-0.5 rounded-full', props.accent)} />
-      <span className='text-muted-foreground'>{props.label}</span>
-      <span className='text-foreground/85 font-mono font-semibold tabular-nums'>
+    <span className='border-border/60 bg-muted/25 inline-flex h-7 min-w-0 items-center gap-2 rounded-md border px-2.5 text-xs shadow-xs max-sm:h-auto max-sm:min-h-7 max-sm:w-full max-sm:gap-1.5 max-sm:px-2 max-sm:py-1'>
+      <span className={cn('h-3.5 w-0.5 shrink-0 rounded-full', props.accent)} />
+      <span className='text-muted-foreground min-w-0 [overflow-wrap:anywhere]'>
+        {props.label}
+      </span>
+      <span className='text-foreground/85 min-w-0 font-mono font-semibold [overflow-wrap:anywhere] break-all tabular-nums'>
         {props.value}
       </span>
     </span>

@@ -21,6 +21,7 @@ import { getRouteApi } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
 import { Skeleton } from '@/components/ui/skeleton'
+import { useMediaQuery } from '@/hooks'
 import { formatLogQuota, formatPercent } from '@/lib/format'
 import { requireServerSuccess } from '@/lib/server-error-message'
 
@@ -36,6 +37,7 @@ const route = getRouteApi('/_authenticated/usage-logs/$section')
 export function CommonLogsStats() {
   const { t } = useTranslation()
   const { isAdminView: isAdmin } = useLogsViewScope()
+  const isMobile = useMediaQuery('(max-width: 640px)')
   const searchParams = route.useSearch()
   const { sensitiveVisible } = useUsageLogsContext()
 
@@ -63,17 +65,16 @@ export function CommonLogsStats() {
 
   if (isLoading) {
     return (
-      <div className='flex items-center gap-2'>
-        <Skeleton className='h-7 w-[150px] rounded-md' />
-        <Skeleton className='h-7 w-[100px] rounded-md' />
-        <Skeleton className='h-7 w-[120px] rounded-md' />
-        <Skeleton className='h-7 w-[160px] rounded-md' />
+      <div className='grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:gap-2'>
+        {[1, 2, 3, 4].map((i) => (
+          <Skeleton key={i} className='h-7 w-full rounded-md' />
+        ))}
       </div>
     )
   }
 
   return (
-    <div className='flex flex-wrap items-center gap-2'>
+    <div className='grid min-w-0 grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2'>
       <StatBadge
         label={t('Usage')}
         value={sensitiveVisible ? formatLogQuota(stats?.quota || 0) : '••••'}
@@ -94,7 +95,9 @@ export function CommonLogsStats() {
         value={formatPercent((stats?.cache_rate || 0) * 100)}
         accent='bg-emerald-500/65'
       />
-      {isAdmin && <UpstreamCostStats totalQuota={stats?.quota || 0} />}
+      {isAdmin && (
+        <UpstreamCostStats totalQuota={stats?.quota || 0} compact={isMobile} />
+      )}
     </div>
   )
 }

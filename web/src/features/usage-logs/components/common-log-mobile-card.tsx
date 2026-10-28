@@ -27,9 +27,14 @@ import { GroupBadge } from '@/components/group-badge'
 import { StatusBadge, type StatusVariant } from '@/components/status-badge'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { toIntlLocale } from '@/i18n/languages'
 import { getUserAvatarFallback, getUserAvatarStyle } from '@/lib/avatar'
 import dayjs from '@/lib/dayjs'
-import { formatLogQuota, formatTimestampToDate } from '@/lib/format'
+import {
+  formatLogQuota,
+  formatNumber,
+  formatTimestampToDate,
+} from '@/lib/format'
 
 import type { UsageLog } from '../data/schema'
 import {
@@ -68,7 +73,8 @@ export function CommonLogMobileCard<TData>(props: {
   log: UsageLog
   cells: Map<string, Cell<TData, unknown>>
 }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
   const context = useUsageLogsContext()
   const [selectedField, setSelectedField] = useState<FieldName | null>(null)
   const log = props.log
@@ -151,9 +157,9 @@ export function CommonLogMobileCard<TData>(props: {
 
   return (
     <div className='min-w-0 space-y-2.5 text-sm leading-5'>
-      <div className='flex min-w-0 flex-wrap items-start gap-x-3 gap-y-2'>
+      <div className='flex min-w-0 flex-col gap-1.5'>
         {fields.model.visible && (
-          <div className='min-w-0 flex-[1_1_10rem]'>
+          <div className='min-w-0'>
             <ModelBadge
               modelName={model.name}
               actualModel={model.actualModel}
@@ -164,13 +170,13 @@ export function CommonLogMobileCard<TData>(props: {
           </div>
         )}
         {fields.cost.visible && costCell && (
-          <div className='ml-auto max-w-full min-w-0 self-center [overflow-wrap:anywhere] [&_.inline-flex]:h-auto [&_.inline-flex]:min-h-6 [&_.inline-flex]:max-w-full [&_.inline-flex]:flex-wrap'>
+          <div className='flex max-w-full min-w-0 justify-end [overflow-wrap:anywhere] [&_.inline-flex]:h-auto [&_.inline-flex]:min-h-6 [&_.inline-flex]:max-w-full [&_.inline-flex]:flex-wrap'>
             {flexRender(costCell.column.columnDef.cell, costCell.getContext())}
           </div>
         )}
       </div>
       <div
-        className='grid min-w-0 grid-cols-2 items-stretch gap-x-3'
+        className='grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-stretch gap-x-3'
         data-slot='log-time-and-timing'
       >
         {fields.time.visible && (
@@ -226,16 +232,18 @@ export function CommonLogMobileCard<TData>(props: {
           )}
       </div>
       {visibleMetadata.length > 0 && (
-        <div className='grid min-w-0 grid-cols-2 gap-x-4 gap-y-0.5'>
+        <div className='grid min-w-0 grid-cols-[minmax(0,auto)_minmax(0,1fr)] items-center gap-x-3 gap-y-0.5'>
           {visibleMetadata.map((id) => {
             const field = fields[id]
-            let fieldContent = <span className='truncate'>{field.value}</span>
+            let fieldContent = (
+              <span className='[overflow-wrap:anywhere]'>{field.value}</span>
+            )
             if (id === 'group') {
               fieldContent = (
                 <GroupBadge
                   group={field.value}
                   type='text'
-                  className='max-w-full text-sm'
+                  className='max-w-full text-sm [overflow-wrap:anywhere]'
                 />
               )
             } else if (id === 'token') {
@@ -249,8 +257,11 @@ export function CommonLogMobileCard<TData>(props: {
               )
             }
             return (
-              <div key={id} className='flex min-w-0 items-center gap-2'>
-                <span className='text-muted-foreground max-w-[40%] shrink-0 text-xs [overflow-wrap:anywhere]'>
+              <div
+                key={id}
+                className='col-span-2 grid min-w-0 grid-cols-subgrid items-center gap-x-3'
+              >
+                <span className='text-muted-foreground shrink-0 text-xs [overflow-wrap:anywhere]'>
                   {id === 'user' ? (
                     <Avatar className='ring-border/60 size-6 shrink-0 ring-1'>
                       <AvatarFallback
@@ -276,7 +287,7 @@ export function CommonLogMobileCard<TData>(props: {
                     aria-label={`${field.label}: ${field.value}`}
                     aria-haspopup='dialog'
                     onClick={() => setSelectedField(id)}
-                    className='text-foreground h-auto min-h-8 min-w-0 flex-1 shrink justify-start px-0 py-1 text-left text-sm font-normal'
+                    className='text-foreground h-auto min-h-8 min-w-0 justify-start px-0 py-1 text-left text-sm font-normal [overflow-wrap:anywhere] whitespace-normal'
                   >
                     {fieldContent}
                   </Button>
@@ -303,23 +314,23 @@ export function CommonLogMobileCard<TData>(props: {
               <span>
                 {t('Input')}{' '}
                 <span className='text-foreground tabular-nums'>
-                  {log.prompt_tokens.toLocaleString()}
+                  {formatNumber(log.prompt_tokens, locale)}
                 </span>
               </span>
               <span>
                 {t('Output')}{' '}
                 <span className='text-foreground tabular-nums'>
-                  {log.completion_tokens.toLocaleString()}
+                  {formatNumber(log.completion_tokens, locale)}
                 </span>
               </span>
               {cacheRead > 0 && (
                 <span>
-                  {t('Cache')} ↓ {cacheRead.toLocaleString()}
+                  {t('Cache')} ↓ {formatNumber(cacheRead, locale)}
                 </span>
               )}
               {cacheWrite > 0 && (
                 <span>
-                  {t('Cache')} ↑ {cacheWrite.toLocaleString()}
+                  {t('Cache')} ↑ {formatNumber(cacheWrite, locale)}
                 </span>
               )}
             </>

@@ -179,10 +179,10 @@ it('keeps all quick actions visible without opening a menu', async () => {
   expect(screen.queryByRole('button', { name: 'More' })).not.toBeInTheDocument()
   await user.click(screen.getByRole('button', { name: 'Hide' }))
   expect(screen.getByRole('button', { name: 'Show' })).toBeVisible()
-  screen.getByRole('button', { name: 'Show' }).focus()
+  screen.getByRole('button', { name: 'Filter' }).focus()
   for (const name of ['Filter', 'Search', 'Export', 'View']) {
-    await user.tab()
     expect(screen.getByRole('button', { name })).toHaveFocus()
+    await user.tab()
   }
 })
 
@@ -268,9 +268,10 @@ it('collapses only date and statistics while keeping the right-hand quick action
   expect(screen.queryByRole('button', { name: date })).not.toBeInTheDocument()
   expect(screen.queryByText('Usage')).not.toBeInTheDocument()
   const actions = screen.getByRole('group', { name: 'Actions' })
-  for (const name of ['Hide', 'Filter', 'Search', 'Export', 'View']) {
+  for (const name of ['Filter', 'Search', 'Export', 'View']) {
     expect(within(actions).getByRole('button', { name })).toBeVisible()
   }
+  expect(screen.getByRole('button', { name: 'Hide' })).toBeVisible()
   expect(
     within(actions).queryByRole('button', { name: 'Expand' })
   ).not.toBeInTheDocument()

@@ -399,7 +399,7 @@ export function CommonLogsFilterBar<TData>(
         aria-label={t('Group')}
         emptyText={t('No group found.')}
         placeholder={t('Group')}
-        className='h-8 min-w-0 text-sm leading-5'
+        className='h-8 min-w-0 text-sm leading-5 max-sm:h-9'
         popupClassName={sensitiveInputClass}
         value={filters.group || ''}
         onValueChange={(value) => handleChange('group', value ?? '')}
@@ -433,6 +433,7 @@ export function CommonLogsFilterBar<TData>(
           aria-description={
             selectedLogType?.deprecated ? deprecatedTypeDescription : undefined
           }
+          className='max-sm:h-9'
         >
           <SelectValue className='min-w-0'>
             <span className='truncate'>
@@ -569,7 +570,7 @@ export function CommonLogsFilterBar<TData>(
       table={props.table}
       compactMobile
       stats={statsBar}
-      actionStart={
+      actionToggles={
         <>
           {internalAccountingToggle}
           {sensitiveToggle}

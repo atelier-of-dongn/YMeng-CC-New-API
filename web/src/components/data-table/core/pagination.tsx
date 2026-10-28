@@ -67,11 +67,36 @@ export function DataTablePagination<TData>({
     return (
       <nav
         aria-label={t('Page')}
-        className='flex w-full min-w-0 flex-wrap items-center justify-between gap-2 text-sm'
+        className='flex w-full min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-2 text-sm'
       >
-        <span className='text-muted-foreground min-w-0 [overflow-wrap:anywhere]'>
-          {t('Total:')} {totalRows.toLocaleString()}
-        </span>
+        <div className='flex min-w-0 flex-wrap items-center gap-2'>
+          <span className='text-muted-foreground min-w-0 [overflow-wrap:anywhere]'>
+            {t('Total:')} {totalRows.toLocaleString()}
+          </span>
+          <Select
+            items={PAGE_SIZE_SELECT_ITEMS}
+            value={`${pageSize}`}
+            onValueChange={(value) => {
+              table.setPageSize(Number(value))
+            }}
+          >
+            <SelectTrigger
+              aria-label={t('Rows per page')}
+              className='text-foreground h-9 w-[68px] font-medium tabular-nums'
+            >
+              <SelectValue placeholder={pageSize} />
+            </SelectTrigger>
+            <SelectContent side='top' alignItemWithTrigger={false}>
+              <SelectGroup>
+                {PAGE_SIZE_OPTIONS.map((size) => (
+                  <SelectItem key={size} value={`${size}`}>
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
+        </div>
         <div className='flex items-center gap-2'>
           <Button
             variant='outline'

@@ -65,3 +65,16 @@ it('keeps page size selection available in the default layout', () => {
   render(<Fixture />)
   expect(screen.getByRole('combobox')).toBeVisible()
 })
+
+it('changes the page size from the compact mobile selector', async () => {
+  const user = userEvent.setup()
+  render(<Fixture compact />)
+
+  const selector = screen.getByRole('combobox', { name: 'Rows per page' })
+  expect(selector).toBeVisible()
+  await user.click(selector)
+  await user.click(screen.getByRole('option', { name: '10' }))
+
+  expect(screen.getByText('1 / 1')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Go to next page' })).toBeDisabled()
+})

@@ -50,6 +50,8 @@ interface LogsFilterToolbarProps<TData> {
   mobileFilterCount?: number
   stats?: ReactNode
   actionStart?: ReactNode
+  /** View toggles shown on their own row on mobile so the main actions stay grouped. */
+  actionToggles?: ReactNode
   actionEnd?: ReactNode
   hasActiveFilters: boolean
   hasAdvancedActiveFilters?: boolean
@@ -85,7 +87,10 @@ export function LogsFilterInput(props: ComponentProps<typeof Input>) {
     <Input
       {...props}
       autoComplete='off'
-      className={cn('h-8 min-w-0 text-sm leading-5', props.className)}
+      className={cn(
+        'h-8 min-w-0 text-sm leading-5 max-sm:h-9',
+        props.className
+      )}
     />
   )
 }
@@ -147,7 +152,11 @@ export function LogsFilterToolbar<TData>(props: LogsFilterToolbarProps<TData>) {
           className={props.className}
           actions={
             <>
-              {props.actionStart}
+              {props.actionToggles && (
+                <div className='flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1'>
+                  {props.actionToggles}
+                </div>
+              )}
               <DrawerTrigger asChild>
                 <Button
                   type='button'
@@ -210,7 +219,7 @@ export function LogsFilterToolbar<TData>(props: LogsFilterToolbarProps<TData>) {
                 {t('Adjust filters, then search to refresh the logs.')}
               </DrawerDescription>
             </DrawerHeader>
-            <div className='flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto px-4 py-3'>
+            <div className='grid min-h-0 flex-1 grid-cols-1 content-start gap-2 overflow-y-auto px-4 py-3 [&_[data-slot=select-trigger]]:max-sm:h-9 [&_input]:max-sm:h-9'>
               {props.mobileFilters ?? (
                 <>
                   {props.primaryFilters}
@@ -218,7 +227,7 @@ export function LogsFilterToolbar<TData>(props: LogsFilterToolbarProps<TData>) {
                 </>
               )}
             </div>
-            <DrawerFooter className='border-border/70 grid grid-cols-2 gap-2 border-t px-4 py-3'>
+            <DrawerFooter className='border-border/70 grid grid-cols-2 gap-2 border-t px-4 py-3 max-[360px]:grid-cols-1 [&_button]:min-h-10'>
               <Button
                 type='button'
                 variant='outline'
@@ -269,7 +278,7 @@ export function LogsFilterToolbar<TData>(props: LogsFilterToolbarProps<TData>) {
       <div className='mt-2 flex flex-wrap items-center gap-2'>
         {props.stats}
         <div className='ms-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-2'>
-          {props.actionStart}
+          {props.actionStart ?? props.actionToggles}
           <Button
             type='button'
             variant='outline'
