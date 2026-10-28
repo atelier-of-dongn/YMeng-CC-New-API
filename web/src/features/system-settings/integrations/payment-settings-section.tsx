@@ -64,6 +64,7 @@ import { AmountDiscountVisualEditor } from './amount-discount-visual-editor'
 import { AmountOptionsVisualEditor } from './amount-options-visual-editor'
 import { parseCatFKProducts, parseCatFKChannels } from './catfk-schema'
 import { CatFKSettingsFields } from './catfk-settings-fields'
+import { CatFKSetupGuide } from './catfk-setup-guide'
 import { CreemProductsVisualEditor } from './creem-products-visual-editor'
 import { PaymentMethodsVisualEditor } from './payment-methods-visual-editor'
 import {
@@ -1675,9 +1676,12 @@ export function PaymentSettingsSection({
             </TabsContent>
 
             <TabsContent value='catfk' className={paymentTabContentClassName}>
-              <h3 className='text-lg font-medium'>
-                {t('Yunmao consignment store payments')}
-              </h3>
+              <div className='flex flex-wrap items-center justify-between gap-3'>
+                <h3 className='text-lg font-medium'>
+                  {t('Yunmao consignment store payments')}
+                </h3>
+                <CatFKSetupGuide />
+              </div>
               <CatFKSettingsFields
                 values={{
                   CatFKEnabled: form.watch('CatFKEnabled'),

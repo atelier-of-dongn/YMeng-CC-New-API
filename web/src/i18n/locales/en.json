@@ -7770,6 +7770,22 @@
     "Invalid pagination": "Invalid pagination",
     "Invalid token ID": "Invalid token ID",
     "All time": "All time",
-    "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.": "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply."
+    "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.": "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.",
+    "Yunmao payment setup guide": "Yunmao payment setup guide",
+    "Follow these steps to find the store token and goods keys in your Yunmao merchant account.": "Follow these steps to find the store token and goods keys in your Yunmao merchant account.",
+    "Open Yunmao merchant console": "Open Yunmao merchant console",
+    "Get the store token": "Get the store token",
+    "Sign in to the Yunmao merchant console and open your store page.": "Sign in to the Yunmao merchant console and open your store page.",
+    "Copy the part of the store link after /shop/ and paste it into the store token field. You can also paste the full store link.": "Copy the part of the store link after /shop/ and paste it into the store token field. You can also paste the full store link.",
+    "Prepare the products": "Prepare the products",
+    "Create one card-code product for each top-up tier. Keep it on sale and in stock.": "Create one card-code product for each top-up tier. Keep it on sale and in stock.",
+    "Set the contact format to Any or QQ, and set the purchase limit to 1 per order.": "Set the contact format to Any or QQ, and set the purchase limit to 1 per order.",
+    "Add product mappings": "Add product mappings",
+    "Open the product page and copy the part of the product link after /item/. Paste only this part into the goods key field.": "Open the product page and copy the part of the product link after /item/. Paste only this part into the goods key field.",
+    "Set the expected credited balance (USD) to a top-up amount option in General, not the CNY selling price.": "Set the expected credited balance (USD) to a top-up amount option in General, not the CNY selling price.",
+    "Choose your own stable product ID. It cannot be changed later.": "Choose your own stable product ID. It cannot be changed later.",
+    "Choose channels and enable": "Choose channels and enable",
+    "Click {{read}}, select the channels to offer, turn on payments, then click {{save}}.": "Click {{read}}, select the channels to offer, turn on payments, then click {{save}}.",
+    "The server must also set CATFK_ORDER_ENCRYPTION_KEY to a Base64 value that decodes to 32 bytes.": "The server must also set CATFK_ORDER_ENCRYPTION_KEY to a Base64 value that decodes to 32 bytes."
   }
 }

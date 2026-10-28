@@ -7770,6 +7770,22 @@
     "Invalid pagination": "Pagination invalide",
     "Invalid token ID": "ID de jeton invalide",
     "All time": "Toute la période",
-    "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.": "Choisissez une période, ou laissez-la vide pour exporter tous les journaux correspondants. Les autres filtres de la page s'appliquent aussi."
+    "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.": "Choisissez une période, ou laissez-la vide pour exporter tous les journaux correspondants. Les autres filtres de la page s'appliquent aussi.",
+    "Yunmao payment setup guide": "Guide de configuration des paiements Yunmao",
+    "Follow these steps to find the store token and goods keys in your Yunmao merchant account.": "Suivez ces étapes pour trouver le jeton de boutique et les clés de produit dans votre compte marchand Yunmao.",
+    "Open Yunmao merchant console": "Ouvrir la console marchand Yunmao",
+    "Get the store token": "Obtenir le jeton de boutique",
+    "Sign in to the Yunmao merchant console and open your store page.": "Connectez-vous à la console marchand Yunmao et ouvrez la page de votre boutique.",
+    "Copy the part of the store link after /shop/ and paste it into the store token field. You can also paste the full store link.": "Copiez la partie du lien de la boutique après /shop/ et collez-la dans le champ du jeton de boutique. Vous pouvez aussi coller le lien complet.",
+    "Prepare the products": "Préparer les produits",
+    "Create one card-code product for each top-up tier. Keep it on sale and in stock.": "Créez un produit de type code pour chaque palier de recharge. Gardez-le en vente et en stock.",
+    "Set the contact format to Any or QQ, and set the purchase limit to 1 per order.": "Réglez le format de contact sur « Tous » ou QQ, et la limite d’achat à 1 par commande.",
+    "Add product mappings": "Ajouter les correspondances de produits",
+    "Open the product page and copy the part of the product link after /item/. Paste only this part into the goods key field.": "Ouvrez la page du produit et copiez la partie du lien après /item/. Collez uniquement cette partie dans le champ de la clé de produit.",
+    "Set the expected credited balance (USD) to a top-up amount option in General, not the CNY selling price.": "Le solde crédité attendu (USD) doit correspondre à un montant de recharge défini dans Général, et non au prix de vente en CNY.",
+    "Choose your own stable product ID. It cannot be changed later.": "Choisissez vous-même un ID de produit stable. Il ne pourra plus être modifié.",
+    "Choose channels and enable": "Choisir les canaux et activer",
+    "Click {{read}}, select the channels to offer, turn on payments, then click {{save}}.": "Cliquez sur {{read}}, sélectionnez les canaux à proposer, activez les paiements, puis cliquez sur {{save}}.",
+    "The server must also set CATFK_ORDER_ENCRYPTION_KEY to a Base64 value that decodes to 32 bytes.": "Le serveur doit aussi définir CATFK_ORDER_ENCRYPTION_KEY avec une valeur Base64 qui se décode en 32 octets."
   }
 }

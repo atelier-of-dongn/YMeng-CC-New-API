@@ -11,6 +11,7 @@ import {
   CatFKSettingsFields,
   type CatFKFormValues,
 } from '../catfk-settings-fields'
+import { CatFKSetupGuide } from '../catfk-setup-guide'
 import { PaymentMethodDialog } from '../payment-method-dialog'
 import { PaymentMethodsVisualEditor } from '../payment-methods-visual-editor'
 import { PaymentSettingsSection } from '../payment-settings-section'
@@ -118,6 +119,7 @@ test('store settings have a standalone tab and preserve edited fields when switc
   ).not.toBeInTheDocument()
   await userEvent.click(storeTab)
   expect(storeTab).toHaveAttribute('aria-selected', 'true')
+  expect(screen.getByRole('button', { name: 'Setup guide' })).toBeVisible()
   expect(screen.getByRole('tablist')).toHaveClass('min-w-max')
   await userEvent.keyboard('{ArrowLeft}{Enter}')
   expect(screen.getByRole('tab', { name: 'Creem' })).toHaveAttribute(
@@ -134,6 +136,32 @@ test('store settings have a standalone tab and preserve edited fields when switc
   ).not.toBeInTheDocument()
   await userEvent.click(storeTab)
   expect(screen.getByLabelText('CatFK store token')).toHaveValue('my-shop')
+})
+
+test('clicking Setup guide opens the token and goods key steps, links to the merchant console in a new tab, and Close dismisses it', async () => {
+  const user = userEvent.setup()
+  render(<CatFKSetupGuide />)
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  await user.click(screen.getByRole('button', { name: 'Setup guide' }))
+  const dialog = await screen.findByRole('dialog', {
+    name: 'Yunmao payment setup guide',
+  })
+  expect(
+    within(dialog).getByRole('heading', { name: 'Get the store token' })
+  ).toBeVisible()
+  expect(
+    within(dialog).getByRole('heading', { name: 'Add product mappings' })
+  ).toBeVisible()
+  const link = within(dialog).getByRole('link', {
+    name: 'Open Yunmao merchant console',
+  })
+  expect(link).toHaveAttribute('href', 'https://catfk.com/merchant')
+  expect(link).toHaveAttribute('target', '_blank')
+  expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  await user.click(within(dialog).getByRole('button', { name: 'Close' }))
+  await waitFor(() =>
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  )
 })
 
 test('adding a store payment uses the normal payment method dialog and preserves the existing Alipay option', async () => {

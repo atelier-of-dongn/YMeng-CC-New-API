@@ -7770,6 +7770,22 @@
     "Invalid pagination": "无效的分页参数",
     "Invalid token ID": "无效的令牌 ID",
     "All time": "全部时间",
-    "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.": "选择要导出的时间范围，留空则导出所有匹配的日志。页面上的其他筛选条件同样生效。"
+    "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.": "选择要导出的时间范围，留空则导出所有匹配的日志。页面上的其他筛选条件同样生效。",
+    "Yunmao payment setup guide": "云猫支付配置教程",
+    "Follow these steps to find the store token and goods keys in your Yunmao merchant account.": "按以下步骤在云猫商家后台找到店铺令牌和商品键。",
+    "Open Yunmao merchant console": "打开云猫商家后台",
+    "Get the store token": "获取店铺令牌",
+    "Sign in to the Yunmao merchant console and open your store page.": "登录云猫商家后台，打开你的店铺页面。",
+    "Copy the part of the store link after /shop/ and paste it into the store token field. You can also paste the full store link.": "复制店铺链接中 /shop/ 后面的部分，粘贴到“店铺令牌”。也可以直接粘贴完整的店铺链接。",
+    "Prepare the products": "准备商品",
+    "Create one card-code product for each top-up tier. Keep it on sale and in stock.": "为每个充值档位创建一个卡密商品，保持上架并有库存。",
+    "Set the contact format to Any or QQ, and set the purchase limit to 1 per order.": "联系方式格式设为“任意”或“QQ”，每单限购数量设为 1。",
+    "Add product mappings": "添加商品映射",
+    "Open the product page and copy the part of the product link after /item/. Paste only this part into the goods key field.": "打开商品页面，复制商品链接中 /item/ 后面的部分，只把这部分粘贴到“商品键”。",
+    "Set the expected credited balance (USD) to a top-up amount option in General, not the CNY selling price.": "“预计到账余额（美元）”须填写“常规”中的某个充值金额选项，而不是人民币售价。",
+    "Choose your own stable product ID. It cannot be changed later.": "“稳定商品 ID”自行设定，保存后不能修改。",
+    "Choose channels and enable": "选择渠道并启用",
+    "Click {{read}}, select the channels to offer, turn on payments, then click {{save}}.": "点击“{{read}}”，勾选要提供的支付渠道，打开支付开关，然后点击“{{save}}”。",
+    "The server must also set CATFK_ORDER_ENCRYPTION_KEY to a Base64 value that decodes to 32 bytes.": "服务器还需设置环境变量 CATFK_ORDER_ENCRYPTION_KEY，其值为 Base64 编码，解码后须为 32 字节。"
   }
 }

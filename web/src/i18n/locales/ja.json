@@ -7770,6 +7770,22 @@
     "Invalid pagination": "ページ指定が無効です",
     "Invalid token ID": "トークン ID が無効です",
     "All time": "全期間",
-    "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.": "期間を選択してください。空のままにすると、条件に一致するすべてのログをエクスポートします。ページ上のほかのフィルターも適用されます。"
+    "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.": "期間を選択してください。空のままにすると、条件に一致するすべてのログをエクスポートします。ページ上のほかのフィルターも適用されます。",
+    "Yunmao payment setup guide": "Yunmao 決済の設定ガイド",
+    "Follow these steps to find the store token and goods keys in your Yunmao merchant account.": "以下の手順で、Yunmao の販売者アカウントからストアトークンと商品キーを確認します。",
+    "Open Yunmao merchant console": "Yunmao 販売者コンソールを開く",
+    "Get the store token": "ストアトークンを取得する",
+    "Sign in to the Yunmao merchant console and open your store page.": "Yunmao 販売者コンソールにログインし、自分のストアページを開きます。",
+    "Copy the part of the store link after /shop/ and paste it into the store token field. You can also paste the full store link.": "ストアリンクの /shop/ 以降の部分をコピーし、ストアトークン欄に貼り付けます。ストアリンク全体を貼り付けることもできます。",
+    "Prepare the products": "商品を準備する",
+    "Create one card-code product for each top-up tier. Keep it on sale and in stock.": "チャージ額ごとにカードコード商品を 1 つ作成し、販売中かつ在庫ありの状態にします。",
+    "Set the contact format to Any or QQ, and set the purchase limit to 1 per order.": "連絡先形式を「任意」または QQ に、1 注文あたりの購入上限を 1 に設定します。",
+    "Add product mappings": "商品マッピングを追加する",
+    "Open the product page and copy the part of the product link after /item/. Paste only this part into the goods key field.": "商品ページを開き、商品リンクの /item/ 以降の部分をコピーします。商品キー欄にはこの部分のみを貼り付けます。",
+    "Set the expected credited balance (USD) to a top-up amount option in General, not the CNY selling price.": "予定入金残高（USD）は、CNY の販売価格ではなく、「一般」にあるチャージ金額の選択肢と同じ値にします。",
+    "Choose your own stable product ID. It cannot be changed later.": "固定の商品 ID は自分で決めます。後から変更できません。",
+    "Choose channels and enable": "チャネルを選んで有効にする",
+    "Click {{read}}, select the channels to offer, turn on payments, then click {{save}}.": "「{{read}}」をクリックし、提供するチャネルを選択して決済を有効にしてから、「{{save}}」をクリックします。",
+    "The server must also set CATFK_ORDER_ENCRYPTION_KEY to a Base64 value that decodes to 32 bytes.": "サーバーには CATFK_ORDER_ENCRYPTION_KEY も設定する必要があります。値は Base64 で、デコード後 32 バイトである必要があります。"
   }
 }

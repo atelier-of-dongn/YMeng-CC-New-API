@@ -7770,6 +7770,22 @@
     "Invalid pagination": "Phân trang không hợp lệ",
     "Invalid token ID": "ID token không hợp lệ",
     "All time": "Tất cả thời gian",
-    "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.": "Chọn khoảng thời gian, hoặc để trống để xuất mọi nhật ký khớp. Các bộ lọc khác trên trang này cũng được áp dụng."
+    "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.": "Chọn khoảng thời gian, hoặc để trống để xuất mọi nhật ký khớp. Các bộ lọc khác trên trang này cũng được áp dụng.",
+    "Yunmao payment setup guide": "Hướng dẫn thiết lập thanh toán Yunmao",
+    "Follow these steps to find the store token and goods keys in your Yunmao merchant account.": "Làm theo các bước sau để tìm token cửa hàng và khóa sản phẩm trong tài khoản người bán Yunmao.",
+    "Open Yunmao merchant console": "Mở trang quản trị người bán Yunmao",
+    "Get the store token": "Lấy token cửa hàng",
+    "Sign in to the Yunmao merchant console and open your store page.": "Đăng nhập trang quản trị người bán Yunmao và mở trang cửa hàng của bạn.",
+    "Copy the part of the store link after /shop/ and paste it into the store token field. You can also paste the full store link.": "Sao chép phần sau /shop/ trong liên kết cửa hàng và dán vào ô token cửa hàng. Bạn cũng có thể dán toàn bộ liên kết cửa hàng.",
+    "Prepare the products": "Chuẩn bị sản phẩm",
+    "Create one card-code product for each top-up tier. Keep it on sale and in stock.": "Tạo một sản phẩm mã thẻ cho mỗi mức nạp. Giữ sản phẩm đang bán và còn hàng.",
+    "Set the contact format to Any or QQ, and set the purchase limit to 1 per order.": "Đặt định dạng liên hệ là Bất kỳ hoặc QQ, và giới hạn mua là 1 cho mỗi đơn.",
+    "Add product mappings": "Thêm ánh xạ sản phẩm",
+    "Open the product page and copy the part of the product link after /item/. Paste only this part into the goods key field.": "Mở trang sản phẩm và sao chép phần sau /item/ trong liên kết. Chỉ dán phần này vào ô khóa sản phẩm.",
+    "Set the expected credited balance (USD) to a top-up amount option in General, not the CNY selling price.": "Số dư dự kiến được cộng (USD) phải bằng một tùy chọn số tiền nạp trong mục Chung, không phải giá bán bằng CNY.",
+    "Choose your own stable product ID. It cannot be changed later.": "Tự chọn một ID sản phẩm cố định. ID này không thể thay đổi sau đó.",
+    "Choose channels and enable": "Chọn kênh và bật thanh toán",
+    "Click {{read}}, select the channels to offer, turn on payments, then click {{save}}.": "Nhấn {{read}}, chọn các kênh muốn cung cấp, bật thanh toán, rồi nhấn {{save}}.",
+    "The server must also set CATFK_ORDER_ENCRYPTION_KEY to a Base64 value that decodes to 32 bytes.": "Máy chủ cũng phải đặt CATFK_ORDER_ENCRYPTION_KEY bằng một giá trị Base64 giải mã ra 32 byte."
   }
 }

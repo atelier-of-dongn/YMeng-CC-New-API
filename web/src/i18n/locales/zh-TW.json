@@ -7770,6 +7770,22 @@
     "Invalid pagination": "無效的分頁參數",
     "Invalid token ID": "無效的權杖 ID",
     "All time": "全部時間",
-    "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.": "選擇要匯出的時間範圍，留空則匯出所有符合的日誌。頁面上的其他篩選條件同樣生效。"
+    "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.": "選擇要匯出的時間範圍，留空則匯出所有符合的日誌。頁面上的其他篩選條件同樣生效。",
+    "Yunmao payment setup guide": "雲貓支付設定教學",
+    "Follow these steps to find the store token and goods keys in your Yunmao merchant account.": "依照以下步驟在雲貓商家後台找到店鋪令牌與商品鍵。",
+    "Open Yunmao merchant console": "開啟雲貓商家後台",
+    "Get the store token": "取得店鋪令牌",
+    "Sign in to the Yunmao merchant console and open your store page.": "登入雲貓商家後台，開啟你的店鋪頁面。",
+    "Copy the part of the store link after /shop/ and paste it into the store token field. You can also paste the full store link.": "複製店鋪連結中 /shop/ 後面的部分，貼到「店鋪令牌」。也可以直接貼上完整的店鋪連結。",
+    "Prepare the products": "準備商品",
+    "Create one card-code product for each top-up tier. Keep it on sale and in stock.": "為每個儲值檔位建立一個卡密商品，保持上架並有庫存。",
+    "Set the contact format to Any or QQ, and set the purchase limit to 1 per order.": "聯絡方式格式設為「任意」或「QQ」，每單限購數量設為 1。",
+    "Add product mappings": "新增商品對應",
+    "Open the product page and copy the part of the product link after /item/. Paste only this part into the goods key field.": "開啟商品頁面，複製商品連結中 /item/ 後面的部分，只將這部分貼到「商品鍵」。",
+    "Set the expected credited balance (USD) to a top-up amount option in General, not the CNY selling price.": "「預計到帳餘額（美元）」須填寫「一般」中的某個儲值金額選項，而不是人民幣售價。",
+    "Choose your own stable product ID. It cannot be changed later.": "「穩定商品 ID」自行設定，儲存後無法修改。",
+    "Choose channels and enable": "選擇管道並啟用",
+    "Click {{read}}, select the channels to offer, turn on payments, then click {{save}}.": "點擊「{{read}}」，勾選要提供的支付管道，開啟支付開關，然後點擊「{{save}}」。",
+    "The server must also set CATFK_ORDER_ENCRYPTION_KEY to a Base64 value that decodes to 32 bytes.": "伺服器還需設定環境變數 CATFK_ORDER_ENCRYPTION_KEY，其值為 Base64 編碼，解碼後須為 32 位元組。"
   }
 }

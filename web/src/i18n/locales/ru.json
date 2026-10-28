@@ -7770,6 +7770,22 @@
     "Invalid pagination": "Недопустимая пагинация",
     "Invalid token ID": "Неверный ID токена",
     "All time": "За всё время",
-    "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.": "Выберите период или оставьте его пустым, чтобы экспортировать все подходящие журналы. Остальные фильтры на странице тоже применяются."
+    "Choose a time range, or leave it empty to export every matching log. The other filters on this page also apply.": "Выберите период или оставьте его пустым, чтобы экспортировать все подходящие журналы. Остальные фильтры на странице тоже применяются.",
+    "Yunmao payment setup guide": "Руководство по настройке оплаты Yunmao",
+    "Follow these steps to find the store token and goods keys in your Yunmao merchant account.": "Выполните эти шаги, чтобы найти токен магазина и ключи товаров в кабинете продавца Yunmao.",
+    "Open Yunmao merchant console": "Открыть кабинет продавца Yunmao",
+    "Get the store token": "Получите токен магазина",
+    "Sign in to the Yunmao merchant console and open your store page.": "Войдите в кабинет продавца Yunmao и откройте страницу своего магазина.",
+    "Copy the part of the store link after /shop/ and paste it into the store token field. You can also paste the full store link.": "Скопируйте часть ссылки магазина после /shop/ и вставьте её в поле токена магазина. Можно вставить и полную ссылку.",
+    "Prepare the products": "Подготовьте товары",
+    "Create one card-code product for each top-up tier. Keep it on sale and in stock.": "Создайте по одному товару с кодами для каждого тарифа пополнения. Держите его в продаже и в наличии.",
+    "Set the contact format to Any or QQ, and set the purchase limit to 1 per order.": "Укажите формат контакта «Любой» или QQ и лимит покупки 1 на заказ.",
+    "Add product mappings": "Добавьте сопоставления товаров",
+    "Open the product page and copy the part of the product link after /item/. Paste only this part into the goods key field.": "Откройте страницу товара и скопируйте часть ссылки после /item/. Вставьте в поле ключа товара только эту часть.",
+    "Set the expected credited balance (USD) to a top-up amount option in General, not the CNY selling price.": "Ожидаемый зачисляемый баланс (USD) должен совпадать с одной из сумм пополнения в разделе «Общие», а не с ценой продажи в CNY.",
+    "Choose your own stable product ID. It cannot be changed later.": "Задайте свой постоянный ID товара. Позже его нельзя изменить.",
+    "Choose channels and enable": "Выберите каналы и включите оплату",
+    "Click {{read}}, select the channels to offer, turn on payments, then click {{save}}.": "Нажмите «{{read}}», выберите каналы оплаты, включите оплату и нажмите «{{save}}».",
+    "The server must also set CATFK_ORDER_ENCRYPTION_KEY to a Base64 value that decodes to 32 bytes.": "На сервере также нужно задать CATFK_ORDER_ENCRYPTION_KEY — значение в Base64, которое декодируется в 32 байта."
   }
 }
