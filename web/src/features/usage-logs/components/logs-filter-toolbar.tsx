@@ -275,9 +275,20 @@ export function LogsFilterToolbar<TData>(props: LogsFilterToolbarProps<TData>) {
         </div>
       )}
 
-      <div className='mt-2 flex flex-wrap items-center gap-2'>
-        {props.stats}
-        <div className='ms-auto flex flex-wrap items-center justify-end gap-1.5 sm:gap-2'>
+      {/* Statistics take the remaining width and wrap among themselves, so the
+          actions stay one right-aligned group instead of interleaving with them. */}
+      <div className='mt-2 flex flex-wrap items-center gap-x-3 gap-y-2'>
+        {props.stats != null && (
+          <div data-slot='logs-toolbar-stats' className='min-w-0 flex-1'>
+            {props.stats}
+          </div>
+        )}
+        <div
+          role='group'
+          aria-label={t('Actions')}
+          data-slot='logs-toolbar-actions'
+          className='ms-auto flex max-w-full shrink-0 flex-wrap items-center justify-end gap-1.5 sm:gap-2'
+        >
           {props.actionStart ?? props.actionToggles}
           <Button
             type='button'

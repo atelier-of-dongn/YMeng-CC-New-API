@@ -16,6 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import { Coins } from 'lucide-react'
+
 import { cn } from '@/lib/utils'
 
 /** Compact label/value chip used by the usage log statistics bar. */
@@ -23,15 +25,29 @@ export function StatBadge(props: {
   label: string
   value: string | number
   accent: string
+  /** Marks the value as an amount of money with a small coin icon. */
+  monetary?: boolean
 }) {
   return (
-    <span className='border-border/60 bg-muted/25 inline-flex h-7 min-w-0 items-center gap-2 rounded-md border px-2.5 text-xs shadow-xs max-sm:h-auto max-sm:min-h-7 max-sm:w-full max-sm:gap-1.5 max-sm:px-2 max-sm:py-1'>
+    <span
+      data-slot='stat-badge'
+      className='border-border/60 bg-muted/25 inline-flex h-7 min-w-0 items-center gap-1.5 rounded-md border px-2 text-xs shadow-xs max-sm:h-auto max-sm:min-h-7 max-sm:w-full max-sm:px-2 max-sm:py-1 sm:whitespace-nowrap'
+    >
       <span className={cn('h-3.5 w-0.5 shrink-0 rounded-full', props.accent)} />
       <span className='text-muted-foreground min-w-0 [overflow-wrap:anywhere]'>
         {props.label}
       </span>
-      <span className='text-foreground/85 min-w-0 font-mono font-semibold [overflow-wrap:anywhere] break-all tabular-nums'>
-        {props.value}
+      <span className='text-foreground/85 inline-flex min-w-0 items-center gap-1 font-mono font-semibold tabular-nums'>
+        {props.monetary && (
+          <Coins
+            data-slot='stat-money-icon'
+            aria-hidden='true'
+            className='size-3 shrink-0 text-amber-500/80 dark:text-amber-400/80'
+          />
+        )}
+        <span className='min-w-0 [overflow-wrap:anywhere] break-all'>
+          {props.value}
+        </span>
       </span>
     </span>
   )

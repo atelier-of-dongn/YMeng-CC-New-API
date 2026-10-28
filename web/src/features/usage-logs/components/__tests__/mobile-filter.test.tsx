@@ -252,6 +252,41 @@ it('places the end action between Search and View on desktop', () => {
   expect(names.slice(-4)).toEqual(['Reset', 'Search', 'Export', 'View'])
 })
 
+it('keeps desktop statistics in their own area apart from the grouped actions', () => {
+  function DesktopFixture() {
+    const table = useReactTable({
+      data: [],
+      columns: [],
+      getCoreRowModel: getCoreRowModel(),
+    })
+    return (
+      <LogsFilterToolbar
+        table={table}
+        primaryFilters={null}
+        stats={<span>Usage</span>}
+        actionToggles={<button type='button'>Hide</button>}
+        actionEnd={<button type='button'>Export</button>}
+        hasActiveFilters={false}
+        onReset={() => {}}
+        onSearch={() => {}}
+      />
+    )
+  }
+  render(<DesktopFixture />)
+  const actions = screen.getByRole('group', { name: 'Actions' })
+  expect(
+    within(actions)
+      .getAllByRole('button')
+      .map((button) => button.textContent)
+  ).toEqual(['Hide', 'Reset', 'Search', 'Export', 'View'])
+  expect(within(actions).queryByText('Usage')).not.toBeInTheDocument()
+  const stats = screen
+    .getByText('Usage')
+    .closest('[data-slot=logs-toolbar-stats]')
+  expect(stats).toBeInTheDocument()
+  expect(stats?.parentElement).toBe(actions.parentElement)
+})
+
 it('collapses only date and statistics while keeping the right-hand quick actions visible', async () => {
   await renderMobileFilter()
   const user = userEvent.setup()

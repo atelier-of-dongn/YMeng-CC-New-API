@@ -65,20 +65,21 @@ export function CommonLogsStats() {
 
   if (isLoading) {
     return (
-      <div className='grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:gap-2'>
+      <div className='grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap'>
         {[1, 2, 3, 4].map((i) => (
-          <Skeleton key={i} className='h-7 w-full rounded-md' />
+          <Skeleton key={i} className='h-7 w-full rounded-md sm:w-28' />
         ))}
       </div>
     )
   }
 
   return (
-    <div className='grid min-w-0 grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center sm:gap-2'>
+    <div className='grid min-w-0 grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center'>
       <StatBadge
         label={t('Usage')}
         value={sensitiveVisible ? formatLogQuota(stats?.quota || 0) : '••••'}
         accent='bg-sky-500/70'
+        monetary
       />
       <StatBadge
         label={t('RPM')}

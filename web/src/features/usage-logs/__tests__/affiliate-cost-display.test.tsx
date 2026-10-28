@@ -292,6 +292,35 @@ test('summary displays rebate, adjusted profit and margin, unchanged coverage an
   expect(screen.queryByText(formatLogQuota(240))).not.toBeInTheDocument()
 })
 
+test('summary marks money amounts with an icon but not shares', async () => {
+  const adapter: AxiosAdapter = async (config) => ({
+    config,
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    data: { success: true, data: totals },
+  })
+  api.defaults.adapter = adapter
+  await renderStats()
+  await screen.findByText('Affiliate Rebate')
+  const iconOf = (label: string) =>
+    screen
+      .getByText(label)
+      .closest('[data-slot=stat-badge]')
+      ?.querySelector('[data-slot=stat-money-icon]')
+  for (const label of [
+    'Revenue',
+    'Upstream Cost',
+    'Affiliate Rebate',
+    'Profit',
+  ]) {
+    expect(iconOf(label)).toBeInTheDocument()
+  }
+  for (const label of ['Gross Margin', 'Coverage']) {
+    expect(iconOf(label)).toBeNull()
+  }
+})
+
 test.each(['business', 'network'])(
   'failed %s refresh hides cached statistics',
   async (failure) => {

@@ -223,3 +223,23 @@ test('ordinary user summary shows the average cache rate from self statistics', 
     expect.stringMatching(/^\/api\/log\/self\/stat\?/),
   ])
 })
+
+test('summary marks only the usage amount with a money icon', async () => {
+  const adapter: AxiosAdapter = async (config) => ({
+    config,
+    status: 200,
+    statusText: 'OK',
+    headers: {},
+    data: { success: true, data: { quota: 500, rpm: 3, tpm: 9 } },
+  })
+  api.defaults.adapter = adapter
+  await renderStats()
+  const badgeOf = async (label: string) =>
+    (await screen.findByText(label)).closest('[data-slot=stat-badge]')
+  const iconOf = async (label: string) =>
+    (await badgeOf(label))?.querySelector('[data-slot=stat-money-icon]')
+  expect(await iconOf('Usage')).toHaveAttribute('aria-hidden', 'true')
+  for (const label of ['RPM', 'TPM', 'Average Cache Rate']) {
+    expect(await iconOf(label)).toBeNull()
+  }
+})
