@@ -721,40 +721,45 @@ func SumUsedQuota(filter LogFilter) (stat Stat, err error) {
 	// PostgreSQL 9.6 has no non-throwing validity test, so it only parses
 	// object-shaped text (the gateway always writes valid JSON). A field
 	// counts only when it is a JSON number.
-	var parsable, isNumber, cacheValue, falseValue string
+	var parsable, isNumber, cacheValue, semanticValue, falseValue string
 	switch common.LogDatabaseType() {
 	case common.DatabaseTypeMySQL:
 		parsable = `JSON_VALID(other)`
 		isNumber = `JSON_TYPE(JSON_EXTRACT(other, '$.%s')) IN ('INTEGER', 'UNSIGNED INTEGER', 'DOUBLE', 'DECIMAL')`
 		cacheValue = `CAST(JSON_UNQUOTE(JSON_EXTRACT(other, '$.cache_tokens')) AS DECIMAL(65, 18))`
+		semanticValue = `JSON_UNQUOTE(JSON_EXTRACT(other, '$.usage_semantic'))`
 		falseValue = `0`
 	case common.DatabaseTypePostgreSQL:
 		parsable = `other LIKE '{%'`
 		isNumber = `jsonb_typeof(other::jsonb -> '%s') = 'number'`
 		cacheValue = `(other::jsonb ->> 'cache_tokens')::double precision`
+		semanticValue = `other::jsonb ->> 'usage_semantic'`
 		falseValue = `false`
 	case common.DatabaseTypeClickHouse:
 		parsable = `isValidJSON(other)`
 		isNumber = `JSONType(other, '%s') IN ('Int64', 'UInt64', 'Double')`
 		cacheValue = `JSONExtractFloat(other, 'cache_tokens')`
+		semanticValue = `JSONExtractString(other, 'usage_semantic')`
 		falseValue = `0`
 	default:
 		parsable = `json_valid(other)`
 		isNumber = `json_type(other, '$.%s') IN ('integer', 'real')`
 		cacheValue = `CAST(json_extract(other, '$.cache_tokens') AS REAL)`
+		semanticValue = `json_extract(other, '$.usage_semantic')`
 		falseValue = `0`
 	}
 	cacheRead := fmt.Sprintf(`CASE WHEN %s THEN CASE WHEN %s THEN %s ELSE 0 END ELSE 0 END`, parsable, fmt.Sprintf(isNumber, "cache_tokens"), cacheValue)
-	// Anthropic-semantic logs always record cache_creation_tokens (even 0) and
-	// their prompt_tokens exclude cache reads; OpenAI-semantic logs omit the
-	// cache write fields when nothing was written and their prompt_tokens
-	// already include cache reads.
 	writeFields := make([]string, 0, 3)
 	for _, key := range []string{"cache_creation_tokens", "cache_creation_tokens_5m", "cache_creation_tokens_1h"} {
 		writeFields = append(writeFields, fmt.Sprintf(isNumber, key))
 	}
 	hasCacheWrite := fmt.Sprintf(`CASE WHEN %s THEN (%s) ELSE %s END`, parsable, strings.Join(writeFields, " OR "), falseValue)
-	tx := LOG_DB.Table("logs").Select(fmt.Sprintf("quota, prompt_tokens, %s AS cache_read, %s AS has_cache_write", cacheRead, hasCacheWrite))
+	// Anthropic prompt_tokens exclude cache reads; OpenAI prompt_tokens are the
+	// total input and already include them. Older logs without an explicit
+	// semantic retain the cache-write-field fallback.
+	anthropicSemantic := fmt.Sprintf(`CASE WHEN %s THEN %s = 'anthropic' ELSE %s END`, parsable, semanticValue, falseValue)
+	excludesCacheRead := fmt.Sprintf(`CASE WHEN %s IS NULL THEN %s ELSE %s END`, semanticValue, hasCacheWrite, anthropicSemantic)
+	tx := LOG_DB.Table("logs").Select(fmt.Sprintf("quota, prompt_tokens, %s AS cache_read, %s AS excludes_cache_read", cacheRead, excludesCacheRead))
 
 	// 为rpm和tpm创建单独的查询
 	rpmTpmQuery := LOG_DB.Table("logs").Select("count(*) rpm, COALESCE(sum(prompt_tokens), 0) + COALESCE(sum(completion_tokens), 0) tpm")
@@ -776,7 +781,7 @@ func SumUsedQuota(filter LogFilter) (stat Stat, err error) {
 	// Every request with a cache hit weighs the same: average the per-request
 	// rates rather than dividing summed tokens, leaving out 0% requests. The
 	// explicit zero avoids NULL/NaN when no request hit the cache.
-	cacheRate := `CASE WHEN has_cache_write THEN CASE WHEN prompt_tokens + cache_read > 0 THEN cache_read / (prompt_tokens + cache_read) ELSE 0 END ` +
+	cacheRate := `CASE WHEN excludes_cache_read THEN CASE WHEN prompt_tokens + cache_read > 0 THEN cache_read / (prompt_tokens + cache_read) ELSE 0 END ` +
 		`WHEN prompt_tokens > 0 THEN cache_read / prompt_tokens ELSE 0 END`
 	hitRequests := fmt.Sprintf(`sum(CASE WHEN %s > 0 THEN 1 ELSE 0 END)`, cacheRate)
 	statQuery := LOG_DB.Table("(?) AS filtered_logs", tx).Select(fmt.Sprintf(

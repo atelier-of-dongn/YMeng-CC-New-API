@@ -343,9 +343,9 @@ export function hasAnyCacheTokens(
 
 /**
  * Cache read share of a request's input, from 0 to 1. Anthropic-semantic
- * logs always record a cache write field and their prompt tokens exclude
- * cache reads; OpenAI-semantic logs omit the write fields when nothing was
- * written and their prompt tokens already include cache reads. Mirrors the
+ * logs record prompt tokens excluding cache reads; OpenAI-semantic logs
+ * report total input, which already includes cache reads. Older logs without
+ * an explicit semantic retain the cache-write-field fallback. Mirrors the
  * average computed by the log statistics endpoints.
  */
 export function getLogCacheRate(
@@ -354,12 +354,15 @@ export function getLogCacheRate(
 ): number {
   const cacheRead =
     typeof other?.cache_tokens === 'number' ? other.cache_tokens : 0
-  const hasCacheWrite = [
-    other?.cache_creation_tokens,
-    other?.cache_creation_tokens_5m,
-    other?.cache_creation_tokens_1h,
-  ].some((value) => typeof value === 'number')
-  const input = hasCacheWrite ? promptTokens + cacheRead : promptTokens
+  const excludesCacheRead =
+    other?.usage_semantic === 'anthropic' ||
+    (other?.usage_semantic === undefined &&
+      [
+        other?.cache_creation_tokens,
+        other?.cache_creation_tokens_5m,
+        other?.cache_creation_tokens_1h,
+      ].some((value) => typeof value === 'number'))
+  const input = excludesCacheRead ? promptTokens + cacheRead : promptTokens
   return input > 0 ? cacheRead / input : 0
 }
 

@@ -163,6 +163,9 @@ func verifyLogCacheRateStats(t *testing.T, now int64) {
 	logs := []model.Log{
 		// A zero cache write field still marks input that excludes cache reads.
 		{UserId: 1, Username: "alice", CreatedAt: now - 3600, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-read-only", Other: `{"cache_tokens":300,"cache_creation_tokens":0}`},
+		// An explicit OpenAI semantic means input already includes cache reads,
+		// even when the upstream also reports cache writes.
+		{UserId: 1, Username: "alice", CreatedAt: now - 3550, Type: model.LogTypeConsume, PromptTokens: 51404, RequestId: "cache-openai-total", Other: `{"cache_tokens":50519,"cache_creation_tokens":883,"usage_semantic":"openai"}`},
 		// Without cache write fields the input already includes cache reads.
 		{UserId: 1, Username: "alice", CreatedAt: now - 3500, Type: model.LogTypeConsume, PromptTokens: 1000, RequestId: "cache-included", Other: `{"cache_tokens":900}`},
 		{UserId: 1, Username: "alice", CreatedAt: now - 3400, Type: model.LogTypeConsume, RequestId: "cache-zero-denominator", Other: `{"cache_tokens":0}`},
@@ -203,11 +206,13 @@ func verifyLogCacheRateStats(t *testing.T, now int64) {
 	}
 
 	query := fmt.Sprintf("start_timestamp=%d&end_timestamp=%d", now-2*24*3600, now+3600)
-	// alice: 0.5 (a-1), 0.75 (300 / (100+300)) and 0.9 (900 / 1000); her
-	// 0% consume logs stay out of the average.
-	assert.InDelta(t, (0.5+0.75+0.9)/3, cacheRate(GetLogsSelfStat, 1, "alice", common.RoleCommonUser, query), 1e-9)
+	// alice: 0.5 (a-1), 0.75 (300 / (100+300)), 50519/51404
+	// (OpenAI total input) and 0.9 (900 / 1000); her 0% consume logs stay out
+	// of the average.
+	openAITotalRate := 50519.0 / 51404.0
+	assert.InDelta(t, (0.5+0.75+openAITotalRate+0.9)/4, cacheRate(GetLogsSelfStat, 1, "alice", common.RoleCommonUser, query), 1e-9)
 	assert.InDelta(t, 1.0, cacheRate(GetLogsSelfStat, 2, "bob", common.RoleCommonUser, query), 1e-9, "bob's average excludes b-1 at 0% and alice's logs")
-	assert.InDelta(t, (0.5+0.75+0.9+1)/4, cacheRate(GetLogsStat, 3, "admin", common.RoleAdminUser, query), 1e-9)
+	assert.InDelta(t, (0.5+0.75+openAITotalRate+0.9+1)/5, cacheRate(GetLogsStat, 3, "admin", common.RoleAdminUser, query), 1e-9)
 	assert.InDelta(t, 0.0, cacheRate(GetLogsSelfStat, 4, "carol", common.RoleCommonUser, query), 0, "only 0% requests average to 0")
 	assert.InDelta(t, 0.0, cacheRate(GetLogsSelfStat, 1, "alice", common.RoleCommonUser, query+"&model_name=none"), 0)
 }

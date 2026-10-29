@@ -98,6 +98,22 @@ function CacheRateColumn(props: { log: UsageLog }) {
 
 test.each([
   [
+    'cache read over total input for non-Anthropic usage with cache writes',
+    51404,
+    {
+      cache_tokens: 50519,
+      cache_creation_tokens: 883,
+      usage_semantic: 'openai',
+    },
+    '98.28%',
+  ],
+  [
+    'cache read over input plus cache read for Anthropic usage',
+    300,
+    { cache_tokens: 100, cache_creation_tokens: 0, usage_semantic: 'anthropic' },
+    '25%',
+  ],
+  [
     'cache read over input plus cache read when a cache write field exists',
     300,
     { cache_tokens: 100, cache_creation_tokens: 0 },
