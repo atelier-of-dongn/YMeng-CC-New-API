@@ -1046,6 +1046,7 @@
     "Cache": "緩存",
     "Cache Rate": "緩存率",
     "Average Cache Rate": "平均緩存率",
+    "Cache Hit Rate": "緩存命中率",
     "Cache create (1h) price": "1 小時緩存寫入價格",
     "Cache create price": "緩存寫入價格",
     "Cache Creation": "緩存建立",

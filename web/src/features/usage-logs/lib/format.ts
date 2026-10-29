@@ -363,7 +363,7 @@ export function getLogCacheRate(
         other?.cache_creation_tokens_1h,
       ].some((value) => typeof value === 'number'))
   const input = excludesCacheRead ? promptTokens + cacheRead : promptTokens
-  return input > 0 ? cacheRead / input : 0
+  return input > 0 ? Math.min(Math.max(cacheRead / input, 0), 1) : 0
 }
 
 export function getTieredBillingSummary(

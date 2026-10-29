@@ -138,6 +138,18 @@ test.each([
   ['no cache read', 300, {}, '0%'],
   ['zero input without a cache write field', 0, { cache_tokens: 0 }, '0%'],
   [
+    'invalid negative cache reads',
+    300,
+    { cache_tokens: -100, usage_semantic: 'openai' },
+    '0%',
+  ],
+  [
+    'anomalous input that already includes cache reads',
+    300,
+    { cache_tokens: 900, usage_semantic: 'openai' },
+    '100%',
+  ],
+  [
     'zero input and cache read with a cache write field',
     0,
     { cache_creation_tokens: 0 },
@@ -216,7 +228,7 @@ async function renderStats() {
   )
 }
 
-test('ordinary user summary shows the average cache rate from self statistics', async () => {
+test('ordinary user summary shows the token-weighted cache hit rate from self statistics', async () => {
   const requested: string[] = []
   const adapter: AxiosAdapter = async (config) => {
     requested.push(config.url ?? '')
@@ -233,7 +245,7 @@ test('ordinary user summary shows the average cache rate from self statistics', 
   }
   api.defaults.adapter = adapter
   await renderStats()
-  expect(await screen.findByText('Average Cache Rate')).toBeVisible()
+  expect(await screen.findByText('Cache Hit Rate')).toBeVisible()
   expect(screen.getByText('25.01%')).toBeVisible()
   expect(requested).toEqual([
     expect.stringMatching(/^\/api\/log\/self\/stat\?/),
@@ -255,7 +267,7 @@ test('summary marks only the usage amount with a money icon', async () => {
   const iconOf = async (label: string) =>
     (await badgeOf(label))?.querySelector('[data-slot=stat-money-icon]')
   expect(await iconOf('Usage')).toHaveAttribute('aria-hidden', 'true')
-  for (const label of ['RPM', 'TPM', 'Average Cache Rate']) {
+  for (const label of ['RPM', 'TPM', 'Cache Hit Rate']) {
     expect(await iconOf(label)).toBeNull()
   }
 })

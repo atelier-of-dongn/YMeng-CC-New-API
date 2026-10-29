@@ -1046,6 +1046,7 @@
     "Cache": "Cache",
     "Cache Rate": "Taux de cache",
     "Average Cache Rate": "Taux moyen de cache",
+    "Cache Hit Rate": "Taux de réussite du cache",
     "Cache create (1h) price": "Prix de création du cache (1 h)",
     "Cache create price": "Prix de création du cache",
     "Cache Creation": "Création cache",

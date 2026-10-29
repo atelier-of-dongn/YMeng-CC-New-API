@@ -1046,6 +1046,7 @@
     "Cache": "Bộ nhớ đệm",
     "Cache Rate": "Tỷ lệ bộ nhớ đệm",
     "Average Cache Rate": "Tỷ lệ bộ nhớ đệm trung bình",
+    "Cache Hit Rate": "Tỷ lệ trúng bộ nhớ đệm",
     "Cache create (1h) price": "Giá tạo cache (1 giờ)",
     "Cache create price": "Giá tạo cache",
     "Cache Creation": "Tạo cache",

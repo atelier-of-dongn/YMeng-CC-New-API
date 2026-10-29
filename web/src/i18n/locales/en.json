@@ -1046,6 +1046,7 @@
     "Cache": "Cache",
     "Cache Rate": "Cache Rate",
     "Average Cache Rate": "Average Cache Rate",
+    "Cache Hit Rate": "Cache Hit Rate",
     "Cache create (1h) price": "Cache create (1h) price",
     "Cache create price": "Cache create price",
     "Cache Creation": "Cache Creation",

@@ -92,7 +92,7 @@ export function CommonLogsStats() {
         accent='bg-slate-400/70'
       />
       <StatBadge
-        label={t('Average Cache Rate')}
+        label={t('Cache Hit Rate')}
         value={formatPercent((stats?.cache_rate || 0) * 100)}
         accent='bg-emerald-500/65'
       />

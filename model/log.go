@@ -748,7 +748,7 @@ func SumUsedQuota(filter LogFilter) (stat Stat, err error) {
 		semanticValue = `json_extract(other, '$.usage_semantic')`
 		falseValue = `0`
 	}
-	cacheRead := fmt.Sprintf(`CASE WHEN %s THEN CASE WHEN %s THEN %s ELSE 0 END ELSE 0 END`, parsable, fmt.Sprintf(isNumber, "cache_tokens"), cacheValue)
+	cacheRead := fmt.Sprintf(`CASE WHEN %s THEN CASE WHEN %s THEN CASE WHEN (%s) >= 0 THEN (%s) ELSE 0 END ELSE 0 END ELSE 0 END`, parsable, fmt.Sprintf(isNumber, "cache_tokens"), cacheValue, cacheValue)
 	writeFields := make([]string, 0, 3)
 	for _, key := range []string{"cache_creation_tokens", "cache_creation_tokens_5m", "cache_creation_tokens_1h"} {
 		writeFields = append(writeFields, fmt.Sprintf(isNumber, key))
@@ -758,7 +758,7 @@ func SumUsedQuota(filter LogFilter) (stat Stat, err error) {
 	// total input and already include them. Older logs without an explicit
 	// semantic retain the cache-write-field fallback.
 	anthropicSemantic := fmt.Sprintf(`CASE WHEN %s THEN %s = 'anthropic' ELSE %s END`, parsable, semanticValue, falseValue)
-	excludesCacheRead := fmt.Sprintf(`CASE WHEN %s IS NULL THEN %s ELSE %s END`, semanticValue, hasCacheWrite, anthropicSemantic)
+	excludesCacheRead := fmt.Sprintf(`CASE WHEN %s THEN CASE WHEN %s IS NULL THEN %s ELSE %s END ELSE %s END`, parsable, semanticValue, hasCacheWrite, anthropicSemantic, falseValue)
 	tx := LOG_DB.Table("logs").Select(fmt.Sprintf("quota, prompt_tokens, %s AS cache_read, %s AS excludes_cache_read", cacheRead, excludesCacheRead))
 
 	// 为rpm和tpm创建单独的查询
@@ -777,15 +777,13 @@ func SumUsedQuota(filter LogFilter) (stat Stat, err error) {
 	// 只统计最近60秒的rpm和tpm
 	rpmTpmQuery = rpmTpmQuery.Where("created_at >= ?", time.Now().Add(-60*time.Second).Unix())
 
-	// 执行查询
-	// Every request with a cache hit weighs the same: average the per-request
-	// rates rather than dividing summed tokens, leaving out 0% requests. The
-	// explicit zero avoids NULL/NaN when no request hit the cache.
-	cacheRate := `CASE WHEN excludes_cache_read THEN CASE WHEN prompt_tokens + cache_read > 0 THEN cache_read / (prompt_tokens + cache_read) ELSE 0 END ` +
-		`WHEN prompt_tokens > 0 THEN cache_read / prompt_tokens ELSE 0 END`
-	hitRequests := fmt.Sprintf(`sum(CASE WHEN %s > 0 THEN 1 ELSE 0 END)`, cacheRate)
+	// The cache hit rate is total cache reads divided by total input tokens.
+	// Include requests without a hit; do not average per-request percentages.
+	// Exclude malformed rows whose input is smaller than their cache reads.
+	inputTokens := `(prompt_tokens + CASE WHEN excludes_cache_read THEN cache_read ELSE 0 END)`
+	validRate := fmt.Sprintf(`(prompt_tokens >= 0 AND (%s) >= cache_read)`, inputTokens)
 	statQuery := LOG_DB.Table("(?) AS filtered_logs", tx).Select(fmt.Sprintf(
-		`COALESCE(sum(quota), 0) quota, CASE WHEN COALESCE(%[1]s, 0) = 0 THEN 0 ELSE sum(%[2]s) / %[1]s END cache_rate`, hitRequests, cacheRate))
+		`COALESCE(sum(quota), 0) quota, CASE WHEN COALESCE(sum(CASE WHEN %[1]s THEN (%[2]s) ELSE 0 END), 0) = 0 THEN 0 ELSE sum(CASE WHEN %[1]s THEN cache_read ELSE 0 END) * 1.0 / sum(CASE WHEN %[1]s THEN (%[2]s) ELSE 0 END) END cache_rate`, validRate, inputTokens))
 	if err := statQuery.Scan(&stat).Error; err != nil {
 		common.SysError(common.LogText("failed to query log stat: %s", err.Error()))
 		return stat, common.NewMessage("Failed to query statistics")

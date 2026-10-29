@@ -1046,6 +1046,7 @@
     "Cache": "Кэш",
     "Cache Rate": "Доля кэша",
     "Average Cache Rate": "Средняя доля кэша",
+    "Cache Hit Rate": "Доля попаданий в кэш",
     "Cache create (1h) price": "Цена создания кэша (1 ч)",
     "Cache create price": "Цена создания кэша",
     "Cache Creation": "Создание кэша",

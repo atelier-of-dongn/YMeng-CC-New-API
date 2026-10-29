@@ -155,14 +155,17 @@ func TestLogExportDatabaseMatrix(t *testing.T) {
 }
 
 // verifyLogCacheRateStats adds consume logs beside the seeded ones and checks
-// that both stat endpoints average per-request cache rates.
+// that both stat endpoints report cache reads as a share of all input tokens.
 func verifyLogCacheRateStats(t *testing.T, now int64) {
 	t.Helper()
 	// Seeded in range: alice a-1 (cache write fields present: 100 cache read
 	// over 100 input + 100 cache read = 0.5) and bob b-1 (no other = 0).
 	logs := []model.Log{
-		// A zero cache write field still marks input that excludes cache reads.
+		// Anthropic input excludes cache reads and cache writes. Even malformed
+		// upstream totals must not make the aggregate exceed 100%.
 		{UserId: 1, Username: "alice", CreatedAt: now - 3600, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-read-only", Other: `{"cache_tokens":300,"cache_creation_tokens":0}`},
+		{UserId: 1, Username: "alice", CreatedAt: now - 3590, Type: model.LogTypeConsume, PromptTokens: 14, RequestId: "cache-anomalous", Other: `{"cache_tokens":9455,"cache_creation_tokens":2649,"usage_semantic":"anthropic"}`},
+		{UserId: 1, Username: "alice", CreatedAt: now - 3580, Type: model.LogTypeConsume, PromptTokens: 300, RequestId: "cache-negative", Other: `{"cache_tokens":-100,"usage_semantic":"openai"}`},
 		// An explicit OpenAI semantic means input already includes cache reads,
 		// even when the upstream also reports cache writes.
 		{UserId: 1, Username: "alice", CreatedAt: now - 3550, Type: model.LogTypeConsume, PromptTokens: 51404, RequestId: "cache-openai-total", Other: `{"cache_tokens":50519,"cache_creation_tokens":883,"usage_semantic":"openai"}`},
@@ -206,14 +209,20 @@ func verifyLogCacheRateStats(t *testing.T, now int64) {
 	}
 
 	query := fmt.Sprintf("start_timestamp=%d&end_timestamp=%d", now-2*24*3600, now+3600)
-	// alice: 0.5 (a-1), 0.75 (300 / (100+300)), 50519/51404
-	// (OpenAI total input) and 0.9 (900 / 1000); her 0% consume logs stay out
-	// of the average.
-	openAITotalRate := 50519.0 / 51404.0
-	assert.InDelta(t, (0.5+0.75+openAITotalRate+0.9)/4, cacheRate(GetLogsSelfStat, 1, "alice", common.RoleCommonUser, query), 1e-9)
-	assert.InDelta(t, 1.0, cacheRate(GetLogsSelfStat, 2, "bob", common.RoleCommonUser, query), 1e-9, "bob's average excludes b-1 at 0% and alice's logs")
-	assert.InDelta(t, (0.5+0.75+openAITotalRate+0.9+1)/5, cacheRate(GetLogsStat, 3, "admin", common.RoleAdminUser, query), 1e-9)
-	assert.InDelta(t, 0.0, cacheRate(GetLogsSelfStat, 4, "carol", common.RoleCommonUser, query), 0, "only 0% requests average to 0")
+	// Include zero-hit requests in the overall token-weighted rate. Anthropic
+	// rows count cache reads into the denominator while OpenAI rows already
+	// include them in prompt_tokens; the negative and noisy rows stay valid
+	// because only rows with input smaller than their cache reads are dropped.
+	// alice: cache reads 100+300+9455+50519+900 = 61274 over input
+	// 200+400+9469+300+51404+1000+100*6 = 63373.
+	aliceRate := 61274.0 / 63373.0
+	assert.LessOrEqual(t, aliceRate, 1.0)
+	// Admin adds bob's 100/100 and carol's 0/100.
+	adminRate := (61274.0 + 100) / (63373.0 + 200)
+	assert.InDelta(t, aliceRate, cacheRate(GetLogsSelfStat, 1, "alice", common.RoleCommonUser, query), 1e-9)
+	assert.InDelta(t, 1.0, cacheRate(GetLogsSelfStat, 2, "bob", common.RoleCommonUser, query), 1e-9, "bob's 0% log keeps the overall rate at or below 100%")
+	assert.InDelta(t, adminRate, cacheRate(GetLogsStat, 3, "admin", common.RoleAdminUser, query), 1e-9)
+	assert.InDelta(t, 0.0, cacheRate(GetLogsSelfStat, 4, "carol", common.RoleCommonUser, query), 0)
 	assert.InDelta(t, 0.0, cacheRate(GetLogsSelfStat, 1, "alice", common.RoleCommonUser, query+"&model_name=none"), 0)
 }
 
