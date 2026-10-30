@@ -33,18 +33,35 @@ import { AffiliateAdminAnalytics } from '..'
 
 vi.mock('@visactor/react-vchart', () => ({ VChart: () => null }))
 
-type RequestConfig = { params?: Record<string, unknown> }
+type RequestConfig = {
+  params?: Record<string, unknown>
+  signal?: AbortSignal
+  disableDuplicate?: boolean
+}
 
 let client: QueryClient
 let commissionRequests: Record<string, unknown>[]
+let requestConfigs: Record<string, RequestConfig[]>
 let commissionTotal: number
+let holdRequests: boolean
+let releaseRequests: (() => void) | undefined
 
 beforeEach(() => {
   client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   commissionRequests = []
+  requestConfigs = {}
   commissionTotal = 45
+  holdRequests = false
+  releaseRequests = undefined
   vi.spyOn(api, 'get').mockImplementation(async (url, config) => {
-    const params = (config as RequestConfig | undefined)?.params ?? {}
+    const requestConfig = (config as RequestConfig | undefined) ?? {}
+    const params = requestConfig.params ?? {}
+    requestConfigs[url] = [...(requestConfigs[url] ?? []), requestConfig]
+    if (holdRequests) {
+      await new Promise<void>((resolve) => {
+        releaseRequests = resolve
+      })
+    }
     switch (url) {
       case '/api/affiliate/analytics/admin/overview':
         return {
@@ -172,6 +189,66 @@ describe('referral analytics page', () => {
         7 * 24 * 60 * 60
       )
     })
+  })
+
+  it('requests the last 24 hours for every panel when 1 Day is selected', async () => {
+    const user = userEvent.setup()
+    await renderPage()
+    await screen.findByText('New User')
+
+    await user.click(screen.getByRole('tab', { name: '1 Day' }))
+    await waitFor(() => {
+      for (const url of [
+        '/api/affiliate/analytics/admin/overview',
+        '/api/affiliate/analytics/admin/rankings',
+        '/api/affiliate/analytics/admin/commissions',
+      ]) {
+        const params = requestConfigs[url]?.at(-1)?.params
+        expect(
+          Number(params?.end_timestamp) - Number(params?.start_timestamp)
+        ).toBe(24 * 60 * 60)
+      }
+      expect(commissionRequests.at(-1)).toMatchObject({ page: 1 })
+    })
+  })
+
+  it('cancels an obsolete range request when filters change', async () => {
+    const user = userEvent.setup()
+    holdRequests = true
+    const view = await renderPage()
+    await waitFor(() => expect(releaseRequests).toBeDefined())
+    const initialRequests = Object.values(requestConfigs).map(
+      (configs) => configs[0]
+    )
+    expect(initialRequests).toHaveLength(3)
+
+    await user.click(screen.getByRole('tab', { name: '1 Day' }))
+    for (const config of initialRequests) {
+      expect(config.signal?.aborted).toBe(true)
+      expect(config.disableDuplicate).toBe(true)
+    }
+    releaseRequests?.()
+    await screen.findByText('New User')
+    view.unmount()
+  })
+
+  it('reuses cached commissions when the previous page is reopened', async () => {
+    const user = userEvent.setup()
+    await renderPage()
+    await screen.findByText('New User')
+    expect(commissionRequests).toHaveLength(1)
+
+    await user.click(screen.getByRole('button', { name: 'Go to next page' }))
+    await waitFor(() => expect(commissionRequests).toHaveLength(2))
+    await user.click(
+      screen.getByRole('button', { name: 'Go to previous page' })
+    )
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Go to first page' })
+      ).toBeDisabled()
+    )
+    expect(commissionRequests).toHaveLength(2)
   })
 
   it('shows the empty state when no commission records match', async () => {

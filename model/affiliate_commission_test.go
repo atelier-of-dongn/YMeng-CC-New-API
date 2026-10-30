@@ -2,12 +2,17 @@ package model
 
 import (
 	"math"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/glebarez/sqlite"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -105,18 +110,42 @@ func TestMaskAffiliateEmail(t *testing.T) {
 		}
 	}
 }
-func setupAffiliateAnalyticsModelTest(t *testing.T) {
+func setupAffiliateAnalyticsModelTest(t *testing.T, recordQueries bool) {
 	t.Helper()
 	originalDB := DB
 	t.Cleanup(func() { DB = originalDB })
 	var err error
-	DB, err = gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	config := &gorm.Config{}
+	if recordQueries {
+		config.Logger = &migrationSQLRecorder{}
+	}
+	DB, err = gorm.Open(sqlite.Open(":memory:"), config)
 	require.NoError(t, err)
 	require.NoError(t, DB.AutoMigrate(&User{}, &AffiliateCommission{}))
 }
 
+func affiliateAnalyticsQueryRecorder(t *testing.T) *migrationSQLRecorder {
+	t.Helper()
+	recorder, ok := DB.Config.Logger.(*migrationSQLRecorder)
+	require.True(t, ok)
+	recorder.reset()
+	return recorder
+}
+
+func affiliateAnalyticsSelectCount(recorder *migrationSQLRecorder) int {
+	recorder.mu.Lock()
+	defer recorder.mu.Unlock()
+	count := 0
+	for _, statement := range recorder.statements {
+		if strings.HasPrefix(strings.ToUpper(strings.TrimSpace(statement)), "SELECT") {
+			count++
+		}
+	}
+	return count
+}
+
 func TestAffiliateAdminAnalyticsUsesAttributedUsersAndCompletedCommissions(t *testing.T) {
-	setupAffiliateAnalyticsModelTest(t)
+	setupAffiliateAnalyticsModelTest(t, false)
 	const day = int64(86_400)
 	start := int64(1_800_000_000 / 86_400 * 86_400)
 	end := start + day - 1
@@ -171,4 +200,151 @@ func TestAffiliateAdminAnalyticsUsesAttributedUsersAndCompletedCommissions(t *te
 	require.NoError(t, err)
 	require.Equal(t, int64(3), total)
 	require.Len(t, rows, 1)
+
+	rows, total, err = GetAffiliateAdminAnalyticsCommissions("", "", start, end, 3, 1)
+	require.NoError(t, err)
+	require.Equal(t, int64(3), total)
+	assert.NotNil(t, rows)
+	assert.Empty(t, rows)
+}
+
+func TestAffiliateAdminAnalyticsDeduplicatesInvitersAcrossUTCDays(t *testing.T) {
+	setupAffiliateAnalyticsModelTest(t, true)
+	const day = int64(86_400)
+	start := int64(1_800_000_000 / day * day)
+	end := start + 2*day - 1
+
+	users := []User{
+		{Id: 1, Username: "inviter-one", Password: "password", AffCode: "code-one", CreatedAt: start - day},
+		{Id: 2, Username: "inviter-two", Password: "password", AffCode: "code-two", CreatedAt: start - day},
+		{Id: 3, Username: "invitee-a", Password: "password", AffCode: "code-a", InviterId: 1, CreatedAt: start + 10},
+		{Id: 4, Username: "invitee-b", Password: "password", AffCode: "code-b", InviterId: 1, CreatedAt: start + day + 10},
+		{Id: 5, Username: "invitee-c", Password: "password", AffCode: "code-c", InviterId: 2, CreatedAt: start + 20},
+		{Id: 6, Username: "ordinary-user", Password: "password", AffCode: "code-d", CreatedAt: start + 30},
+		{Id: 7, Username: "deleted-invitee", Password: "password", AffCode: "code-e", InviterId: 1, CreatedAt: start + 40, DeletedAt: gorm.DeletedAt{Valid: true, Time: time.Unix(start+50, 0)}},
+	}
+	require.NoError(t, DB.Create(&users).Error)
+	commissions := []AffiliateCommission{
+		{InviterId: 1, InviteeId: 3, SourceKey: "completed-a", CreditedQuota: 5, Status: AffiliateCommissionStatusCompleted, CreatedAt: start + 10},
+		{InviterId: 1, InviteeId: 4, SourceKey: "completed-b", CreditedQuota: 10, Status: AffiliateCommissionStatusCompleted, CreatedAt: start + day + 10},
+		{InviterId: 2, InviteeId: 5, SourceKey: "pending-a", CreditedQuota: 50, Status: AffiliateCommissionStatusPending, CreatedAt: start + 20},
+	}
+	require.NoError(t, DB.Create(&commissions).Error)
+
+	recorder := affiliateAnalyticsQueryRecorder(t)
+	overview, trend, err := GetAffiliateAdminAnalyticsOverview(start, end)
+	require.NoError(t, err)
+	assert.Equal(t, 2, affiliateAnalyticsSelectCount(recorder))
+	assert.Equal(t, int64(3), overview.ReferralCount)
+	assert.Equal(t, int64(2), overview.ActiveInviterCount)
+	assert.Equal(t, int64(2), overview.CommissionCount)
+	assert.Equal(t, int64(15), overview.CreditedQuota)
+	require.Len(t, trend, 2)
+	assert.Equal(t, int64(2), trend[0].ReferralCount)
+	assert.Equal(t, int64(1), trend[1].ReferralCount)
+	assert.Equal(t, int64(1), trend[0].CommissionCount)
+	assert.Equal(t, int64(5), trend[0].CreditedQuota)
+	assert.Equal(t, int64(1), trend[1].CommissionCount)
+	assert.Equal(t, int64(10), trend[1].CreditedQuota)
+}
+
+func TestAffiliateAdminAnalyticsSkipsDetailQueriesForEmptyResults(t *testing.T) {
+	setupAffiliateAnalyticsModelTest(t, true)
+	const start = int64(1_800_000_000)
+	end := start + 86_400
+
+	recorder := affiliateAnalyticsQueryRecorder(t)
+	rankings, rankingTotal, err := GetAffiliateAdminAnalyticsRankings("", start, end, 0, 10)
+	require.NoError(t, err)
+	assert.Zero(t, rankingTotal)
+	assert.NotNil(t, rankings)
+	assert.Empty(t, rankings)
+	assert.Equal(t, 1, affiliateAnalyticsSelectCount(recorder))
+
+	recorder.reset()
+	rows, total, err := GetAffiliateAdminAnalyticsCommissions("", "", start, end, 0, 20)
+	require.NoError(t, err)
+	assert.Zero(t, total)
+	assert.NotNil(t, rows)
+	assert.Empty(t, rows)
+	assert.Equal(t, 1, affiliateAnalyticsSelectCount(recorder))
+}
+
+// TestAffiliateAdminAnalyticsDatabaseMatrix requires disposable external databases.
+func TestAffiliateAdminAnalyticsDatabaseMatrix(t *testing.T) {
+	for _, dialect := range []string{"sqlite", "mysql", "postgres"} {
+		t.Run(dialect, func(t *testing.T) {
+			var driver gorm.Dialector
+			switch dialect {
+			case "sqlite":
+				driver = sqlite.Open(filepath.Join(t.TempDir(), "affiliate.db"))
+			case "mysql":
+				dsn := os.Getenv("TEST_MYSQL_DSN")
+				if dsn == "" {
+					t.Skip("TEST_MYSQL_DSN not configured")
+				}
+				driver = mysql.Open(dsn)
+			case "postgres":
+				dsn := os.Getenv("TEST_POSTGRES_DSN")
+				if dsn == "" {
+					t.Skip("TEST_POSTGRES_DSN not configured")
+				}
+				driver = postgres.New(postgres.Config{DSN: dsn, PreferSimpleProtocol: true})
+			}
+			db, err := gorm.Open(driver, &gorm.Config{})
+			require.NoError(t, err)
+			sqlDB, err := db.DB()
+			require.NoError(t, err)
+			previousDB := DB
+			DB = db
+			t.Cleanup(func() {
+				require.NoError(t, db.Migrator().DropTable(&AffiliateCommission{}, &User{}))
+				DB = previousDB
+				require.NoError(t, sqlDB.Close())
+			})
+			var version string
+			versionQuery := "SELECT version()"
+			if dialect == "sqlite" {
+				versionQuery = "SELECT sqlite_version()"
+			}
+			require.NoError(t, db.Raw(versionQuery).Scan(&version).Error)
+			t.Logf("database: %s %s", dialect, version)
+			require.NoError(t, db.AutoMigrate(&User{}, &AffiliateCommission{}))
+
+			const day = int64(86_400)
+			start := int64(1_800_000_000 / day * day)
+			end := start + 2*day - 1
+			users := []User{
+				{Id: 1, Username: "inviter", Password: "password", AffCode: "inviter-code", CreatedAt: start - day},
+				{Id: 2, Username: "invitee-a", Password: "password", AffCode: "invitee-code-a", InviterId: 1, CreatedAt: start + 10},
+				{Id: 3, Username: "invitee-b", Password: "password", AffCode: "invitee-code-b", InviterId: 1, CreatedAt: start + day + 10},
+			}
+			require.NoError(t, db.Create(&users).Error)
+			commissions := []AffiliateCommission{
+				{InviterId: 1, InviteeId: 2, SourceKey: "completed-a", CreditedQuota: 5, Status: AffiliateCommissionStatusCompleted, CreatedAt: start + 10},
+				{InviterId: 1, InviteeId: 3, SourceKey: "completed-b", CreditedQuota: 10, Status: AffiliateCommissionStatusCompleted, CreatedAt: start + day + 10},
+			}
+			require.NoError(t, db.Create(&commissions).Error)
+
+			overview, trend, err := GetAffiliateAdminAnalyticsOverview(start, end)
+			require.NoError(t, err)
+			assert.Equal(t, int64(2), overview.ReferralCount)
+			assert.Equal(t, int64(1), overview.ActiveInviterCount)
+			assert.Equal(t, int64(2), overview.CommissionCount)
+			assert.Equal(t, int64(15), overview.CreditedQuota)
+			require.Len(t, trend, 2)
+			assert.Equal(t, int64(1), trend[0].ReferralCount)
+			assert.Equal(t, int64(1), trend[1].ReferralCount)
+
+			rankings, total, err := GetAffiliateAdminAnalyticsRankings("", start, end, 0, 10)
+			require.NoError(t, err)
+			assert.Equal(t, int64(1), total)
+			require.Len(t, rankings, 1)
+			assert.Equal(t, int64(2), rankings[0].ReferralCount)
+			rows, total, err := GetAffiliateAdminAnalyticsCommissions("", AffiliateCommissionStatusCompleted, start, end, 0, 10)
+			require.NoError(t, err)
+			assert.Equal(t, int64(2), total)
+			require.Len(t, rows, 2)
+		})
+	}
 }

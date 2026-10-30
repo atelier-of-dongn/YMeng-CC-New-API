@@ -74,23 +74,31 @@ type Paged<T> = {
 }
 
 export async function getAffiliateAnalyticsOverview(
-  range: AffiliateAnalyticsRange
+  range: AffiliateAnalyticsRange,
+  signal?: AbortSignal
 ) {
   const { data } = await api.get<
     ApiEnvelope<{
       overview: AffiliateAnalyticsOverview
       trend: AffiliateAnalyticsTrend[]
     }>
-  >('/api/affiliate/analytics/admin/overview', { params: range })
+  >('/api/affiliate/analytics/admin/overview', {
+    params: range,
+    signal,
+    disableDuplicate: true,
+  })
   return data
 }
 
-export async function getAffiliateAnalyticsRankings(params: {
-  range: AffiliateAnalyticsRange
-  keyword?: string
-  page: number
-  page_size: number
-}) {
+export async function getAffiliateAnalyticsRankings(
+  params: {
+    range: AffiliateAnalyticsRange
+    keyword?: string
+    page: number
+    page_size: number
+  },
+  signal?: AbortSignal
+) {
   const { data } = await api.get<ApiEnvelope<Paged<AffiliateAnalyticsRanking>>>(
     '/api/affiliate/analytics/admin/rankings',
     {
@@ -100,18 +108,23 @@ export async function getAffiliateAnalyticsRankings(params: {
         page: params.page,
         page_size: params.page_size,
       },
+      signal,
+      disableDuplicate: true,
     }
   )
   return data
 }
 
-export async function getAffiliateAnalyticsCommissions(params: {
-  range: AffiliateAnalyticsRange
-  keyword?: string
-  status?: string
-  page: number
-  page_size: number
-}) {
+export async function getAffiliateAnalyticsCommissions(
+  params: {
+    range: AffiliateAnalyticsRange
+    keyword?: string
+    status?: string
+    page: number
+    page_size: number
+  },
+  signal?: AbortSignal
+) {
   const { data } = await api.get<
     ApiEnvelope<Paged<AffiliateAnalyticsCommission>>
   >('/api/affiliate/analytics/admin/commissions', {
@@ -122,6 +135,8 @@ export async function getAffiliateAnalyticsCommissions(params: {
       page: params.page,
       page_size: params.page_size,
     },
+    signal,
+    disableDuplicate: true,
   })
   return data
 }

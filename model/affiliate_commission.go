@@ -506,6 +506,7 @@ type AffiliateAdminAnalyticsCommissionItem struct {
 
 type affiliateDayAggregate struct {
 	DayBucket     int64 `gorm:"column:day_bucket"`
+	InviterId     int64 `gorm:"column:inviter_id"`
 	Count         int64 `gorm:"column:count"`
 	CreditedQuota int64 `gorm:"column:credited_quota"`
 }
@@ -521,38 +522,31 @@ func affiliateDayBucketExpression() string {
 // GetAffiliateAdminAnalyticsOverview aggregates attributed registrations and completed commissions.
 func GetAffiliateAdminAnalyticsOverview(start, end int64) (*AffiliateAdminAnalyticsOverview, []AffiliateAdminAnalyticsTrend, error) {
 	overview := &AffiliateAdminAnalyticsOverview{}
-	users := DB.Model(&User{}).Where("inviter_id > 0 AND created_at >= ? AND created_at <= ?", start, end).
-		Session(&gorm.Session{})
-	if err := users.Count(&overview.ReferralCount).Error; err != nil {
-		return nil, nil, err
-	}
-	if err := users.Distinct("inviter_id").Count(&overview.ActiveInviterCount).Error; err != nil {
-		return nil, nil, err
-	}
-
-	commissions := DB.Model(&AffiliateCommission{}).
-		Where("status = ? AND created_at >= ? AND created_at <= ?", AffiliateCommissionStatusCompleted, start, end).
-		Session(&gorm.Session{})
-	var commissionTotals struct {
-		Count         int64 `gorm:"column:count"`
-		CreditedQuota int64 `gorm:"column:credited_quota"`
-	}
-	if err := commissions.Select("COUNT(*) AS count, COALESCE(SUM(credited_quota), 0) AS credited_quota").Scan(&commissionTotals).Error; err != nil {
-		return nil, nil, err
-	}
-	overview.CommissionCount = commissionTotals.Count
-	overview.CreditedQuota = commissionTotals.CreditedQuota
-
 	dayBucket := affiliateDayBucketExpression()
 	var referralDays []affiliateDayAggregate
-	if err := users.Select(dayBucket + " AS day_bucket, COUNT(*) AS count").
-		Group(dayBucket).Find(&referralDays).Error; err != nil {
+	if err := DB.Model(&User{}).
+		Select(dayBucket+" AS day_bucket, inviter_id, COUNT(*) AS count").
+		Where("inviter_id > 0 AND created_at >= ? AND created_at <= ?", start, end).
+		Group(dayBucket + ", inviter_id").Find(&referralDays).Error; err != nil {
 		return nil, nil, err
 	}
 	var commissionDays []affiliateDayAggregate
-	if err := commissions.Select(dayBucket + " AS day_bucket, COUNT(*) AS count, COALESCE(SUM(credited_quota), 0) AS credited_quota").
+	if err := DB.Model(&AffiliateCommission{}).
+		Select(dayBucket+" AS day_bucket, COUNT(*) AS count, COALESCE(SUM(credited_quota), 0) AS credited_quota").
+		Where("status = ? AND created_at >= ? AND created_at <= ?", AffiliateCommissionStatusCompleted, start, end).
 		Group(dayBucket).Find(&commissionDays).Error; err != nil {
 		return nil, nil, err
+	}
+
+	activeInviters := make(map[int64]struct{})
+	for _, item := range referralDays {
+		overview.ReferralCount += item.Count
+		activeInviters[item.InviterId] = struct{}{}
+	}
+	overview.ActiveInviterCount = int64(len(activeInviters))
+	for _, item := range commissionDays {
+		overview.CommissionCount += item.Count
+		overview.CreditedQuota += item.CreditedQuota
 	}
 
 	startDay := time.Unix(start, 0).UTC().Truncate(24 * time.Hour)
@@ -564,7 +558,7 @@ func GetAffiliateAdminAnalyticsOverview(start, end int64) (*AffiliateAdminAnalyt
 	}
 	for _, item := range referralDays {
 		if point := byDay[item.DayBucket]; point != nil {
-			point.ReferralCount = item.Count
+			point.ReferralCount += item.Count
 		}
 	}
 	for _, item := range commissionDays {
@@ -595,6 +589,9 @@ func GetAffiliateAdminAnalyticsRankings(keyword string, start, end int64, offset
 	var total int64
 	if err := query.Distinct("invitees.inviter_id").Count(&total).Error; err != nil {
 		return nil, 0, err
+	}
+	if total == 0 {
+		return []*AffiliateAdminAnalyticsRankItem{}, 0, nil
 	}
 	type rankingRow struct {
 		InviterId     int64  `gorm:"column:inviter_id"`
@@ -673,6 +670,9 @@ func GetAffiliateAdminAnalyticsCommissions(keyword, status string, start, end in
 	var total int64
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
+	}
+	if total == 0 {
+		return []*AffiliateAdminAnalyticsCommissionItem{}, 0, nil
 	}
 	var items []*AffiliateAdminAnalyticsCommissionItem
 	if err := query.Select("commissions.id, commissions.inviter_id, COALESCE(NULLIF(inviters.display_name, ''), inviters.username) AS inviter_name, commissions.invitee_id, COALESCE(NULLIF(invitees.display_name, ''), invitees.username) AS invitee_name, commissions.model_name, commissions.billing_source, commissions.consumed_quota, commissions.rate_percent, commissions.reward_amount, commissions.credited_quota, commissions.status, commissions.created_at").

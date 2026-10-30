@@ -48,6 +48,7 @@ import { CommissionsTable } from './components/commissions-table'
 import { RankingsTable } from './components/rankings-table'
 
 const RANGE_PRESETS = [
+  { label: '1 Day', days: 1 },
   { label: '7 Days', days: 7 },
   { label: '30 Days', days: 30 },
   { label: '90 Days', days: 90 },
@@ -56,6 +57,7 @@ const RANGE_PRESETS = [
 
 const STATUS_ALL = 'all'
 const RANKING_LIMIT = 10
+const ANALYTICS_STALE_TIME = 60_000
 const DEFAULT_PAGINATION: PaginationState = { pageIndex: 0, pageSize: 20 }
 
 export function AffiliateAdminAnalytics() {
@@ -78,22 +80,28 @@ export function AffiliateAdminAnalytics() {
 
   const overviewQuery = useQuery({
     queryKey: ['affiliate-admin', 'overview', range],
-    queryFn: async () =>
-      requireServerSuccess(await getAffiliateAnalyticsOverview(range)).data,
+    queryFn: async ({ signal }) =>
+      requireServerSuccess(await getAffiliateAnalyticsOverview(range, signal))
+        .data,
     placeholderData: keepPreviousData,
+    staleTime: ANALYTICS_STALE_TIME,
   })
 
   const rankingsQuery = useQuery({
     queryKey: ['affiliate-admin', 'rankings', range],
-    queryFn: async () =>
+    queryFn: async ({ signal }) =>
       requireServerSuccess(
-        await getAffiliateAnalyticsRankings({
-          range,
-          page: 1,
-          page_size: RANKING_LIMIT,
-        })
+        await getAffiliateAnalyticsRankings(
+          {
+            range,
+            page: 1,
+            page_size: RANKING_LIMIT,
+          },
+          signal
+        )
       ).data,
     placeholderData: keepPreviousData,
+    staleTime: ANALYTICS_STALE_TIME,
   })
 
   const commissionsQuery = useQuery({
@@ -106,17 +114,21 @@ export function AffiliateAdminAnalytics() {
       pagination.pageIndex,
       pagination.pageSize,
     ],
-    queryFn: async () =>
+    queryFn: async ({ signal }) =>
       requireServerSuccess(
-        await getAffiliateAnalyticsCommissions({
-          range,
-          keyword: debouncedKeyword || undefined,
-          status: status === STATUS_ALL ? undefined : status,
-          page: pagination.pageIndex + 1,
-          page_size: pagination.pageSize,
-        })
+        await getAffiliateAnalyticsCommissions(
+          {
+            range,
+            keyword: debouncedKeyword || undefined,
+            status: status === STATUS_ALL ? undefined : status,
+            page: pagination.pageIndex + 1,
+            page_size: pagination.pageSize,
+          },
+          signal
+        )
       ).data,
     placeholderData: keepPreviousData,
+    staleTime: ANALYTICS_STALE_TIME,
   })
 
   const statusItems = [
