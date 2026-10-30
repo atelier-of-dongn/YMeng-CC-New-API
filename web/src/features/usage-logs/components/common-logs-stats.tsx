@@ -18,21 +18,25 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
+import { Activity, Gauge } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { useMediaQuery } from '@/hooks'
-import { formatLogQuota, formatPercent } from '@/lib/format'
+import { formatLogQuota } from '@/lib/format'
 import { requireServerSuccess } from '@/lib/server-error-message'
 
 import { getLogStats, getUserLogStats } from '../api'
 import { DEFAULT_LOG_STATS } from '../constants'
 import { buildApiParams } from '../lib/utils'
+import { CacheRateRing } from './cache-rate-ring'
 import { StatBadge } from './stat-badge'
 import { UpstreamCostStats } from './upstream-cost-stats'
 import { useLogsViewScope, useUsageLogsContext } from './usage-logs-provider'
 
 const route = getRouteApi('/_authenticated/usage-logs/$section')
+
+const STATS_STALE_TIME_MS = 15_000
 
 export function CommonLogsStats() {
   const { t } = useTranslation()
@@ -43,6 +47,7 @@ export function CommonLogsStats() {
 
   const { data: stats, isLoading } = useQuery({
     queryKey: ['usage-logs-stats', isAdmin, searchParams],
+    staleTime: STATS_STALE_TIME_MS,
     queryFn: async () => {
       const params = buildApiParams({
         page: 1,
@@ -63,18 +68,14 @@ export function CommonLogsStats() {
     placeholderData: (previousData) => previousData,
   })
 
-  if (isLoading) {
-    return (
-      <div className='grid grid-cols-2 gap-1.5 sm:flex sm:flex-wrap'>
-        {[1, 2, 3, 4].map((i) => (
-          <Skeleton key={i} className='h-7 w-full rounded-md sm:w-28' />
-        ))}
-      </div>
-    )
-  }
-
-  return (
-    <div className='grid min-w-0 grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center'>
+  const baseBadges = isLoading ? (
+    <>
+      {[1, 2, 3, 4].map((i) => (
+        <Skeleton key={i} className='h-7 w-full rounded-md sm:w-28' />
+      ))}
+    </>
+  ) : (
+    <>
       <StatBadge
         label={t('Usage')}
         value={sensitiveVisible ? formatLogQuota(stats?.quota || 0) : '••••'}
@@ -85,19 +86,28 @@ export function CommonLogsStats() {
         label={t('RPM')}
         value={stats?.rpm || 0}
         accent='bg-rose-500/65'
+        icon={<Activity />}
       />
       <StatBadge
         label={t('TPM')}
         value={stats?.tpm || 0}
         accent='bg-slate-400/70'
+        icon={<Gauge />}
       />
-      <StatBadge
-        label={t('Cache Hit Rate')}
-        value={formatPercent((stats?.cache_rate || 0) * 100)}
-        accent='bg-emerald-500/65'
-      />
+      <StatBadge label={t('Cache Hit Rate')} accent='bg-emerald-500/65'>
+        <CacheRateRing
+          rate={stats?.cache_rate || 0}
+          label={t('Cache Hit Rate')}
+        />
+      </StatBadge>
+    </>
+  )
+
+  return (
+    <div className='grid min-w-0 grid-cols-2 gap-1.5 sm:flex sm:flex-wrap sm:items-center'>
+      {baseBadges}
       {isAdmin && (
-        <UpstreamCostStats totalQuota={stats?.quota || 0} compact={isMobile} />
+        <UpstreamCostStats totalQuota={stats?.quota} compact={isMobile} />
       )}
     </div>
   )

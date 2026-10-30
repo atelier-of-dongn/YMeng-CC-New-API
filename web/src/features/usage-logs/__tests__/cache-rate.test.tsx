@@ -29,11 +29,13 @@ import {
   getCoreRowModel,
   useReactTable,
 } from '@tanstack/react-table'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import type { AxiosAdapter } from 'axios'
 import { afterEach, expect, test } from 'vitest'
 
 import { api } from '@/lib/api'
+import { ROLE } from '@/lib/roles'
+import { useAuthStore } from '@/stores/auth-store'
 
 import { CacheRateRing } from '../components/cache-rate-ring'
 import { useCommonLogsColumns } from '../components/columns/common-logs-columns'
@@ -48,6 +50,7 @@ afterEach(() => {
   clients.forEach((client) => client.clear())
   clients.length = 0
   localStorage.clear()
+  useAuthStore.getState().auth.setUser(null)
 })
 
 function consumeLog(promptTokens: number, other: object): UsageLog {
@@ -247,6 +250,8 @@ test('ordinary user summary shows the token-weighted cache hit rate from self st
   await renderStats()
   expect(await screen.findByText('Cache Hit Rate')).toBeVisible()
   expect(screen.getByText('25.01%')).toBeVisible()
+  const ring = screen.getByRole('progressbar', { name: 'Cache Hit Rate' })
+  expect(ring).toHaveAttribute('aria-valuetext', '25.01%')
   expect(requested).toEqual([
     expect.stringMatching(/^\/api\/log\/self\/stat\?/),
   ])
@@ -270,4 +275,67 @@ test('summary marks only the usage amount with a money icon', async () => {
   for (const label of ['RPM', 'TPM', 'Cache Hit Rate']) {
     expect(await iconOf(label)).toBeNull()
   }
+})
+
+test('admin view fetches base stats and upstream cost stats in parallel', async () => {
+  useAuthStore.getState().auth.setUser({ id: 1, username: 'admin', role: ROLE.ADMIN })
+  const requested: string[] = []
+  let resolveBase: (() => void) | undefined
+  let resolveUpstream: (() => void) | undefined
+  const basePending = new Promise<void>((resolve) => {
+    resolveBase = resolve
+  })
+  const upstreamPending = new Promise<void>((resolve) => {
+    resolveUpstream = resolve
+  })
+  const adapter: AxiosAdapter = async (config) => {
+    const url = config.url ?? ''
+    requested.push(url)
+    if (url.startsWith('/api/log/upstream_cost_stat')) {
+      await upstreamPending
+      return {
+        config,
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        data: {
+          success: true,
+          data: {
+            revenue: 100,
+            cost: 40,
+            affiliate_cost: 5,
+            matched: 1,
+            estimated: 0,
+            unknown: 0,
+          },
+        },
+      }
+    }
+    await basePending
+    return {
+      config,
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      data: { success: true, data: { quota: 500, rpm: 3, tpm: 9, cache_rate: 0.5 } },
+    }
+  }
+  api.defaults.adapter = adapter
+  await renderStats()
+
+  // Both requests must have been issued before either resolves (no waterfall).
+  await waitFor(() => {
+    expect(
+      requested.some((url) => url.startsWith('/api/log/stat'))
+    ).toBe(true)
+    expect(
+      requested.some((url) => url.startsWith('/api/log/upstream_cost_stat'))
+    ).toBe(true)
+  })
+
+  resolveBase?.()
+  resolveUpstream?.()
+
+  expect(await screen.findByText('Revenue')).toBeVisible()
+  expect(await screen.findByText('Coverage')).toBeVisible()
 })

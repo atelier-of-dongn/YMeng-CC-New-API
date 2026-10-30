@@ -18,9 +18,11 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useQuery } from '@tanstack/react-query'
 import { getRouteApi } from '@tanstack/react-router'
+import { Percent, PieChart } from 'lucide-react'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Tooltip,
   TooltipContent,
@@ -38,10 +40,15 @@ import { useUsageLogsContext } from './usage-logs-provider'
 const route = getRouteApi('/_authenticated/usage-logs/$section')
 
 const SENSITIVE_MASK = '••••'
+const STATS_STALE_TIME_MS = 15_000
 
 type UpstreamCostStatsProps = {
-  /** Total usage (`quota`) of the regular log stats for the same filters. */
-  totalQuota: number
+  /**
+   * Total usage (`quota`) of the regular log stats for the same filters. Used
+   * only for the coverage ratio; the upstream request itself does not depend
+   * on it, so the two queries can run in parallel.
+   */
+  totalQuota?: number
   /** Lay out the badges in a two-column grid for narrow screens. */
   compact?: boolean
 }
@@ -57,7 +64,7 @@ export function UpstreamCostStats(props: UpstreamCostStatsProps) {
   const unsupportedFilter = Boolean(searchParams.tokenId || searchParams.ip)
 
   // The key must start with 'usage-logs-stats' so the filter bar refreshes it.
-  const { data: stats, isError } = useQuery({
+  const { data: stats, isLoading, isError } = useQuery({
     queryKey: [
       'usage-logs-stats',
       'upstream-cost',
@@ -65,6 +72,7 @@ export function UpstreamCostStats(props: UpstreamCostStatsProps) {
       internalAccounting,
     ],
     enabled: !unsupportedFilter,
+    staleTime: STATS_STALE_TIME_MS,
     queryFn: async () => {
       const params = {
         ...buildApiParams({
@@ -85,10 +93,32 @@ export function UpstreamCostStats(props: UpstreamCostStatsProps) {
     meta: { errorToast: false },
   })
 
-  if (unsupportedFilter || !stats || isError) {
+  const Wrapper = props.compact ? 'div' : Fragment
+  const wrapperProps = props.compact
+    ? { className: 'col-span-2 grid grid-cols-2 gap-1.5' }
+    : {}
+
+  if (unsupportedFilter) {
     return null
   }
-  const summary = summarizeUpstreamCost(stats, props.totalQuota)
+
+  if (isLoading && !stats) {
+    return (
+      <Wrapper {...wrapperProps}>
+        {[1, 2, 3, 4, 5, 6].map((i) => (
+          <Skeleton
+            key={i}
+            className={props.compact ? 'h-7 w-full rounded-md' : 'h-7 w-28 rounded-md'}
+          />
+        ))}
+      </Wrapper>
+    )
+  }
+
+  if (!stats || isError) {
+    return null
+  }
+  const summary = summarizeUpstreamCost(stats, props.totalQuota ?? 0)
   if (summary.recordCount === 0) {
     return null
   }
@@ -97,10 +127,6 @@ export function UpstreamCostStats(props: UpstreamCostStatsProps) {
     sensitiveVisible ? formatLogQuota(quota) : SENSITIVE_MASK
   const formatShare = (value: number | null) =>
     value === null ? '-' : formatPercent(value * 100)
-  const Wrapper = props.compact ? 'div' : Fragment
-  const wrapperProps = props.compact
-    ? { className: 'col-span-2 grid grid-cols-2 gap-1.5' }
-    : {}
 
   return (
     <Wrapper {...wrapperProps}>
@@ -132,6 +158,7 @@ export function UpstreamCostStats(props: UpstreamCostStatsProps) {
         label={t('Gross Margin')}
         value={formatShare(summary.grossMargin)}
         accent='bg-chart-4/70'
+        icon={<Percent />}
       />
       <div className={props.compact ? 'col-span-2' : undefined}>
         <Tooltip>
@@ -147,6 +174,7 @@ export function UpstreamCostStats(props: UpstreamCostStatsProps) {
               label={t('Coverage')}
               value={formatShare(summary.coverage)}
               accent='bg-info/70'
+              icon={<PieChart />}
             />
           </TooltipTrigger>
           <TooltipContent>
