@@ -124,11 +124,6 @@ export function useSidebarData(): SidebarData {
             icon: Share2,
           },
           {
-            title: t('Invoice application'),
-            url: '/invoices',
-            icon: ReceiptText,
-          },
-          {
             title: t('Profile'),
             url: '/profile',
             icon: User,

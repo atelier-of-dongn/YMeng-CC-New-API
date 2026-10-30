@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next'
 
 import { SectionPageLayout } from '@/components/layout'
 import { getAffiliateSummary } from '@/features/affiliate/api'
+import { useIsSidebarModuleVisible } from '@/hooks/use-sidebar-config'
 import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { getSelf } from '@/lib/api'
@@ -35,6 +36,7 @@ import { CatfkPaymentStatusDialog } from './components/dialogs/catfk-payment-sta
 import { CreemConfirmDialog } from './components/dialogs/creem-confirm-dialog'
 import { PaymentConfirmDialog } from './components/dialogs/payment-confirm-dialog'
 import { TransferDialog } from './components/dialogs/transfer-dialog'
+import { UserInvoiceDialog } from './components/dialogs/user-invoice-dialog'
 import { RechargeFormCard } from './components/recharge-form-card'
 import { SubscriptionPlansCard } from './components/subscription-plans-card'
 import { WalletStatsCard } from './components/wallet-stats-card'
@@ -86,6 +88,7 @@ export function Wallet(props: WalletProps) {
   const [confirmDialogOpen, setConfirmDialogOpen] = useState(false)
   const [transferDialogOpen, setTransferDialogOpen] = useState(false)
   const [billingDialogOpen, setBillingDialogOpen] = useState(false)
+  const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false)
   const [redemptionCode, setRedemptionCode] = useState('')
   const [creemDialogOpen, setCreemDialogOpen] = useState(false)
   const [selectedCreemProduct, setSelectedCreemProduct] =
@@ -101,6 +104,7 @@ export function Wallet(props: WalletProps) {
   const { status } = useStatus()
   const { currency } = useSystemConfig()
   const { topupInfo, presetAmounts, loading: topupLoading } = useTopupInfo()
+  const invoiceModuleVisible = useIsSidebarModuleVisible('/invoices')
 
   const paymentSelectionVersion = useRef(0)
 
@@ -362,6 +366,11 @@ export function Wallet(props: WalletProps) {
                   priceRatio={(status?.price as number) || 1}
                   usdExchangeRate={effectiveUsdExchangeRate}
                   onOpenBilling={() => setBillingDialogOpen(true)}
+                  onOpenInvoice={
+                    invoiceModuleVisible
+                      ? () => setInvoiceDialogOpen(true)
+                      : undefined
+                  }
                   creemProducts={topupInfo?.creem_products}
                   enableCreemTopup={topupInfo?.enable_creem_topup}
                   onCreemProductSelect={handleCreemProductSelect}
@@ -459,6 +468,11 @@ export function Wallet(props: WalletProps) {
       <BillingHistoryDialog
         open={billingDialogOpen}
         onOpenChange={setBillingDialogOpen}
+      />
+
+      <UserInvoiceDialog
+        open={invoiceDialogOpen}
+        onOpenChange={setInvoiceDialogOpen}
       />
 
       <CreemConfirmDialog

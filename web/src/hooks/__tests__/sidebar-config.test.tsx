@@ -83,7 +83,7 @@ describe('security sidebar visibility', () => {
       result.current
         .find((group) => group.id === 'personal')
         ?.items.map((item) => item.title)
-    ).toEqual(['Wallet', 'Profile', 'Security & Access'])
+    ).toEqual(['Wallet', 'Referral Program', 'Profile', 'Security & Access'])
     expect(
       result.current
         .flatMap((group) => group.items)

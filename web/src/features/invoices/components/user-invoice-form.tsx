@@ -24,13 +24,6 @@ import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 
@@ -101,86 +94,77 @@ export function UserInvoiceForm(props: {
   })
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t('New invoice application')}</CardTitle>
-        <CardDescription className='space-y-1'>
-          <p>{t('The net invoice amount must be greater than 500.')}</p>
-          <p>{t('Invoices are issued uniformly at the end of each month.')}</p>
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form
-          className='space-y-5'
-          onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
+    <form
+      className='space-y-5'
+      onSubmit={form.handleSubmit((values) => mutation.mutate(values))}
+    >
+      <div className='grid gap-4 md:grid-cols-2'>
+        <div className='space-y-2'>
+          <Label htmlFor='invoice-title'>{t('Invoice title')}</Label>
+          <Input
+            id='invoice-title'
+            aria-invalid={Boolean(form.formState.errors.title)}
+            {...form.register('title')}
+          />
+          {form.formState.errors.title && (
+            <p className='text-destructive text-sm'>
+              {form.formState.errors.title.message}
+            </p>
+          )}
+        </div>
+        <div className='space-y-2'>
+          <Label htmlFor='invoice-tax-id' className='leading-5'>
+            {t('Tax number / Unified Social Credit Code')}
+          </Label>
+          <Input
+            id='invoice-tax-id'
+            aria-invalid={Boolean(form.formState.errors.taxId)}
+            {...form.register('taxId')}
+          />
+          {form.formState.errors.taxId && (
+            <p className='text-destructive text-sm'>
+              {form.formState.errors.taxId.message}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className='bg-muted/30 grid gap-3 rounded-lg border p-4 sm:grid-cols-3'>
+        <div>
+          <p className='text-muted-foreground text-sm'>{t('Order amount')}</p>
+          <p className='text-base font-semibold tabular-nums'>
+            {formatInvoiceAmount(selectedAmount)}
+          </p>
+        </div>
+        <div>
+          <p className='text-muted-foreground text-sm'>
+            {t('Refund deduction')}
+          </p>
+          <p className='text-base font-semibold tabular-nums'>
+            -{formatInvoiceAmount(refundAmount)}
+          </p>
+        </div>
+        <div>
+          <p className='text-muted-foreground text-sm'>
+            {t('Net invoice amount')}
+          </p>
+          <p className='text-base font-semibold tabular-nums'>
+            {formatInvoiceAmount(netAmount)}
+          </p>
+        </div>
+      </div>
+
+      <div className='flex justify-end'>
+        <Button
+          type='submit'
+          className='w-full sm:w-auto'
+          disabled={!canSubmit || mutation.isPending}
         >
-          <div className='grid gap-4 md:grid-cols-2'>
-            <div className='space-y-2'>
-              <Label htmlFor='invoice-title'>{t('Invoice title')}</Label>
-              <Input
-                id='invoice-title'
-                aria-invalid={Boolean(form.formState.errors.title)}
-                {...form.register('title')}
-              />
-              {form.formState.errors.title && (
-                <p className='text-destructive text-sm'>
-                  {form.formState.errors.title.message}
-                </p>
-              )}
-            </div>
-            <div className='space-y-2'>
-              <Label htmlFor='invoice-tax-id'>
-                {t('Tax number / Unified Social Credit Code')}
-              </Label>
-              <Input
-                id='invoice-tax-id'
-                aria-invalid={Boolean(form.formState.errors.taxId)}
-                {...form.register('taxId')}
-              />
-              {form.formState.errors.taxId && (
-                <p className='text-destructive text-sm'>
-                  {form.formState.errors.taxId.message}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div className='bg-muted/30 grid gap-3 rounded-lg border p-4 sm:grid-cols-3'>
-            <div>
-              <p className='text-muted-foreground text-sm'>
-                {t('Order amount')}
-              </p>
-              <p className='text-base font-semibold tabular-nums'>
-                {formatInvoiceAmount(selectedAmount)}
-              </p>
-            </div>
-            <div>
-              <p className='text-muted-foreground text-sm'>
-                {t('Refund deduction')}
-              </p>
-              <p className='text-base font-semibold tabular-nums'>
-                -{formatInvoiceAmount(refundAmount)}
-              </p>
-            </div>
-            <div>
-              <p className='text-muted-foreground text-sm'>
-                {t('Net invoice amount')}
-              </p>
-              <p className='text-base font-semibold tabular-nums'>
-                {formatInvoiceAmount(netAmount)}
-              </p>
-            </div>
-          </div>
-
-          <div className='flex justify-end'>
-            <Button type='submit' disabled={!canSubmit || mutation.isPending}>
-              {mutation.isPending
-                ? t('Submitting...')
-                : t('Submit invoice application')}
-            </Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+          {mutation.isPending
+            ? t('Submitting...')
+            : t('Submit invoice application')}
+        </Button>
+      </div>
+    </form>
   )
 }
