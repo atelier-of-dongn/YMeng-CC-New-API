@@ -147,6 +147,17 @@ var accessTokenRouteRules = map[string]accessTokenRouteRule{
 	"POST /api/invoice/admin/:id/file":               accessTokenScopeRule("billing:write"),
 	"GET /api/invoice/admin/:id/file":                accessTokenScopeRule("billing:read"),
 
+	// router/api-router.go: /api/support-ticket (browser session only)
+	"POST /api/support-ticket/":                    accessTokenSessionRule,
+	"GET /api/support-ticket/self":                 accessTokenSessionRule,
+	"GET /api/support-ticket/self/:id":             accessTokenSessionRule,
+	"POST /api/support-ticket/self/:id/replies":    accessTokenSessionRule,
+	"GET /api/support-ticket/self/:id/attachment":  accessTokenSessionRule,
+	"GET /api/support-ticket/admin/":               accessTokenSessionRule,
+	"GET /api/support-ticket/admin/:id":            accessTokenSessionRule,
+	"POST /api/support-ticket/admin/:id/replies":   accessTokenSessionRule,
+	"GET /api/support-ticket/admin/:id/attachment": accessTokenSessionRule,
+
 	// router/api-router.go: /api/subscription
 	"GET /api/subscription/plans":                                    accessTokenScopeRule("wallet:read"),
 	"GET /api/subscription/self":                                     accessTokenScopeRule("wallet:read"),

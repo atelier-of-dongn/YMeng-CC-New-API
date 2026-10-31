@@ -132,6 +132,10 @@ export function SidebarModulesSection({
         title: t('Invoice application'),
         description: t('Apply for invoices and download issued PDF files.'),
       },
+      support_ticket: {
+        title: t('Support tickets'),
+        description: t('Create tickets and view support conversations'),
+      },
       personal: {
         title: t('Profile'),
         description: t('Personal settings and profile management.'),
@@ -169,6 +173,10 @@ export function SidebarModulesSection({
       invoice: {
         title: t('Invoice management'),
         description: t('Process invoice applications and upload PDF files.'),
+      },
+      support_ticket: {
+        title: t('Support ticket management'),
+        description: t('Review user tickets and reply to conversations'),
       },
     },
   }

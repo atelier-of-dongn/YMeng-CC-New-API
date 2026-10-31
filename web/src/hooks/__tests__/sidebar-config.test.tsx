@@ -83,7 +83,13 @@ describe('security sidebar visibility', () => {
       result.current
         .find((group) => group.id === 'personal')
         ?.items.map((item) => item.title)
-    ).toEqual(['Wallet', 'Referral Program', 'Profile', 'Security & Access'])
+    ).toEqual([
+      'Wallet',
+      'Referral Program',
+      'Support tickets',
+      'Profile',
+      'Security & Access',
+    ])
     expect(
       result.current
         .flatMap((group) => group.items)
@@ -117,6 +123,48 @@ describe('security sidebar visibility', () => {
         .flatMap((group) => group.items)
         .some((item) => item.title === 'Security & Access')
     ).toBe(true)
+  })
+})
+
+describe('support ticket sidebar entries', () => {
+  it('legacy configurations enable separate user and admin support ticket toggles', () => {
+    const config = parseSidebarModulesAdmin(
+      '{"personal":{"enabled":true},"admin":{"enabled":true}}'
+    )
+    expect(config.personal.support_ticket).toBe(true)
+    expect(config.admin.support_ticket).toBe(true)
+    const { result } = sidebarFor(config)
+    const titles = result.current
+      .flatMap((group) => group.items)
+      .map((item) => item.title)
+    expect(titles).toContain('Support tickets')
+    expect(titles).toContain('Support ticket management')
+  })
+
+  it.each([
+    [{ personal: { enabled: true, support_ticket: false } }, undefined],
+    [undefined, { personal: { enabled: true, support_ticket: false } }],
+  ])(
+    'admin or user settings can hide Support tickets (%j, %j)',
+    (admin, user) => {
+      const { result } = sidebarFor(admin, user)
+      const titles = result.current
+        .flatMap((group) => group.items)
+        .map((item) => item.title)
+      expect(titles).not.toContain('Support tickets')
+      expect(titles).toContain('Support ticket management')
+    }
+  )
+
+  it('the admin support ticket toggle does not hide the user ticket entry', () => {
+    const { result } = sidebarFor({
+      admin: { enabled: true, support_ticket: false },
+    })
+    const titles = result.current
+      .flatMap((group) => group.items)
+      .map((item) => item.title)
+    expect(titles).not.toContain('Support ticket management')
+    expect(titles).toContain('Support tickets')
   })
 })
 

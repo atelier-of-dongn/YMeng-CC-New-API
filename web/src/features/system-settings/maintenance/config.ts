@@ -58,6 +58,7 @@ export const SIDEBAR_MODULES_DEFAULT: SidebarModulesAdminConfig = {
     enabled: true,
     topup: true,
     invoice: true,
+    support_ticket: true,
     personal: true,
     security: true,
   },
@@ -70,6 +71,7 @@ export const SIDEBAR_MODULES_DEFAULT: SidebarModulesAdminConfig = {
     setting: true,
     subscription: true,
     invoice: true,
+    support_ticket: true,
   },
 }
 

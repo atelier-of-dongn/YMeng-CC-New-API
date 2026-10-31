@@ -221,6 +221,25 @@ func SetApiRouter(router *gin.Engine) {
 			invoiceAdminRoute.GET("/:id/file", controller.DownloadInvoicePDF)
 		}
 
+		supportTicketRoute := apiRouter.Group("/support-ticket")
+		supportTicketRoute.Use(middleware.UserAuth())
+		{
+			supportTicketRoute.POST("/", middleware.SessionCookieOriginGuard(), middleware.UploadRateLimit(), middleware.CriticalRateLimit(), controller.CreateSupportTicket)
+			supportTicketRoute.GET("/self", controller.GetUserSupportTickets)
+			supportTicketRoute.GET("/self/:id", controller.GetUserSupportTicket)
+			supportTicketRoute.POST("/self/:id/replies", middleware.SessionCookieOriginGuard(), middleware.CriticalRateLimit(), controller.ReplyToUserSupportTicket)
+			supportTicketRoute.GET("/self/:id/attachment", controller.DownloadUserSupportTicketAttachment)
+		}
+
+		supportTicketAdminRoute := apiRouter.Group("/support-ticket/admin")
+		supportTicketAdminRoute.Use(middleware.AdminAuth())
+		{
+			supportTicketAdminRoute.GET("/", controller.GetAllSupportTickets)
+			supportTicketAdminRoute.GET("/:id", controller.GetAdminSupportTicket)
+			supportTicketAdminRoute.POST("/:id/replies", middleware.SessionCookieOriginGuard(), middleware.CriticalRateLimit(), controller.ReplyToAdminSupportTicket)
+			supportTicketAdminRoute.GET("/:id/attachment", controller.DownloadAdminSupportTicketAttachment)
+		}
+
 		// Subscription billing (plans, purchase, admin management)
 		subscriptionRoute := apiRouter.Group("/subscription")
 		subscriptionRoute.Use(middleware.UserAuth())

@@ -55,6 +55,7 @@ const DEFAULT_SIDEBAR_MODULES: SidebarModulesAdminConfig = {
     enabled: true,
     topup: true,
     invoice: true,
+    support_ticket: true,
     personal: true,
     security: true,
   },
@@ -67,6 +68,7 @@ const DEFAULT_SIDEBAR_MODULES: SidebarModulesAdminConfig = {
     setting: true,
     subscription: true,
     invoice: true,
+    support_ticket: true,
   },
 }
 
@@ -111,6 +113,7 @@ const URL_TO_CONFIG_MAP: Record<string, { section: string; module: string }> = {
   '/usage-logs/drawing': { section: 'console', module: 'midjourney' },
   '/usage-logs/task': { section: 'console', module: 'task' },
   '/wallet': { section: 'personal', module: 'topup' },
+  '/support-tickets': { section: 'personal', module: 'support_ticket' },
   '/invoices': { section: 'personal', module: 'invoice' },
   '/profile': { section: 'personal', module: 'personal' },
   '/security': { section: 'personal', module: 'security' },
@@ -122,6 +125,7 @@ const URL_TO_CONFIG_MAP: Record<string, { section: string; module: string }> = {
   '/redemption-codes': { section: 'admin', module: 'redemption' },
   '/subscriptions': { section: 'admin', module: 'subscription' },
   '/admin-invoices': { section: 'admin', module: 'invoice' },
+  '/admin-support-tickets': { section: 'admin', module: 'support_ticket' },
   '/system-settings': { section: 'admin', module: 'setting' },
   '/system-settings/site': { section: 'admin', module: 'setting' },
 }

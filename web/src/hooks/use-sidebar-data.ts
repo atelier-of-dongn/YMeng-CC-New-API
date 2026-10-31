@@ -124,6 +124,11 @@ export function useSidebarData(): SidebarData {
             icon: Share2,
           },
           {
+            title: t('Support tickets'),
+            url: '/support-tickets',
+            icon: MessageSquare,
+          },
+          {
             title: t('Profile'),
             url: '/profile',
             icon: User,
@@ -173,6 +178,12 @@ export function useSidebarData(): SidebarData {
             title: t('Invoice management'),
             url: '/admin-invoices',
             icon: ReceiptText,
+          },
+          {
+            title: t('Support ticket management'),
+            url: '/admin-support-tickets',
+            icon: MessageSquare,
+            requiredRole: ROLE.ADMIN,
           },
           {
             title: t('System Info'),

@@ -122,6 +122,11 @@ export function SidebarModulesCard() {
           description: t('Balance and top-up management'),
         },
         {
+          key: 'support_ticket',
+          title: t('Support tickets'),
+          description: t('Create tickets and view support conversations'),
+        },
+        {
           key: 'personal',
           title: t('Personal Settings'),
           description: t('Personal info settings'),

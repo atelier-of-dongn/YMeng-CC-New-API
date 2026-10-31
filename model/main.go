@@ -385,6 +385,8 @@ func migrateDB() error {
 		&UpstreamChannelMonitor{},
 		&UpstreamCostRecord{},
 		&UserAccessToken{},
+		&SupportTicket{},
+		&SupportTicketMessage{},
 	)
 	if err != nil {
 		return err

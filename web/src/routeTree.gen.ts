@@ -35,6 +35,7 @@ import { Route as RankingsIndexRouteImport } from './routes/rankings/index'
 import { Route as SetupIndexRouteImport } from './routes/setup/index'
 import { Route as authUserResetRouteImport } from './routes/(auth)/user/reset'
 import { Route as AuthenticatedAdminInvoicesIndexRouteImport } from './routes/_authenticated/admin-invoices/index'
+import { Route as AuthenticatedAdminSupportTicketsIndexRouteImport } from './routes/_authenticated/admin-support-tickets/index'
 import { Route as AuthenticatedAffiliateAdminIndexRouteImport } from './routes/_authenticated/affiliate-admin/index'
 import { Route as AuthenticatedAffiliateIndexRouteImport } from './routes/_authenticated/affiliate/index'
 import { Route as AuthenticatedChannelsIndexRouteImport } from './routes/_authenticated/channels/index'
@@ -50,6 +51,7 @@ import { Route as AuthenticatedProfileIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedRedemptionCodesIndexRouteImport } from './routes/_authenticated/redemption-codes/index'
 import { Route as AuthenticatedSecurityIndexRouteImport } from './routes/_authenticated/security/index'
 import { Route as AuthenticatedSubscriptionsIndexRouteImport } from './routes/_authenticated/subscriptions/index'
+import { Route as AuthenticatedSupportTicketsIndexRouteImport } from './routes/_authenticated/support-tickets/index'
 import { Route as AuthenticatedSystemInfoIndexRouteImport } from './routes/_authenticated/system-info/index'
 import { Route as AuthenticatedSystemSettingsIndexRouteImport } from './routes/_authenticated/system-settings/index'
 import { Route as AuthenticatedTaskPluginsIndexRouteImport } from './routes/_authenticated/task-plugins/index'
@@ -206,6 +208,12 @@ const AuthenticatedAdminInvoicesIndexRoute =
     path: '/admin-invoices/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminSupportTicketsIndexRoute =
+  AuthenticatedAdminSupportTicketsIndexRouteImport.update({
+    id: '/admin-support-tickets/',
+    path: '/admin-support-tickets/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAffiliateAdminIndexRoute =
   AuthenticatedAffiliateAdminIndexRouteImport.update({
     id: '/affiliate-admin/',
@@ -292,6 +300,12 @@ const AuthenticatedSubscriptionsIndexRoute =
   AuthenticatedSubscriptionsIndexRouteImport.update({
     id: '/subscriptions/',
     path: '/subscriptions/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedSupportTicketsIndexRoute =
+  AuthenticatedSupportTicketsIndexRouteImport.update({
+    id: '/support-tickets/',
+    path: '/support-tickets/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedSystemInfoIndexRoute =
@@ -474,6 +488,7 @@ export interface FileRoutesByFullPath {
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/usage-logs/audit': typeof AuthenticatedUsageLogsAuditRoute
   '/admin-invoices/': typeof AuthenticatedAdminInvoicesIndexRoute
+  '/admin-support-tickets/': typeof AuthenticatedAdminSupportTicketsIndexRoute
   '/affiliate-admin/': typeof AuthenticatedAffiliateAdminIndexRoute
   '/affiliate/': typeof AuthenticatedAffiliateIndexRoute
   '/channels/': typeof AuthenticatedChannelsIndexRoute
@@ -485,6 +500,7 @@ export interface FileRoutesByFullPath {
   '/redemption-codes/': typeof AuthenticatedRedemptionCodesIndexRoute
   '/security/': typeof AuthenticatedSecurityIndexRoute
   '/subscriptions/': typeof AuthenticatedSubscriptionsIndexRoute
+  '/support-tickets/': typeof AuthenticatedSupportTicketsIndexRoute
   '/system-info/': typeof AuthenticatedSystemInfoIndexRoute
   '/system-settings/': typeof AuthenticatedSystemSettingsIndexRoute
   '/task-plugins/': typeof AuthenticatedTaskPluginsIndexRoute
@@ -539,6 +555,7 @@ export interface FileRoutesByTo {
   '/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/usage-logs/audit': typeof AuthenticatedUsageLogsAuditRoute
   '/admin-invoices': typeof AuthenticatedAdminInvoicesIndexRoute
+  '/admin-support-tickets': typeof AuthenticatedAdminSupportTicketsIndexRoute
   '/affiliate-admin': typeof AuthenticatedAffiliateAdminIndexRoute
   '/affiliate': typeof AuthenticatedAffiliateIndexRoute
   '/channels': typeof AuthenticatedChannelsIndexRoute
@@ -550,6 +567,7 @@ export interface FileRoutesByTo {
   '/redemption-codes': typeof AuthenticatedRedemptionCodesIndexRoute
   '/security': typeof AuthenticatedSecurityIndexRoute
   '/subscriptions': typeof AuthenticatedSubscriptionsIndexRoute
+  '/support-tickets': typeof AuthenticatedSupportTicketsIndexRoute
   '/system-info': typeof AuthenticatedSystemInfoIndexRoute
   '/system-settings': typeof AuthenticatedSystemSettingsIndexRoute
   '/task-plugins': typeof AuthenticatedTaskPluginsIndexRoute
@@ -608,6 +626,7 @@ export interface FileRoutesById {
   '/_authenticated/usage-logs/$section': typeof AuthenticatedUsageLogsSectionRoute
   '/_authenticated/usage-logs/audit': typeof AuthenticatedUsageLogsAuditRoute
   '/_authenticated/admin-invoices/': typeof AuthenticatedAdminInvoicesIndexRoute
+  '/_authenticated/admin-support-tickets/': typeof AuthenticatedAdminSupportTicketsIndexRoute
   '/_authenticated/affiliate-admin/': typeof AuthenticatedAffiliateAdminIndexRoute
   '/_authenticated/affiliate/': typeof AuthenticatedAffiliateIndexRoute
   '/_authenticated/channels/': typeof AuthenticatedChannelsIndexRoute
@@ -619,6 +638,7 @@ export interface FileRoutesById {
   '/_authenticated/redemption-codes/': typeof AuthenticatedRedemptionCodesIndexRoute
   '/_authenticated/security/': typeof AuthenticatedSecurityIndexRoute
   '/_authenticated/subscriptions/': typeof AuthenticatedSubscriptionsIndexRoute
+  '/_authenticated/support-tickets/': typeof AuthenticatedSupportTicketsIndexRoute
   '/_authenticated/system-info/': typeof AuthenticatedSystemInfoIndexRoute
   '/_authenticated/system-settings/': typeof AuthenticatedSystemSettingsIndexRoute
   '/_authenticated/task-plugins/': typeof AuthenticatedTaskPluginsIndexRoute
@@ -676,6 +696,7 @@ export interface FileRouteTypes {
     | '/usage-logs/$section'
     | '/usage-logs/audit'
     | '/admin-invoices/'
+    | '/admin-support-tickets/'
     | '/affiliate-admin/'
     | '/affiliate/'
     | '/channels/'
@@ -687,6 +708,7 @@ export interface FileRouteTypes {
     | '/redemption-codes/'
     | '/security/'
     | '/subscriptions/'
+    | '/support-tickets/'
     | '/system-info/'
     | '/system-settings/'
     | '/task-plugins/'
@@ -741,6 +763,7 @@ export interface FileRouteTypes {
     | '/usage-logs/$section'
     | '/usage-logs/audit'
     | '/admin-invoices'
+    | '/admin-support-tickets'
     | '/affiliate-admin'
     | '/affiliate'
     | '/channels'
@@ -752,6 +775,7 @@ export interface FileRouteTypes {
     | '/redemption-codes'
     | '/security'
     | '/subscriptions'
+    | '/support-tickets'
     | '/system-info'
     | '/system-settings'
     | '/task-plugins'
@@ -809,6 +833,7 @@ export interface FileRouteTypes {
     | '/_authenticated/usage-logs/$section'
     | '/_authenticated/usage-logs/audit'
     | '/_authenticated/admin-invoices/'
+    | '/_authenticated/admin-support-tickets/'
     | '/_authenticated/affiliate-admin/'
     | '/_authenticated/affiliate/'
     | '/_authenticated/channels/'
@@ -820,6 +845,7 @@ export interface FileRouteTypes {
     | '/_authenticated/redemption-codes/'
     | '/_authenticated/security/'
     | '/_authenticated/subscriptions/'
+    | '/_authenticated/support-tickets/'
     | '/_authenticated/system-info/'
     | '/_authenticated/system-settings/'
     | '/_authenticated/task-plugins/'
@@ -1048,6 +1074,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminInvoicesIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin-support-tickets/': {
+      id: '/_authenticated/admin-support-tickets/'
+      path: '/admin-support-tickets'
+      fullPath: '/admin-support-tickets/'
+      preLoaderRoute: typeof AuthenticatedAdminSupportTicketsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/affiliate-admin/': {
       id: '/_authenticated/affiliate-admin/'
       path: '/affiliate-admin'
@@ -1151,6 +1184,13 @@ declare module '@tanstack/react-router' {
       path: '/subscriptions'
       fullPath: '/subscriptions/'
       preLoaderRoute: typeof AuthenticatedSubscriptionsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/support-tickets/': {
+      id: '/_authenticated/support-tickets/'
+      path: '/support-tickets'
+      fullPath: '/support-tickets/'
+      preLoaderRoute: typeof AuthenticatedSupportTicketsIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/system-info/': {
@@ -1430,6 +1470,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedUsageLogsSectionRoute: typeof AuthenticatedUsageLogsSectionRoute
   AuthenticatedUsageLogsAuditRoute: typeof AuthenticatedUsageLogsAuditRoute
   AuthenticatedAdminInvoicesIndexRoute: typeof AuthenticatedAdminInvoicesIndexRoute
+  AuthenticatedAdminSupportTicketsIndexRoute: typeof AuthenticatedAdminSupportTicketsIndexRoute
   AuthenticatedAffiliateAdminIndexRoute: typeof AuthenticatedAffiliateAdminIndexRoute
   AuthenticatedAffiliateIndexRoute: typeof AuthenticatedAffiliateIndexRoute
   AuthenticatedChannelsIndexRoute: typeof AuthenticatedChannelsIndexRoute
@@ -1441,6 +1482,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedRedemptionCodesIndexRoute: typeof AuthenticatedRedemptionCodesIndexRoute
   AuthenticatedSecurityIndexRoute: typeof AuthenticatedSecurityIndexRoute
   AuthenticatedSubscriptionsIndexRoute: typeof AuthenticatedSubscriptionsIndexRoute
+  AuthenticatedSupportTicketsIndexRoute: typeof AuthenticatedSupportTicketsIndexRoute
   AuthenticatedSystemInfoIndexRoute: typeof AuthenticatedSystemInfoIndexRoute
   AuthenticatedTaskPluginsIndexRoute: typeof AuthenticatedTaskPluginsIndexRoute
   AuthenticatedUsageLogsIndexRoute: typeof AuthenticatedUsageLogsIndexRoute
@@ -1459,6 +1501,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedUsageLogsSectionRoute: AuthenticatedUsageLogsSectionRoute,
   AuthenticatedUsageLogsAuditRoute: AuthenticatedUsageLogsAuditRoute,
   AuthenticatedAdminInvoicesIndexRoute: AuthenticatedAdminInvoicesIndexRoute,
+  AuthenticatedAdminSupportTicketsIndexRoute:
+    AuthenticatedAdminSupportTicketsIndexRoute,
   AuthenticatedAffiliateAdminIndexRoute: AuthenticatedAffiliateAdminIndexRoute,
   AuthenticatedAffiliateIndexRoute: AuthenticatedAffiliateIndexRoute,
   AuthenticatedChannelsIndexRoute: AuthenticatedChannelsIndexRoute,
@@ -1471,6 +1515,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedRedemptionCodesIndexRoute,
   AuthenticatedSecurityIndexRoute: AuthenticatedSecurityIndexRoute,
   AuthenticatedSubscriptionsIndexRoute: AuthenticatedSubscriptionsIndexRoute,
+  AuthenticatedSupportTicketsIndexRoute: AuthenticatedSupportTicketsIndexRoute,
   AuthenticatedSystemInfoIndexRoute: AuthenticatedSystemInfoIndexRoute,
   AuthenticatedTaskPluginsIndexRoute: AuthenticatedTaskPluginsIndexRoute,
   AuthenticatedUsageLogsIndexRoute: AuthenticatedUsageLogsIndexRoute,
