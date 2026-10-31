@@ -291,7 +291,7 @@ func (s *responsesWSSession) runCall(c *gin.Context, state *responsesWSCallState
 		}
 	} else {
 		retry := &service.RetryParam{Ctx: c, TokenGroup: common.GetContextKeyString(c, appconstant.ContextKeyUsingGroup), ModelName: modelName, RequestPath: c.Request.URL.Path, Retry: common.GetPointer(0)}
-		for ; retry.GetRetry() <= common.RetryTimes; retry.IncreaseRetry() {
+		for {
 			var channel *appmodel.Channel
 			channel, apiErr = selectResponsesWSChannel(c, modelName, retry)
 			if apiErr != nil {
@@ -326,13 +326,13 @@ func (s *responsesWSSession) runCall(c *gin.Context, state *responsesWSCallState
 				apiErr = service.NormalizeViolationFeeError(types.NewError(dialErr, types.ErrorCodeDoRequestFailed))
 				service.ResetStatusCode(apiErr, c.GetString("status_code_mapping"))
 				info.LastError = apiErr
-				decision := service.DecideRelayRetry(c, apiErr, common.RetryTimes-retry.GetRetry())
+				decision := service.DecideRelayRetry(c, apiErr, retry.RemainingRetryBudget())
 				service.RecordPolicyFailure(c, channel.Id, apiErr, decision)
 				service.ProcessChannelError(c, *types.NewChannelError(channel.Id, channel.Type, channel.Name, channel.ChannelInfo.IsMultiKey, info.ApiKey, channel.GetAutoBan()), apiErr, info)
-				if decision.Action == "retry" {
-					continue
+				if decision.Action != "retry" || !retry.AdvanceAfterFailure() {
+					return apiErr
 				}
-				return apiErr
+				continue
 			}
 			if !s.setTarget(target) {
 				return types.NewError(context.Canceled, types.ErrorCodeBadResponse, types.ErrOptionWithSkipRetry())
@@ -585,7 +585,11 @@ func (s *responsesWSSession) restoreConnectionContext(c *gin.Context, model stri
 		}
 	} else {
 		group := common.GetContextKeyString(c, appconstant.ContextKeyUsingGroup)
-		if group == "auto" {
+		if slices.Contains(common.GetContextKeyStringSlice(c, appconstant.ContextKeyTokenGroups), s.lockedGroup) {
+			group = s.lockedGroup
+			common.SetContextKey(c, appconstant.ContextKeyUsingGroup, group)
+			common.SetContextKey(c, appconstant.ContextKeyAutoGroup, group)
+		} else if group == "auto" {
 			if !slices.Contains(service.GetRequestAutoGroups(c, common.GetContextKeyString(c, appconstant.ContextKeyUserGroup)), s.lockedGroup) {
 				return types.NewErrorWithStatusCode(errors.New("the connection group is no longer allowed"), types.ErrorCodeAccessDenied, http.StatusForbidden, types.ErrOptionWithSkipRetry())
 			}

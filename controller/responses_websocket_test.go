@@ -275,16 +275,17 @@ func TestResponsesWSRequestRunnerSharesRedisSuccessLimitWithHTTP(t *testing.T) {
 }
 
 type responsesWSBillingTest struct {
-	httpUpstream http.HandlerFunc
-	httpDone     chan struct{}
-	user         *model.User
-	token        *model.Token
-	channel      *model.Channel
-	client       *websocket.Conn
-	done         chan struct{}
-	upstreamDone chan struct{}
-	connections  atomic.Int32
-	gatewayURL   string
+	httpUpstream  http.HandlerFunc
+	beforeUpgrade func(http.ResponseWriter, *http.Request) bool
+	httpDone      chan struct{}
+	user          *model.User
+	token         *model.Token
+	channel       *model.Channel
+	client        *websocket.Conn
+	done          chan struct{}
+	upstreamDone  chan struct{}
+	connections   atomic.Int32
+	gatewayURL    string
 }
 
 func (fixture *responsesWSBillingTest) closeAndWait(t *testing.T) {
@@ -367,6 +368,7 @@ func newResponsesWSBillingTest(t *testing.T, expression string, handle func(*web
 	t.Cleanup(func() { require.NoError(t, redisClient.Close()) })
 	var upstreamClosed sync.Once
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer upstreamClosed.Do(func() { close(fixture.upstreamDone) })
 		if !websocket.IsWebSocketUpgrade(r) {
 			if fixture.httpUpstream != nil {
 				fixture.httpUpstream(w, r)
@@ -379,16 +381,21 @@ func newResponsesWSBillingTest(t *testing.T, expression string, handle func(*web
 			_, _ = fmt.Fprint(w, "data: [DONE]\n\n")
 			return
 		}
+		if fixture.beforeUpgrade != nil && !fixture.beforeUpgrade(w, r) {
+			return
+		}
 		ws, err := (&websocket.Upgrader{}).Upgrade(w, r, nil)
 		if !assert.NoError(t, err) {
 			return
 		}
 		fixture.connections.Add(1)
 		defer ws.Close()
-		defer upstreamClosed.Do(func() { close(fixture.upstreamDone) })
 		handle(ws, r)
 	}))
-	t.Cleanup(upstream.Close)
+	t.Cleanup(func() {
+		upstream.Close()
+		upstreamClosed.Do(func() { close(fixture.upstreamDone) })
+	})
 	channel := &model.Channel{Name: "responses-ws-upstream", Key: "upstream-first\nupstream-second", Status: common.ChannelStatusEnabled, Type: constant.ChannelTypeOpenAI, Group: "default", Models: "ws-billing", BaseURL: &upstream.URL,
 		ChannelInfo: model.ChannelInfo{IsMultiKey: true, MultiKeySize: 2, MultiKeyMode: constant.MultiKeyModePolling}}
 	modelMapping := `{"ws-billing":"gpt-4o"}`
@@ -422,6 +429,137 @@ func newResponsesWSBillingTest(t *testing.T, expression string, handle func(*web
 	fixture.client = client
 	t.Cleanup(func() { fixture.closeAndWait(t) })
 	return fixture
+}
+
+func TestResponsesWebSocketRetriesAcrossTokenGroups(t *testing.T) {
+	tests := []struct {
+		name                  string
+		groups                []string
+		retryTimes            int
+		failures              map[string]int
+		failureStatus         int
+		wantAttempts          []string
+		verifyConnectionReuse bool
+		unusedFallbackKey     string
+		wantCompleted         bool
+	}{
+		{
+			name:                  "zero retries skips an empty group and falls back in order",
+			groups:                []string{"vip", "empty", "default"},
+			failures:              map[string]int{"upstream-first": 1},
+			failureStatus:         http.StatusInternalServerError,
+			wantAttempts:          []string{"upstream-first", "upstream-second"},
+			verifyConnectionReuse: true,
+			wantCompleted:         true,
+		},
+		{
+			name:              "current group retries before the next group",
+			groups:            []string{"vip", "default"},
+			retryTimes:        1,
+			failures:          map[string]int{"upstream-first": 1},
+			failureStatus:     http.StatusInternalServerError,
+			wantAttempts:      []string{"upstream-first", "upstream-first"},
+			unusedFallbackKey: "upstream-third",
+			wantCompleted:     true,
+		},
+		{
+			name:          "last group failure stops without repeating attempts",
+			groups:        []string{"vip", "default"},
+			failures:      map[string]int{"upstream-first": 1, "upstream-second": 1},
+			failureStatus: http.StatusInternalServerError,
+			wantAttempts:  []string{"upstream-first", "upstream-second"},
+		},
+		{
+			name:          "non retryable failure does not advance groups",
+			groups:        []string{"vip", "default"},
+			failures:      map[string]int{"upstream-first": 1},
+			failureStatus: http.StatusBadRequest,
+			wantAttempts:  []string{"upstream-first"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			fixture := newResponsesWSBillingTest(t, `tier("request", fixed(0.002))`, func(ws *websocket.Conn, _ *http.Request) {
+				for index := 1; ; index++ {
+					if _, _, err := ws.ReadMessage(); err != nil {
+						return
+					}
+					terminal := fmt.Sprintf(`{"type":"response.completed","response":{"id":"completed-%d","model":"ws-billing","output":[],"status":"completed","usage":{"input_tokens":1000,"output_tokens":10,"total_tokens":1010}}}`, index)
+					if !assert.NoError(t, ws.WriteMessage(websocket.TextMessage, []byte(terminal))) {
+						return
+					}
+				}
+			})
+			previousRetries := common.RetryTimes
+			previousGroups := setting.UserUsableGroups2JSONString()
+			common.RetryTimes = tt.retryTimes
+			require.NoError(t, setting.UpdateUserUsableGroupsByJSONString(`{"default":"Default","vip":"VIP","empty":"Empty"}`))
+			t.Cleanup(func() {
+				common.RetryTimes = previousRetries
+				require.NoError(t, setting.UpdateUserUsableGroupsByJSONString(previousGroups))
+			})
+			require.NoError(t, config.GlobalConfig.LoadFromDB(map[string]string{
+				"group_ratio_setting.group_ratio": `{"default":1,"vip":1,"empty":1}`,
+			}))
+
+			vip := &model.Channel{
+				Name: "responses-ws-vip", Key: "upstream-first", Status: common.ChannelStatusEnabled,
+				Type: constant.ChannelTypeOpenAI, Group: "vip", Models: "ws-billing", BaseURL: fixture.channel.BaseURL,
+			}
+			vip.SetSetting(dto.ChannelSettings{ResponsesWebSocketEnabled: true})
+			require.NoError(t, model.DB.Create(vip).Error)
+			require.NoError(t, model.DB.Create(&model.Ability{ChannelId: vip.Id, Model: "ws-billing", Group: "vip", Enabled: true}).Error)
+			fallbackKey := "upstream-second"
+			if tt.unusedFallbackKey != "" {
+				fallbackKey = tt.unusedFallbackKey
+			}
+			require.NoError(t, model.DB.Model(fixture.channel).Updates(map[string]any{"key": fallbackKey, "channel_info": model.ChannelInfo{}}).Error)
+			fixture.channel.Key = fallbackKey
+			fixture.channel.ChannelInfo = model.ChannelInfo{}
+			require.NoError(t, fixture.token.SetGroups(tt.groups))
+			fixture.token.CrossGroupRetry = true
+			require.NoError(t, fixture.token.Update())
+
+			var mutex sync.Mutex
+			var attempts []string
+			fixture.beforeUpgrade = func(w http.ResponseWriter, r *http.Request) bool {
+				key := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+				mutex.Lock()
+				attempts = append(attempts, key)
+				remaining := tt.failures[key]
+				if remaining > 0 {
+					tt.failures[key] = remaining - 1
+				}
+				mutex.Unlock()
+				if remaining > 0 {
+					w.WriteHeader(tt.failureStatus)
+					return false
+				}
+				return true
+			}
+			require.NoError(t, fixture.client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"route","model":"ws-billing","input":"hello"}`)))
+			response := readResponsesWSTestEvent(t, fixture.client)
+			if tt.wantCompleted {
+				assert.Equal(t, "response.completed", response["type"], "unexpected response: %v", response)
+			} else {
+				assert.Equal(t, "error", response["type"])
+				assert.Equal(t, float64(tt.failureStatus), response["status"])
+			}
+			mutex.Lock()
+			assert.Equal(t, tt.wantAttempts, attempts)
+			mutex.Unlock()
+
+			if tt.verifyConnectionReuse {
+				require.NoError(t, fixture.client.WriteMessage(websocket.TextMessage, []byte(`{"type":"response.create","stream_id":"route","model":"ws-billing","input":"again"}`)))
+				second := readResponsesWSTestEvent(t, fixture.client)
+				assert.Equal(t, "response.completed", second["type"], "unexpected response: %v", second)
+				mutex.Lock()
+				assert.Equal(t, tt.wantAttempts, attempts, "the second create must reuse the established upstream connection")
+				mutex.Unlock()
+				assert.Equal(t, int32(1), fixture.connections.Load())
+			}
+		})
+	}
 }
 
 func TestResponsesInterruptedStreamHealth(t *testing.T) {
