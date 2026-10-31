@@ -134,25 +134,21 @@ export function UpstreamCostStats(props: UpstreamCostStatsProps) {
         label={t('Revenue')}
         value={formatMoney(stats.revenue)}
         accent='bg-chart-2/70'
-        monetary
       />
       <StatBadge
         label={t('Upstream Cost')}
         value={formatMoney(stats.cost)}
         accent='bg-warning/70'
-        monetary
       />
       <StatBadge
         label={t('Affiliate Rebate')}
         value={formatMoney(stats.affiliate_cost)}
         accent='bg-muted-foreground/70'
-        monetary
       />
       <StatBadge
         label={t('Profit')}
         value={formatMoney(summary.profit)}
         accent={summary.profit < 0 ? 'bg-destructive/70' : 'bg-success/70'}
-        monetary
       />
       <StatBadge
         label={t('Gross Margin')}

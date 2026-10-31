@@ -280,13 +280,21 @@ test('reading channels posts only the store token and selections survive a setti
 })
 
 test('an old channel response cannot populate channels after an external token reset', async () => {
-  const pending = Promise.withResolvers<{
+  let resolvePending!: (value: {
     data: {
       success: boolean
       data: { id: string; name: string; icon: string }[]
     }
-  }>()
-  vi.spyOn(api, 'post').mockReturnValue(pending.promise)
+  }) => void
+  const pending = new Promise<{
+    data: {
+      success: boolean
+      data: { id: string; name: string; icon: string }[]
+    }
+  }>((resolve) => {
+    resolvePending = resolve
+  })
+  vi.spyOn(api, 'post').mockReturnValue(pending)
   const user = userEvent.setup()
   const view = render(
     <CatFKSettingsFields
@@ -306,7 +314,7 @@ test('an old channel response cannot populate channels after an external token r
     />
   )
   await act(async () =>
-    pending.resolve({
+    resolvePending({
       data: {
         success: true,
         data: [{ id: 'old', name: 'Old channel', icon: '' }],

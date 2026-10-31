@@ -292,7 +292,7 @@ test('summary displays rebate, adjusted profit and margin, unchanged coverage an
   expect(screen.queryByText(formatLogQuota(240))).not.toBeInTheDocument()
 })
 
-test('summary marks money amounts with an icon but not shares', async () => {
+test('summary does not show a fixed money icon on amounts or shares', async () => {
   const adapter: AxiosAdapter = async (config) => ({
     config,
     status: 200,
@@ -313,10 +313,9 @@ test('summary marks money amounts with an icon but not shares', async () => {
     'Upstream Cost',
     'Affiliate Rebate',
     'Profit',
+    'Gross Margin',
+    'Coverage',
   ]) {
-    expect(iconOf(label)).toBeInTheDocument()
-  }
-  for (const label of ['Gross Margin', 'Coverage']) {
     expect(iconOf(label)).toBeNull()
   }
 })

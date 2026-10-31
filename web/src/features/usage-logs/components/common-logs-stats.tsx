@@ -80,7 +80,6 @@ export function CommonLogsStats() {
         label={t('Usage')}
         value={sensitiveVisible ? formatLogQuota(stats?.quota || 0) : '••••'}
         accent='bg-sky-500/70'
-        monetary
       />
       <StatBadge
         label={t('RPM')}

@@ -16,7 +16,6 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Coins } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 import { cn } from '@/lib/utils'
@@ -26,8 +25,6 @@ export function StatBadge(props: {
   label: string
   value?: string | number
   accent: string
-  /** Marks the value as an amount of money with a small coin icon. */
-  monetary?: boolean
   /** Optional leading icon rendered before the label (decorative). */
   icon?: ReactNode
   /** Optional rich value content; takes precedence over `value` when set. */
@@ -52,13 +49,6 @@ export function StatBadge(props: {
         {props.label}
       </span>
       <span className='text-foreground/85 inline-flex min-w-0 items-center gap-1 font-mono font-semibold tabular-nums'>
-        {props.monetary && (
-          <Coins
-            data-slot='stat-money-icon'
-            aria-hidden='true'
-            className='size-3 shrink-0 text-amber-500/80 dark:text-amber-400/80'
-          />
-        )}
         {props.children ?? (
           <span className='min-w-0 [overflow-wrap:anywhere] break-all'>
             {props.value}

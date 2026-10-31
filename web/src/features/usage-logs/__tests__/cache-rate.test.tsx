@@ -257,7 +257,7 @@ test('ordinary user summary shows the token-weighted cache hit rate from self st
   ])
 })
 
-test('summary marks only the usage amount with a money icon', async () => {
+test('summary does not show a fixed money icon', async () => {
   const adapter: AxiosAdapter = async (config) => ({
     config,
     status: 200,
@@ -271,7 +271,7 @@ test('summary marks only the usage amount with a money icon', async () => {
     (await screen.findByText(label)).closest('[data-slot=stat-badge]')
   const iconOf = async (label: string) =>
     (await badgeOf(label))?.querySelector('[data-slot=stat-money-icon]')
-  expect(await iconOf('Usage')).toHaveAttribute('aria-hidden', 'true')
+  expect(await iconOf('Usage')).toBeNull()
   for (const label of ['RPM', 'TPM', 'Cache Hit Rate']) {
     expect(await iconOf(label)).toBeNull()
   }
