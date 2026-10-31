@@ -9,7 +9,7 @@
 <p align="center">
   <a href="./README.zh_CN.md">简体中文</a> |
   <a href="./README.zh_TW.md">繁體中文</a> |
-  <a href="./README.md">English</a> |
+  <a href="./README.en.md">English</a> |
   <strong>Français</strong> |
   <a href="./README.ja.md">日本語</a>
 </p>
@@ -60,7 +60,7 @@
 Ce dépôt est une version personnalisée de [QuantumNous/new-api](https://github.com/QuantumNous/new-api), développée et maintenue pour le [service de relais YMeng API](https://ymeng.cc).
 
 - **Nouvelle page d'accueil** : un premier écran découpé en diagonale, avec une entrée débutant « {{nom du site}} × BaoCode » d'un côté et l'entrée de la console développeur de l'autre, un coin pour les groupes QQ / Telegram, une carte comparative BaoCode, puis des sections statistiques, fonctionnalités, fonctionnement, tarifs et FAQ. Les utilisateurs de BaoCode se connectent avec leur compte {{nom du site}}, sans clé API.
-- **Fonctionnalités récentes** : paiement par boutique de consignation Yunmao (avec QR code WeChat), demandes et gestion de factures, commission sur les dépenses des filleuls et tableau de recommandation, réorganisation des priorités de canal par glisser-déposer, clés API à groupes ordonnés, traçabilité des paramètres de requête dans les journaux, réglage de visibilité du modèle de réponse dans les journaux et exports utilisateur, visibilité web par région, surveillance des coûts amont avec analyse du chiffre d'affaires, alertes d'exploitation et réglages de navigation.
+- **Fonctionnalités récentes** : paiement par boutique de consignation Yunmao (avec QR code WeChat), demandes et gestion de factures depuis le portefeuille, commission sur les dépenses des filleuls et tableau de recommandation (filleuls et commissions consultables dans le portefeuille), tickets d'assistance pour les retours utilisateurs avec journaux de requête liés et pièces jointes Markdown, réorganisation des priorités de canal par glisser-déposer, clés API à groupes ordonnés, traçabilité des paramètres de requête dans les journaux, réglage de visibilité du modèle de réponse et du modèle amont dans les journaux et exports utilisateur, statistiques de taux de cache et export précis côté administrateur, visibilité web par région, surveillance des coûts amont avec analyse du chiffre d'affaires, alertes d'exploitation et réglages de navigation.
 
 La documentation complète se trouve dans la [présentation de la branche](./README.md#fork-overview). Construisez l'image depuis ce dépôt ; l'image amont `calciumion/new-api:latest` ne contient pas ces modifications.
 
