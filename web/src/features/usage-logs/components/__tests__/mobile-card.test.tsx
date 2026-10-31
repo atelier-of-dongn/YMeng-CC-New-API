@@ -226,7 +226,7 @@ it('keeps input, output and cache quantities readable without empty metric cells
   expect(screen.getByText('Cache ↑ 200')).toBeVisible()
   expect(
     screen.getByRole('progressbar', { name: 'Cache Rate' })
-  ).toHaveTextContent('20%')
+  ).toHaveTextContent('25%')
 })
 
 it('shows a zero cache rate when a request has no input or cache read', () => {

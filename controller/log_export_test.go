@@ -158,17 +158,17 @@ func TestLogExportDatabaseMatrix(t *testing.T) {
 // that both stat endpoints report cache reads as a share of all input tokens.
 func verifyLogCacheRateStats(t *testing.T, now int64) {
 	t.Helper()
-	// Seeded in range: alice a-1 (cache write fields present: 100 cache read
-	// over 100 input + 100 cache read = 0.5) and bob b-1 (no other = 0).
+	// Seeded in range: alice a-1 (legacy OpenAI-compatible cache write fields:
+	// 100 cache read over 100 input = 1) and bob b-1 (no other = 0).
 	logs := []model.Log{
 		// Anthropic input excludes cache reads and cache writes. Even malformed
 		// upstream totals must not make the aggregate exceed 100%.
-		{UserId: 1, Username: "alice", CreatedAt: now - 3600, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-read-only", Other: `{"cache_tokens":300,"cache_creation_tokens":0}`},
+		{UserId: 1, Username: "alice", CreatedAt: now - 3600, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-read-only", Other: `{"cache_tokens":300,"cache_creation_tokens":0,"claude":true}`},
 		{UserId: 1, Username: "alice", CreatedAt: now - 3590, Type: model.LogTypeConsume, PromptTokens: 14, RequestId: "cache-anomalous", Other: `{"cache_tokens":9455,"cache_creation_tokens":2649,"usage_semantic":"anthropic"}`},
 		{UserId: 1, Username: "alice", CreatedAt: now - 3580, Type: model.LogTypeConsume, PromptTokens: 300, RequestId: "cache-negative", Other: `{"cache_tokens":-100,"usage_semantic":"openai"}`},
 		// An explicit OpenAI semantic means input already includes cache reads,
 		// even when the upstream also reports cache writes.
-		{UserId: 1, Username: "alice", CreatedAt: now - 3550, Type: model.LogTypeConsume, PromptTokens: 51404, RequestId: "cache-openai-total", Other: `{"cache_tokens":50519,"cache_creation_tokens":883,"usage_semantic":"openai"}`},
+		{UserId: 1, Username: "alice", CreatedAt: now - 3540, Type: model.LogTypeConsume, PromptTokens: 264673, RequestId: "cache-legacy-openai-write", Other: `{"cache_tokens":264442,"cache_creation_tokens":229}`},
 		// Without cache write fields the input already includes cache reads.
 		{UserId: 1, Username: "alice", CreatedAt: now - 3500, Type: model.LogTypeConsume, PromptTokens: 1000, RequestId: "cache-included", Other: `{"cache_tokens":900}`},
 		{UserId: 1, Username: "alice", CreatedAt: now - 3400, Type: model.LogTypeConsume, RequestId: "cache-zero-denominator", Other: `{"cache_tokens":0}`},
@@ -178,7 +178,7 @@ func verifyLogCacheRateStats(t *testing.T, now int64) {
 		{UserId: 1, Username: "alice", CreatedAt: now - 3000, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-text", Other: `{"cache_tokens":"x"}`},
 		{UserId: 1, Username: "alice", CreatedAt: now - 2900, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-null", Other: `{"cache_tokens":null}`},
 		{UserId: 1, Username: "alice", CreatedAt: now - 2800, Type: model.LogTypeError, RequestId: "cache-error", Other: `{"cache_tokens":100}`},
-		{UserId: 2, Username: "bob", CreatedAt: now - 2700, Type: model.LogTypeConsume, RequestId: "cache-full", Other: `{"cache_tokens":100,"cache_creation_tokens":0}`},
+		{UserId: 2, Username: "bob", CreatedAt: now - 2700, Type: model.LogTypeConsume, RequestId: "cache-full", Other: `{"cache_tokens":100,"cache_creation_tokens":0,"claude":true}`},
 		{UserId: 4, Username: "carol", CreatedAt: now - 2700, Type: model.LogTypeConsume, PromptTokens: 100, RequestId: "cache-carol-miss", Other: `{"cache_tokens":0}`},
 	}
 	// PostgreSQL 9.6 cannot parse text without risking an error, so the
@@ -209,16 +209,16 @@ func verifyLogCacheRateStats(t *testing.T, now int64) {
 	}
 
 	query := fmt.Sprintf("start_timestamp=%d&end_timestamp=%d", now-2*24*3600, now+3600)
-	// Include zero-hit requests in the overall token-weighted rate. Anthropic
-	// rows count cache reads into the denominator while OpenAI rows already
-	// include them in prompt_tokens; the negative and noisy rows stay valid
-	// because only rows with input smaller than their cache reads are dropped.
-	// alice: cache reads 100+300+9455+50519+900 = 61274 over input
-	// 200+400+9469+300+51404+1000+100*6 = 63373.
-	aliceRate := 61274.0 / 63373.0
+	// Include zero-hit requests in the overall token-weighted rate. Legacy
+	// Claude rows count cache reads into the denominator, while cache writes
+	// alone do not: their input may already include cache reads. The negative
+	// and noisy rows stay valid; only input smaller than cache reads is dropped.
+	// alice: cache reads 100+300+9455+50519+264442+900 = 325716 over input
+	// 100+400+9469+300+51404+264673+1000+100*6 = 327946.
+	aliceRate := 325716.0 / 327946.0
 	assert.LessOrEqual(t, aliceRate, 1.0)
 	// Admin adds bob's 100/100 and carol's 0/100.
-	adminRate := (61274.0 + 100) / (63373.0 + 200)
+	adminRate := (325716.0 + 100) / (327946.0 + 200)
 	assert.InDelta(t, aliceRate, cacheRate(GetLogsSelfStat, 1, "alice", common.RoleCommonUser, query), 1e-9)
 	assert.InDelta(t, 1.0, cacheRate(GetLogsSelfStat, 2, "bob", common.RoleCommonUser, query), 1e-9, "bob's 0% log keeps the overall rate at or below 100%")
 	assert.InDelta(t, adminRate, cacheRate(GetLogsStat, 3, "admin", common.RoleAdminUser, query), 1e-9)

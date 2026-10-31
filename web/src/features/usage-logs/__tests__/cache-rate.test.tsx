@@ -101,6 +101,12 @@ function CacheRateColumn(props: { log: UsageLog }) {
 
 test.each([
   [
+    'cache read over total input for legacy OpenAI-compatible usage with cache writes',
+    264673,
+    { cache_tokens: 264442, cache_creation_tokens: 229 },
+    '99.91%',
+  ],
+  [
     'cache read over total input for non-Anthropic usage with cache writes',
     51404,
     {
@@ -113,24 +119,34 @@ test.each([
   [
     'cache read over input plus cache read for Anthropic usage',
     300,
-    { cache_tokens: 100, cache_creation_tokens: 0, usage_semantic: 'anthropic' },
+    {
+      cache_tokens: 100,
+      cache_creation_tokens: 0,
+      usage_semantic: 'anthropic',
+    },
     '25%',
   ],
   [
-    'cache read over input plus cache read when a cache write field exists',
+    'cache read over input plus cache read for legacy Claude usage',
     300,
-    { cache_tokens: 100, cache_creation_tokens: 0 },
+    { cache_tokens: 100, cache_creation_tokens: 0, claude: true },
     '25%',
   ],
   [
-    'the same share whatever was written to the cache',
+    'cache read over total input with cache writes but no Claude marker',
     300,
     {
       cache_tokens: 100,
       cache_creation_tokens: 9000,
       cache_creation_tokens_5m: 9000,
     },
-    '25%',
+    '33.33%',
+  ],
+  [
+    'explicit OpenAI semantics over a legacy Claude marker',
+    300,
+    { cache_tokens: 100, usage_semantic: 'openai', claude: true },
+    '33.33%',
   ],
   [
     'cache read over input when no cache write field exists',
@@ -278,7 +294,9 @@ test('summary does not show a fixed money icon', async () => {
 })
 
 test('admin view fetches base stats and upstream cost stats in parallel', async () => {
-  useAuthStore.getState().auth.setUser({ id: 1, username: 'admin', role: ROLE.ADMIN })
+  useAuthStore
+    .getState()
+    .auth.setUser({ id: 1, username: 'admin', role: ROLE.ADMIN })
   const requested: string[] = []
   let resolveBase: (() => void) | undefined
   let resolveUpstream: (() => void) | undefined
@@ -317,7 +335,10 @@ test('admin view fetches base stats and upstream cost stats in parallel', async 
       status: 200,
       statusText: 'OK',
       headers: {},
-      data: { success: true, data: { quota: 500, rpm: 3, tpm: 9, cache_rate: 0.5 } },
+      data: {
+        success: true,
+        data: { quota: 500, rpm: 3, tpm: 9, cache_rate: 0.5 },
+      },
     }
   }
   api.defaults.adapter = adapter
@@ -325,9 +346,7 @@ test('admin view fetches base stats and upstream cost stats in parallel', async 
 
   // Both requests must have been issued before either resolves (no waterfall).
   await waitFor(() => {
-    expect(
-      requested.some((url) => url.startsWith('/api/log/stat'))
-    ).toBe(true)
+    expect(requested.some((url) => url.startsWith('/api/log/stat'))).toBe(true)
     expect(
       requested.some((url) => url.startsWith('/api/log/upstream_cost_stat'))
     ).toBe(true)
