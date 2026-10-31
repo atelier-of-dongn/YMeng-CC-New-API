@@ -16,8 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Link } from '@tanstack/react-router'
 import { ArrowRight, Share2 } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { CopyButton } from '@/components/copy-button'
@@ -31,6 +31,9 @@ import type { AffiliateSummary } from '@/features/affiliate/api'
 import { formatQuota } from '@/lib/format'
 
 import type { UserWalletData } from '../types'
+
+import { AffiliateCommissionsDialog } from './dialogs/affiliate-commissions-dialog'
+import { AffiliateInviteesDialog } from './dialogs/affiliate-invitees-dialog'
 
 interface AffiliateRewardsCardProps {
   user: UserWalletData | null
@@ -52,6 +55,8 @@ export function AffiliateRewardsCard({
   loading,
 }: AffiliateRewardsCardProps) {
   const { t } = useTranslation()
+  const [commissionsDialogOpen, setCommissionsDialogOpen] = useState(false)
+  const [inviteesDialogOpen, setInviteesDialogOpen] = useState(false)
 
   if (loading) {
     return (
@@ -70,10 +75,12 @@ export function AffiliateRewardsCard({
 
   const totalEarned = summary?.total_quota ?? user?.aff_history_quota ?? 0
   const inviteeCount = summary?.invitee_count ?? user?.aff_count ?? 0
+  const commissionCount = summary?.commission_count ?? 0
   const hasRewards = availableQuota > 0
 
   return (
-    <Card data-card-hover='false' className='bg-muted/20 py-0'>
+    <>
+      <Card data-card-hover='false' className='bg-muted/20 py-0'>
       <CardContent className='grid gap-3 p-3 sm:gap-4 sm:p-4 lg:grid-cols-[minmax(200px,1fr)_minmax(180px,0.65fr)_minmax(280px,1fr)] lg:items-center'>
         <div className='flex min-w-0 items-center gap-2.5'>
           <IconBadge tone='chart-3'>
@@ -100,11 +107,12 @@ export function AffiliateRewardsCard({
           </div>
         </div>
 
-        <div className='grid grid-cols-3 gap-1.5 text-center'>
+        <div className='grid grid-cols-4 gap-1.5 text-center'>
           {[
             [t('Available'), formatQuota(availableQuota)],
             [t('Total Earned'), formatQuota(totalEarned)],
             [t('Invites'), String(inviteeCount)],
+            [t('Records'), String(commissionCount)],
           ].map(([label, value]) => (
             <div key={label}>
               <div className='text-muted-foreground truncate text-[10px] font-medium tracking-wider uppercase'>
@@ -148,9 +156,18 @@ export function AffiliateRewardsCard({
             variant='link'
             size='sm'
             className='h-auto p-0 text-xs'
-            render={<Link to='/affiliate' />}
+            onClick={() => setCommissionsDialogOpen(true)}
           >
-            {t('View commission details')}
+            {t('Commission records')}
+            <ArrowRight className='size-3' />
+          </Button>
+          <Button
+            variant='link'
+            size='sm'
+            className='h-auto p-0 text-xs'
+            onClick={() => setInviteesDialogOpen(true)}
+          >
+            {t('Invited users')}
             <ArrowRight className='size-3' />
           </Button>
           {summary && !summary.enabled ? (
@@ -169,6 +186,16 @@ export function AffiliateRewardsCard({
           ) : null}
         </div>
       </CardContent>
-    </Card>
+      </Card>
+
+      <AffiliateCommissionsDialog
+        open={commissionsDialogOpen}
+        onOpenChange={setCommissionsDialogOpen}
+      />
+      <AffiliateInviteesDialog
+        open={inviteesDialogOpen}
+        onOpenChange={setInviteesDialogOpen}
+      />
+    </>
   )
 }

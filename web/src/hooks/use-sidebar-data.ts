@@ -119,11 +119,6 @@ export function useSidebarData(): SidebarData {
             icon: Wallet,
           },
           {
-            title: t('Referral Program'),
-            url: '/affiliate',
-            icon: Share2,
-          },
-          {
             title: t('Support tickets'),
             url: '/support-tickets',
             icon: MessageSquare,

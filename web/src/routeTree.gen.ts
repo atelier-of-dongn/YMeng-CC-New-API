@@ -37,7 +37,6 @@ import { Route as authUserResetRouteImport } from './routes/(auth)/user/reset'
 import { Route as AuthenticatedAdminInvoicesIndexRouteImport } from './routes/_authenticated/admin-invoices/index'
 import { Route as AuthenticatedAdminSupportTicketsIndexRouteImport } from './routes/_authenticated/admin-support-tickets/index'
 import { Route as AuthenticatedAffiliateAdminIndexRouteImport } from './routes/_authenticated/affiliate-admin/index'
-import { Route as AuthenticatedAffiliateIndexRouteImport } from './routes/_authenticated/affiliate/index'
 import { Route as AuthenticatedChannelsIndexRouteImport } from './routes/_authenticated/channels/index'
 import { Route as AuthenticatedChatChatIdRouteImport } from './routes/_authenticated/chat/$chatId'
 import { Route as AuthenticatedDashboardIndexRouteImport } from './routes/_authenticated/dashboard/index'
@@ -218,12 +217,6 @@ const AuthenticatedAffiliateAdminIndexRoute =
   AuthenticatedAffiliateAdminIndexRouteImport.update({
     id: '/affiliate-admin/',
     path: '/affiliate-admin/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedAffiliateIndexRoute =
-  AuthenticatedAffiliateIndexRouteImport.update({
-    id: '/affiliate/',
-    path: '/affiliate/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedChannelsIndexRoute =
@@ -490,7 +483,6 @@ export interface FileRoutesByFullPath {
   '/admin-invoices/': typeof AuthenticatedAdminInvoicesIndexRoute
   '/admin-support-tickets/': typeof AuthenticatedAdminSupportTicketsIndexRoute
   '/affiliate-admin/': typeof AuthenticatedAffiliateAdminIndexRoute
-  '/affiliate/': typeof AuthenticatedAffiliateIndexRoute
   '/channels/': typeof AuthenticatedChannelsIndexRoute
   '/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/keys/': typeof AuthenticatedKeysIndexRoute
@@ -557,7 +549,6 @@ export interface FileRoutesByTo {
   '/admin-invoices': typeof AuthenticatedAdminInvoicesIndexRoute
   '/admin-support-tickets': typeof AuthenticatedAdminSupportTicketsIndexRoute
   '/affiliate-admin': typeof AuthenticatedAffiliateAdminIndexRoute
-  '/affiliate': typeof AuthenticatedAffiliateIndexRoute
   '/channels': typeof AuthenticatedChannelsIndexRoute
   '/dashboard': typeof AuthenticatedDashboardIndexRoute
   '/keys': typeof AuthenticatedKeysIndexRoute
@@ -628,7 +619,6 @@ export interface FileRoutesById {
   '/_authenticated/admin-invoices/': typeof AuthenticatedAdminInvoicesIndexRoute
   '/_authenticated/admin-support-tickets/': typeof AuthenticatedAdminSupportTicketsIndexRoute
   '/_authenticated/affiliate-admin/': typeof AuthenticatedAffiliateAdminIndexRoute
-  '/_authenticated/affiliate/': typeof AuthenticatedAffiliateIndexRoute
   '/_authenticated/channels/': typeof AuthenticatedChannelsIndexRoute
   '/_authenticated/dashboard/': typeof AuthenticatedDashboardIndexRoute
   '/_authenticated/keys/': typeof AuthenticatedKeysIndexRoute
@@ -698,7 +688,6 @@ export interface FileRouteTypes {
     | '/admin-invoices/'
     | '/admin-support-tickets/'
     | '/affiliate-admin/'
-    | '/affiliate/'
     | '/channels/'
     | '/dashboard/'
     | '/keys/'
@@ -765,7 +754,6 @@ export interface FileRouteTypes {
     | '/admin-invoices'
     | '/admin-support-tickets'
     | '/affiliate-admin'
-    | '/affiliate'
     | '/channels'
     | '/dashboard'
     | '/keys'
@@ -835,7 +823,6 @@ export interface FileRouteTypes {
     | '/_authenticated/admin-invoices/'
     | '/_authenticated/admin-support-tickets/'
     | '/_authenticated/affiliate-admin/'
-    | '/_authenticated/affiliate/'
     | '/_authenticated/channels/'
     | '/_authenticated/dashboard/'
     | '/_authenticated/keys/'
@@ -1086,13 +1073,6 @@ declare module '@tanstack/react-router' {
       path: '/affiliate-admin'
       fullPath: '/affiliate-admin/'
       preLoaderRoute: typeof AuthenticatedAffiliateAdminIndexRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/affiliate/': {
-      id: '/_authenticated/affiliate/'
-      path: '/affiliate'
-      fullPath: '/affiliate/'
-      preLoaderRoute: typeof AuthenticatedAffiliateIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/channels/': {
@@ -1472,7 +1452,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminInvoicesIndexRoute: typeof AuthenticatedAdminInvoicesIndexRoute
   AuthenticatedAdminSupportTicketsIndexRoute: typeof AuthenticatedAdminSupportTicketsIndexRoute
   AuthenticatedAffiliateAdminIndexRoute: typeof AuthenticatedAffiliateAdminIndexRoute
-  AuthenticatedAffiliateIndexRoute: typeof AuthenticatedAffiliateIndexRoute
   AuthenticatedChannelsIndexRoute: typeof AuthenticatedChannelsIndexRoute
   AuthenticatedDashboardIndexRoute: typeof AuthenticatedDashboardIndexRoute
   AuthenticatedKeysIndexRoute: typeof AuthenticatedKeysIndexRoute
@@ -1504,7 +1483,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminSupportTicketsIndexRoute:
     AuthenticatedAdminSupportTicketsIndexRoute,
   AuthenticatedAffiliateAdminIndexRoute: AuthenticatedAffiliateAdminIndexRoute,
-  AuthenticatedAffiliateIndexRoute: AuthenticatedAffiliateIndexRoute,
   AuthenticatedChannelsIndexRoute: AuthenticatedChannelsIndexRoute,
   AuthenticatedDashboardIndexRoute: AuthenticatedDashboardIndexRoute,
   AuthenticatedKeysIndexRoute: AuthenticatedKeysIndexRoute,
